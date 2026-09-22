@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 140 15% 98%;
+    --foreground: 160 30% 9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 160 30% 9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 160 30% 9%;
+
+    --primary: 156 58% 24%;
+    --primary-foreground: 150 40% 98%;
+
+    --secondary: 150 14% 94%;
+    --secondary-foreground: 160 30% 15%;
+
+    --muted: 150 12% 93%;
+    --muted-foreground: 150 8% 44%;
+
+    --accent: 150 20% 92%;
+    --accent-foreground: 160 30% 15%;
+
+    --destructive: 0 78% 56%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 150 12% 88%;
+    --input: 150 12% 88%;
+    --ring: 156 58% 24%;
+
+    --radius: 0.625rem;
+  }
+
+  .dark {
+    --background: 160 25% 6%;
+    --foreground: 150 15% 95%;
+
+    --card: 160 20% 9%;
+    --card-foreground: 150 15% 95%;
+
+    --popover: 160 20% 9%;
+    --popover-foreground: 150 15% 95%;
+
+    --primary: 156 55% 38%;
+    --primary-foreground: 160 30% 6%;
+
+    --secondary: 160 15% 15%;
+    --secondary-foreground: 150 15% 95%;
+
+    --muted: 160 15% 14%;
+    --muted-foreground: 150 8% 62%;
+
+    --accent: 160 18% 16%;
+    --accent-foreground: 150 15% 95%;
+
+    --destructive: 0 65% 50%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 160 15% 18%;
+    --input: 160 15% 18%;
+    --ring: 156 55% 42%;
+  }
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    @apply font-sans antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "tnum";
+  }
+}
+
+/* Tabular numbers for IDs, budgets, dates */
+.font-tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Subtle clean scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* SweetAlert2 Dark Mode Adaptation */
+.dark .swal2-popup {
+  background-color: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.dark .swal2-title {
+  color: hsl(var(--foreground)) !important;
+}
+
+.dark .swal2-html-container {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+/* Print Stylesheet Overrides */
+@media print {
+  body {
+    background-color: #FFFFFF !important;
+    color: #000000 !important;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+}
