@@ -37,3 +37,6 @@ coverage/
 /.vscode
 .DS_Store
 Thumbs.db
+
+#personal for my environment
+/docs 
