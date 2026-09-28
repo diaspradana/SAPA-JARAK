@@ -11,6 +11,7 @@ return array(
     'App\\Http\\Controllers\\Api\\KasunController' => $baseDir . '/app/Http/Controllers/Api/KasunController.php',
     'App\\Http\\Controllers\\Api\\PublicApplicationController' => $baseDir . '/app/Http/Controllers/Api/PublicApplicationController.php',
     'App\\Http\\Controllers\\Api\\PublicTransparencyController' => $baseDir . '/app/Http/Controllers/Api/PublicTransparencyController.php',
+    'App\\Http\\Controllers\\Controller' => $baseDir . '/app/Http/Controllers/Controller.php',
     'App\\Http\\Middleware\\CheckUserRole' => $baseDir . '/app/Http/Middleware/CheckUserRole.php',
     'App\\Models\\Application' => $baseDir . '/app/Models/Application.php',
     'App\\Models\\Assistance' => $baseDir . '/app/Models/Assistance.php',
