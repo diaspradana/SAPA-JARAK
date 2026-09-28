@@ -105,7 +105,8 @@ class MediaStorageService
 
                 // Request face blurring from Privacy AI microservice if it's a citizen/field photo
                 if (in_array($docType, self::CITIZEN_PHOTO_TYPES, true)) {
-                    $blurResult = $this->privacyService->blurImage($compressedBytes);
+                    $blurType = $data['blur_type'] ?? 'pixelate';
+                    $blurResult = $this->privacyService->blurImage($compressedBytes, $blurType, 51, 0.20);
                     $publicBytes = ($blurResult && !empty($blurResult['image_bytes']))
                         ? $blurResult['image_bytes']
                         : $compressedBytes;

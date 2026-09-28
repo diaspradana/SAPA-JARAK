@@ -33,6 +33,7 @@ class DocumentController extends Controller
             'application_id' => 'nullable|integer|exists:applications,id',
             'ticket_number' => 'nullable|string|exists:applications,ticket_number',
             'visibility' => 'nullable|string|in:PUBLIC_MASKED,INTERNAL_ONLY',
+            'blur_type' => 'nullable|string|in:pixelate,mosaic,gaussian',
             'description' => 'nullable|string|max:500',
         ]);
 
@@ -50,6 +51,7 @@ class DocumentController extends Controller
                 'application_id' => $applicationId,
                 'document_type' => $validated['document_type'] ?? 'FOTO_KONDISI_AWAL',
                 'visibility' => $validated['visibility'] ?? 'PUBLIC_MASKED',
+                'blur_type' => $validated['blur_type'] ?? 'pixelate',
                 'description' => $validated['description'] ?? null,
                 'uploaded_by' => $user?->id,
             ],
