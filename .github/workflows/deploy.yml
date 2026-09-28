@@ -1,0 +1,178 @@
+name: CI/CD Pipeline - SAPA-JARAK
+
+on:
+  push:
+    branches: [ "main", "Alfino-dev" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  REGISTRY: ghcr.io
+  APP_IMAGE: ghcr.io/${{ github.repository }}/app
+  AI_IMAGE: ghcr.io/${{ github.repository }}/ai
+
+jobs:
+  # =============================================================
+  # 1. Frontend Build Verification & Syntax Check
+  # =============================================================
+  test-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Verification (Vite Production Bundle)
+        run: npm run build
+
+  # =============================================================
+  # 2. Backend PHP & Laravel Verification
+  # =============================================================
+  test-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_sqlite, gd, bcmath, fileinfo, zip
+          coverage: none
+
+      - name: Install Composer Dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Run Database Migrations in SQLite
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ':memory:'
+        run: php artisan migrate --force
+
+  # =============================================================
+  # 3. AI Service Smoke Test (YuNet Model & Decision Model)
+  # =============================================================
+  test-ai-service:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python Dependencies
+        run: pip install -r ml_service/requirements.txt
+
+      - name: Train and Verify Decision Model Artifact
+        run: python ml_service/train.py
+
+      - name: Smoke Test YuNet Face Detector
+        run: |
+          python -c "
+          import cv2, os
+          model_path = 'ml_service/models/face_detection_yunet_2023mar.onnx'
+          assert os.path.exists(model_path), 'Model YuNet ONNX tidak ditemukan di ml_service/models/'
+          detector = cv2.FaceDetectorYN.create(model_path, '', (320, 320))
+          assert detector is not None, 'Gagal memuat OpenCV YuNet detector'
+          print('OpenCV YuNet Smoke Test: PASS')
+          "
+
+  # =============================================================
+  # 4. Multi-Stage Docker Build & Push to GHCR (Branch main only)
+  # =============================================================
+  build-and-push:
+    needs: [test-frontend, test-backend, test-ai-service]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & Push SAPA-JARAK App Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ env.APP_IMAGE }}:latest,${{ env.APP_IMAGE }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & Push SAPA-JARAK AI Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ml_service
+          file: ./ml_service/Dockerfile
+          push: true
+          tags: ${{ env.AI_IMAGE }}:latest,${{ env.AI_IMAGE }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # =============================================================
+  # 5. Continuous Deployment to Village VPS (Zero-Downtime Pull)
+  # =============================================================
+  deploy:
+    needs: [build-and-push]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT || 22 }}
+          script: |
+            set -e
+            cd /opt/sapa-jarak
+            
+            echo "1. Login ke GitHub Container Registry di VPS..."
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            
+            echo "2. Mengunduh image kontainer terbaru..."
+            docker compose pull app ai_assistant
+            
+            echo "3. Me-restart kontainer layanan..."
+            docker compose up -d app ai_assistant
+            
+            echo "4. Menjalankan migrasi basis data..."
+            docker compose exec -T app php artisan migrate --force
+            
+            echo "5. Memperbarui cache produksi Laravel..."
+            docker compose exec -T app php artisan optimize:clear
+            docker compose exec -T app php artisan config:cache
+            docker compose exec -T app php artisan route:cache
+            docker compose exec -T app php artisan view:cache
+            
+            echo "6. Menjalankan uji kesehatan layanan (Smoke Test)..."
+            docker compose exec -T app curl -f http://localhost/up
+            docker compose exec -T ai_assistant curl -f http://localhost:8001/health
+            
+            echo "Deployment SAPA-JARAK Berhasil!"
