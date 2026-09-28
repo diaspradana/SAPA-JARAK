@@ -27,6 +27,7 @@ Route::prefix('public')->group(function () {
 Route::prefix('kasun')->group(function () {
     Route::get('/queue', [KasunController::class, 'queue']);
     Route::post('/applications/{id}/survey', [KasunController::class, 'submitSurvey']);
+    Route::post('/ai-recommendation', [KasunController::class, 'getAiRecommendation']);
 });
 
 // Pemerintah Desa (Kasi Kesra, Sekdes, Kades)

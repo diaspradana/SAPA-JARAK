@@ -40,11 +40,17 @@ services:
       
       # WhatsApp Gateway Simulation
       WHATSAPP_SIMULATION_MODE: "true"
+
+      # AI Assistant / ML Decision Support Service
+      ML_SERVICE_URL: "${ML_SERVICE_URL:-http://ai_assistant:8001}"
     volumes:
       - sapa_storage:/var/www/html/storage
       - sapa_sqlite:/var/www/html/database/sqlite
     depends_on:
       db:
+        condition: service_healthy
+        required: false
+      ai_assistant:
         condition: service_healthy
         required: false
     networks:
@@ -55,6 +61,26 @@ services:
       timeout: 5s
       retries: 3
       start_period: 25s
+
+  ai_assistant:
+    build:
+      context: ./ml_service
+      dockerfile: Dockerfile
+    container_name: sapa_jarak_ai
+    restart: unless-stopped
+    ports:
+      - "${ML_PORT:-8001}:8001"
+    environment:
+      PORT: 8001
+      HOST: 0.0.0.0
+    networks:
+      - sapa_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
   db:
     image: mysql:8.0

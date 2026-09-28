@@ -28,3 +28,10 @@ storage/framework/sessions/*
 !storage/framework/sessions/.gitignore
 storage/framework/views/*
 !storage/framework/views/.gitignore
+
+# Python / ML artifacts
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.venv/

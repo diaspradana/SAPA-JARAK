@@ -40,3 +40,31 @@ Thumbs.db
 
 #personal for my environment
 /docs 
+
+# Python / FastAPI / Machine Learning
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+.venv/
+venv/
+env/
+*.egg-info/
+*.pkl
+*.joblib
+ml_service/dataset_bansos_jarak.csv
+
+# Docker environment & local secrets
+.env.docker
+.env.local
+.env.*.local
+
+# SQLite database and temporary journal files
+database/database.sqlite
+*.sqlite
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+database/sqlite/
