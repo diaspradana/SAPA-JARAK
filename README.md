@@ -220,6 +220,27 @@ php artisan serve --port=8000
 ```
 Aplikasi backend siap menerima permintaan di `http://localhost:8000`.
 
+### 6. Menjalankan Menggunakan Docker Compose (Hosting / Produksi)
+Proyek ini telah dilengkapi dengan kontainerisasi Docker & Docker Compose siap produksi (PHP 8.4-FPM + Nginx + MySQL 8.0 + Vite Frontend Build + phpMyAdmin):
+
+```bash
+# 1. (Opsional) Salin konfigurasi environment khusus Docker jika ingin mengubah port/kredensial
+cp .env.docker.example .env
+
+# 2. Build dan jalankan seluruh stack kontainer di background
+docker compose up -d --build
+
+# 3. (Opsional) Jalankan phpMyAdmin untuk manajemen database web (port 8081)
+docker compose --profile tools up -d
+
+# 4. Cek status kontainer dan logs
+docker compose ps
+docker compose logs -f app
+```
+- **Aplikasi Web**: Buka `http://localhost:8000` (atau port sesuai `APP_PORT`)
+- **Health Check**: `http://localhost:8000/up`
+- **phpMyAdmin**: `http://localhost:8081` (User: `sapa_user`, Password: `sapa_secret`)
+
 ---
 
 ## 📡 Referensi RESTful API Endpoints
