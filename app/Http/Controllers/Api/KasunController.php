@@ -87,4 +87,31 @@ class KasunController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Get real-time AI Decision Support Recommendation from FastAPI microservice.
+     */
+    public function getAiRecommendation(Request $request)
+    {
+        $payload = [
+            'tanggungan_keluarga' => (int) $request->input('tanggungan_keluarga', 3),
+            'usia_kepala_keluarga' => (int) $request->input('usia_kepala_keluarga', 54),
+            'ada_disabilitas_lansia' => (int) $request->input('ada_disabilitas_lansia', 0),
+            'desil_dtks' => (int) $request->input('desil_dtks', 1),
+            'daya_listrik_va' => (int) $request->input('daya_listrik_va', 450),
+            'pendapatan_bulanan' => (float) $request->input('pendapatan_bulanan', 650000.0),
+            'kondisi_dinding' => (string) $request->input('kondisi_dinding', 'gedek'),
+            'kondisi_lantai' => (string) $request->input('kondisi_lantai', 'tanah'),
+            'kondisi_atap' => (string) $request->input('kondisi_atap', 'rapuh_bocor'),
+            'sanitasi_mck' => (string) $request->input('sanitasi_mck', 'tidak_ada'),
+            'status_tanah' => (string) $request->input('status_tanah', 'milik_sendiri'),
+        ];
+
+        $recommendation = $this->verificationService->getMlRecommendation($payload);
+
+        return response()->json([
+            'success' => true,
+            'data' => $recommendation,
+        ]);
+    }
 }

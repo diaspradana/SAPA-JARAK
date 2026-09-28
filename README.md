@@ -221,13 +221,13 @@ php artisan serve --port=8000
 Aplikasi backend siap menerima permintaan di `http://localhost:8000`.
 
 ### 6. Menjalankan Menggunakan Docker Compose (Hosting / Produksi)
-Proyek ini telah dilengkapi dengan kontainerisasi Docker & Docker Compose siap produksi (PHP 8.4-FPM + Nginx + MySQL 8.0 + Vite Frontend Build + phpMyAdmin):
+Proyek ini telah dilengkapi dengan kontainerisasi Docker & Docker Compose siap produksi (PHP 8.4-FPM + Nginx + MySQL 8.0 + Vite Frontend Build + **FastAPI AI Assistant Decision Support** + phpMyAdmin):
 
 ```bash
 # 1. (Opsional) Salin konfigurasi environment khusus Docker jika ingin mengubah port/kredensial
 cp .env.docker.example .env
 
-# 2. Build dan jalankan seluruh stack kontainer di background
+# 2. Build dan jalankan seluruh stack kontainer di background (App, DB, dan AI Assistant)
 docker compose up -d --build
 
 # 3. (Opsional) Jalankan phpMyAdmin untuk manajemen database web (port 8081)
@@ -236,9 +236,12 @@ docker compose --profile tools up -d
 # 4. Cek status kontainer dan logs
 docker compose ps
 docker compose logs -f app
+docker compose logs -f ai_assistant
 ```
 - **Aplikasi Web**: Buka `http://localhost:8000` (atau port sesuai `APP_PORT`)
-- **Health Check**: `http://localhost:8000/up`
+- **Health Check Backend**: `http://localhost:8000/up`
+- **AI Assistant API (FastAPI)**: `http://localhost:8001` (Docs Swagger: `http://localhost:8001/docs`)
+- **Health Check AI**: `http://localhost:8001/health`
 - **phpMyAdmin**: `http://localhost:8081` (User: `sapa_user`, Password: `sapa_secret`)
 
 ---
