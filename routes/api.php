@@ -6,12 +6,19 @@ use App\Http\Controllers\Api\PublicTransparencyController;
 use App\Http\Controllers\Api\KasunController;
 use App\Http\Controllers\Api\DesaController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ApplicationController;
 
 /*
 |--------------------------------------------------------------------------
 | API Routes for SAPA-JARAK
 |--------------------------------------------------------------------------
 */
+
+// Scoring Engine Preview / Simulation Routes
+Route::prefix('scoring')->group(function () {
+    Route::post('/calculate', [ApplicationController::class, 'calculateScore']);
+    Route::post('/calculate/{id}', [ApplicationController::class, 'calculateForApplication']);
+});
 
 // Public Routes (Masyarakat / Pelapor)
 Route::prefix('public')->group(function () {
@@ -43,3 +50,4 @@ Route::prefix('auth')->group(function () {
     Route::get('/users', [AuthController::class, 'users']);
     Route::post('/switch-role', [AuthController::class, 'switchRole']);
 });
+

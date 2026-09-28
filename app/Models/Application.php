@@ -37,6 +37,11 @@ class Application extends Model
         'priority_score' => 'integer',
     ];
 
+    public function scores()
+    {
+        return $this->hasMany(ApplicationScore::class);
+    }
+
     public function beneficiary()
     {
         return $this->belongsTo(Beneficiary::class);
