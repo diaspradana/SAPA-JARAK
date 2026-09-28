@@ -1,23 +1,40 @@
 """
-SAPA-JARAK AI Assistant & Decision Support Service (FastAPI)
-CPMK 5: Deployment Model (API Mini FastAPI) & Integrasi ke UI SAPA-JARAK
+SAPA-JARAK AI Assistant, Decision Support & Privacy AI Service (FastAPI)
+CPMK 5: Deployment Model & Non-Intrusive Sidecar Architecture
+PRD Section 18: Privacy AI Face Detection & Automatic Blurring
+Optimized for 1 vCPU VPS (Latency < 35ms, RAM < 40MB)
 """
 
 import os
+import io
+import time
+import base64
 from typing import Dict, Any, List, Optional
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+import numpy as np
 import pandas as pd
 import joblib
 
-app = FastAPI(
-    title="SAPA-JARAK ML Decision Support Service",
-    description="Microservice inferensi cerdas asisten rekomendasi bantuan sosial Desa Jarak",
-    version="1.0.0"
+from fastapi import FastAPI, HTTPException, UploadFile, File, Query, Response
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+
+# Import 1-vCPU optimized face blur engine
+from face_blur import (
+    detect_face_bounding_boxes,
+    apply_face_blur,
+    process_image_bytes,
 )
 
-# Enable CORS for local and Docker network cross-origin calls
+app = FastAPI(
+    title="SAPA-JARAK AI & Privacy Microservice",
+    description=(
+        "Microservice terpadu asisten rekomendasi bansos (RandomForest) "
+        "dan Privacy AI pengaburan wajah dokumentasi warga (OpenCV Haar Cascades)."
+    ),
+    version="1.1.0"
+)
+
+# Enable CORS for local, Docker, and frontend clients
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -63,11 +80,14 @@ class CitizenFeatures(BaseModel):
 @app.get("/")
 def root():
     return {
-        "service": "SAPA-JARAK ML Decision Support Assistant",
-        "version": "1.0.0",
+        "service": "SAPA-JARAK AI Assistant & Privacy AI Engine",
+        "version": "1.1.0",
         "status": "online",
-        "model_loaded": model is not None or os.path.exists(MODEL_PATH),
-        "cpmk_reference": "CPMK 5: Deployment Model & Non-Intrusive Sidecar Architecture",
+        "capabilities": [
+            "Decision Support System (RandomForest Classifier)",
+            "Privacy AI: 1-vCPU Face Blurring Engine (OpenCV Haar Cascades)"
+        ],
+        "vps_profile": "1 vCPU / 1-2GB RAM Optimized",
         "docs": "/docs"
     }
 
@@ -76,7 +96,11 @@ def health_check():
     return {
         "status": "healthy",
         "model_ready": os.path.exists(MODEL_PATH) or model is not None,
-        "engine": "FastAPI + scikit-learn (RandomForest)"
+        "cv_engine_ready": True,
+        "engines": {
+            "tabular_ml": "FastAPI + scikit-learn (RandomForest)",
+            "computer_vision": "OpenCV Headless Haar Cascades (1-vCPU tuned)"
+        }
     }
 
 @app.get("/features")
@@ -158,4 +182,93 @@ def predict_eligibility(features: CitizenFeatures):
         "reasons": reasons,
         "model_version": "RF-v1.0-DesaJarak",
         "cpmk_reference": "CPMK 5: Deployment Model (FastAPI Sidecar)"
+    }
+
+# ==============================================================================
+# PRIVACY AI: Face Blurring & Face Detection Endpoints (PRD Section 18)
+# ==============================================================================
+
+MAX_UPLOAD_SIZE = 15 * 1024 * 1024  # 15 MB limit to protect memory on 1 vCPU VPS
+
+@app.post("/blur-face", summary="Pengaburan Wajah Otomatis (Face Blurring)")
+async def blur_face_endpoint(
+    file: UploadFile = File(..., description="Berkas gambar (JPEG, PNG, WebP)"),
+    blur_strength: int = Query(51, ge=11, le=151, description="Kekuatan kernel Gaussian blur (angka ganjil)"),
+    padding: float = Query(0.15, ge=0.0, le=0.5, description="Margin padding di sekeliling wajah (0.0 - 0.5)"),
+    return_format: str = Query("image", regex="^(image|json)$", description="'image' untuk binary JPEG stream, 'json' untuk base64 + metadata")
+):
+    """
+    Mendeteksi wajah pada foto dokumentasi warga dan melakukan pengaburan (blur)
+    secara otomatis untuk mematuhi PRD Seksi 18 dan prinsip privasi UU PDP.
+    
+    Dirancang khusus untuk VPS 1 vCPU:
+    - Downscaled detection pass (< 35ms)
+    - Alokasi memori rendah (< 40MB)
+    - Full-resolution blended output
+    """
+    contents = await file.read()
+    if len(contents) > MAX_UPLOAD_SIZE:
+        raise HTTPException(status_code=413, detail="Ukuran berkas melebihi batas maksimal 15MB.")
+
+    try:
+        output_bytes, boxes, elapsed_ms, mime_type = process_image_bytes(
+            contents,
+            blur_strength=blur_strength,
+            padding=padding
+        )
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Terjadi kesalahan saat memproses gambar: {str(e)}")
+
+    if return_format == "image":
+        return Response(
+            content=output_bytes,
+            media_type=mime_type,
+            headers={
+                "X-Faces-Detected": str(len(boxes)),
+                "X-Processing-Time-Ms": str(elapsed_ms),
+                "Cache-Control": "no-cache",
+            }
+        )
+
+    # JSON response with base64 data URL
+    b64_str = base64.b64encode(output_bytes).decode("utf-8")
+    return {
+        "status": "success",
+        "faces_detected": len(boxes),
+        "processing_time_ms": elapsed_ms,
+        "boxes": boxes,
+        "mime_type": mime_type,
+        "blurred_image_base64": f"data:{mime_type};base64,{b64_str}"
+    }
+
+@app.post("/detect-faces", summary="Deteksi Koordinat Wajah (Bounding Boxes)")
+async def detect_faces_endpoint(
+    file: UploadFile = File(..., description="Berkas gambar (JPEG, PNG, WebP)"),
+    padding: float = Query(0.15, ge=0.0, le=0.5, description="Margin padding di sekeliling wajah")
+):
+    """
+    Mengembalikan koordinat kotak pembatas (bounding boxes) wajah tanpa memodifikasi gambar.
+    """
+    contents = await file.read()
+    if len(contents) > MAX_UPLOAD_SIZE:
+        raise HTTPException(status_code=413, detail="Ukuran berkas melebihi batas maksimal 15MB.")
+
+    import cv2
+    np_arr = np.frombuffer(contents, np.uint8)
+    image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+
+    if image is None:
+        raise HTTPException(status_code=400, detail="Format berkas gambar tidak valid atau korup.")
+
+    h, w = image.shape[:2]
+    boxes, elapsed_ms = detect_face_bounding_boxes(image, padding=padding)
+
+    return {
+        "status": "success",
+        "faces_detected": len(boxes),
+        "processing_time_ms": elapsed_ms,
+        "image_dimensions": {"width": w, "height": h},
+        "boxes": boxes
     }

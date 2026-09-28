@@ -236,13 +236,15 @@ docker compose --profile tools up -d
 # 4. Cek status kontainer dan logs
 docker compose ps
 docker compose logs -f app
-docker compose logs -f ai_assistant
 ```
 - **Aplikasi Web**: Buka `http://localhost:8000` (atau port sesuai `APP_PORT`)
 - **Health Check Backend**: `http://localhost:8000/up`
 - **AI Assistant API (FastAPI)**: `http://localhost:8001` (Docs Swagger: `http://localhost:8001/docs`)
+  - **Decision Support**: `POST /predict` (Rekomendasi bansos via RandomForest)
+  - **Privacy AI Face Blurring**: `POST /blur-face` (Sensor wajah otomatis 1-vCPU via OpenCV)
 - **Health Check AI**: `http://localhost:8001/health`
 - **phpMyAdmin**: `http://localhost:8081` (User: `sapa_user`, Password: `sapa_secret`)
+- **Dokumentasi Lengkap Face Blur**: Baca [docs/10-face-blur-privacy-service.md](docs/10-face-blur-privacy-service.md)
 
 ---
 
