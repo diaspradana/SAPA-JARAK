@@ -211,4 +211,42 @@ class DesaController extends Controller
         ];
         return $pdfService->generateSpjPdf($filters);
     }
+
+    /**
+     * Export SPJ Report to Excel (.xls) or CSV.
+     */
+    public function exportSpj(Request $request, \App\Services\ExportService $exportService)
+    {
+        $filters = $request->only(['hamlet_id', 'year', 'delimiter']);
+        $format = $request->input('format', 'csv');
+        return $exportService->exportSpj($filters, $format);
+    }
+
+    /**
+     * Export SPJ Report shortcut for Excel format (.xls).
+     */
+    public function exportSpjExcel(Request $request, \App\Services\ExportService $exportService)
+    {
+        $filters = $request->only(['hamlet_id', 'year']);
+        return $exportService->exportSpj($filters, 'excel');
+    }
+
+    /**
+     * Export SPJ Report shortcut for CSV format (.csv).
+     */
+    public function exportSpjCsv(Request $request, \App\Services\ExportService $exportService)
+    {
+        $filters = $request->only(['hamlet_id', 'year', 'delimiter']);
+        return $exportService->exportSpj($filters, 'csv');
+    }
+
+    /**
+     * Export Master Beneficiaries / Submissions Register for Village Administration.
+     */
+    public function exportBeneficiaries(Request $request, \App\Services\ExportService $exportService)
+    {
+        $filters = $request->only(['hamlet_id', 'assistance_type', 'status', 'year', 'delimiter']);
+        $format = $request->input('format', 'csv');
+        return $exportService->exportBeneficiaries($filters, $format);
+    }
 }

@@ -300,6 +300,39 @@ Mendapatkan daftar penerima manfaat yang telah disetujui atau selesai dengan ide
 
 ---
 
+### 2.8 Mengunduh Rekapitulasi Terbuka Transparansi Publik (Format CSV / Excel)
+Menghasilkan dan mengunduh berkas rekapitulasi data transparansi publik bantuan sosial dalam format CSV atau Excel (.xls). Seluruh identitas warga disensor sesuai kepatuhan privasi UU No. 27/2022 (*masked name*).
+
+- **Method**: `GET`
+- **Endpoint**: `/api/public/transparency/export`
+- **Query Parameter (Opsional)**:
+  - `format`: `csv` (default) atau `excel` / `xls`
+  - `delimiter`: `,` (default) atau `;` (untuk Excel locale Indonesia)
+  - `hamlet_id`: Filter ID dusun
+  - `assistance_type`: `RTLH` atau `DISABILITAS`
+  - `search`: Kata kunci pencarian nomor tiket
+- **Autentikasi**: Tidak diperlukan (Publik)
+- **Header Respon Sukses (CSV)**:
+  ```http
+  Content-Type: text/csv; charset=UTF-8
+  Content-Disposition: attachment; filename="Transparansi_Bansos_Desa_Jarak_YYYYMMDD_HHmmss.csv"
+  ```
+- **Header Respon Sukses (Excel)**:
+  ```http
+  Content-Type: application/vnd.ms-excel; charset=UTF-8
+  Content-Disposition: attachment; filename="Transparansi_Bansos_Desa_Jarak_YYYYMMDD_HHmmss.xls"
+  ```
+- **Contoh Permintaan cURL**:
+  ```bash
+  # Unduh format CSV (RFC 4180 dengan UTF-8 BOM)
+  curl -X GET "http://localhost:8000/api/public/transparency/export?format=csv" -o "Transparansi_Publik.csv"
+
+  # Unduh format Excel (SpreadsheetML bergaya resmi)
+  curl -X GET "http://localhost:8000/api/public/transparency/export?format=excel" -o "Transparansi_Publik.xls"
+  ```
+
+---
+
 ## 3. Modul Kepala Dusun (`/api/kasun/*`)
 
 ### 3.1 Mengambil Antrean Survei Wilayah Kasun
@@ -374,6 +407,69 @@ Menyimpan penilaian faktual, koordinat GPS, menghitung skor otomatis, dan meneta
       "status": "FORWARDED_TO_VILLAGE"
     }
   }
+  ```
+
+---
+
+### 3.3 Rekomendasi Kecerdasan Buatan (AI Decision Support)
+Mengambil probabilitas dan rekomendasi kelayakan bantuan secara real-time dari microservice machine learning FastAPI berbasis Random Forest Classifier.
+
+- **Method**: `POST`
+- **Endpoint**: `/api/kasun/ai-recommendation`
+- **Header Wajib**: `Authorization: Bearer <access_token>`
+- **Hak Akses Peran**: `kasun`, `admin`
+- **Body Permintaan (JSON)**:
+  ```json
+  {
+    "tanggungan_keluarga": 3,
+    "usia_kepala_keluarga": 54,
+    "ada_disabilitas_lansia": 0,
+    "desil_dtks": 1,
+    "daya_listrik_va": 450,
+    "pendapatan_bulanan": 650000,
+    "kondisi_dinding": "gedek",
+    "kondisi_lantai": "tanah",
+    "kondisi_atap": "rapuh_bocor",
+    "sanitasi_mck": "tidak_ada",
+    "status_tanah": "milik_sendiri"
+  }
+  ```
+- **Respon Sukses (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "recommendation": "LAYAK",
+      "probability": 0.89,
+      "confidence": "HIGH"
+    }
+  }
+  ```
+
+---
+
+### 3.4 Mengunduh Rekapitulasi Antrean Survei Kasun (Format CSV / Excel)
+Mengunduh berkas antrean dan hasil verifikasi survei lapangan warga binaan Kepala Dusun. Data otomatis terisolasi pada wilayah kerja dusun masing-masing demi menjaga integritas batas wilayah administratif.
+
+- **Method**: `GET`
+- **Endpoint**: `/api/kasun/reports/export`
+- **Header Wajib**: `Authorization: Bearer <access_token>`
+- **Hak Akses Peran**: `kasun`, `admin`
+- **Query Parameter (Opsional)**:
+  - `format`: `csv` (default) atau `excel` / `xls`
+  - `delimiter`: `,` (default) atau `;`
+  - `status`: Filter status pengajuan (misal `WAITING_KASUN_VERIFICATION`, `SUBMITTED`, dll.)
+  - `hamlet_id`: Filter dusun (hanya berlaku jika login sebagai admin desa)
+- **Header Respon Sukses (CSV)**:
+  ```http
+  Content-Type: text/csv; charset=UTF-8
+  Content-Disposition: attachment; filename="Antrean_Survei_Kasun_Dusun_Kalasan_YYYYMMDD_HHmmss.csv"
+  ```
+- **Contoh Permintaan cURL**:
+  ```bash
+  curl -X GET "http://localhost:8000/api/kasun/reports/export?format=excel" \
+    -H "Authorization: Bearer <access_token>" \
+    -o "Antrean_Kasun_Kalasan.xls"
   ```
 
 ---
@@ -575,6 +671,74 @@ Menghasilkan dokumen laporan resmi Laporan Pertanggungjawaban Realisasi Anggaran
   curl -X GET "http://localhost:8000/api/desa/reports/spj/pdf?year=2026" \
     -H "Authorization: Bearer <access_token>" \
     -o "Laporan_SPJ_2026.pdf"
+  ```
+
+---
+
+### 4.8 Mengunduh Laporan SPJ Realisasi APBDes (Format CSV & Excel SpreadsheetML)
+Menghasilkan berkas rekapitulasi realisasi belanja bantuan sosial APBDes berstatus tuntas (`COMPLETED`) dengan alokasi memori streaming O(1) yang aman untuk VPS 1-vCPU. Berkas menyertakan kode rekening, sumber pendanaan, nomor BAST, pagu anggaran, realisasi belanja, sisa pagu, serta baris total kalkulasi resmi.
+
+- **Method**: `GET`
+- **Endpoint**:
+  - `/api/desa/reports/spj/export` (Bebas memilih parameter `?format=csv|excel`)
+  - `/api/desa/reports/spj/excel` (Shortcut unduh langsung format Excel `.xls`)
+  - `/api/desa/reports/spj/csv` (Shortcut unduh langsung format CSV `.csv`)
+- **Header Wajib**: `Authorization: Bearer <access_token>`
+- **Hak Akses Peran**: `kades`, `kasi_kesra`, `sekdes`, `admin`
+- **Query Parameter (Opsional)**:
+  - `format`: `csv` (default) atau `excel` / `xls`
+  - `year`: Filter tahun realisasi (default tahun berjalan, contoh: `2026`)
+  - `hamlet_id`: Filter ID dusun
+  - `delimiter`: `,` (default) atau `;` (locale Windows Excel Indonesia)
+- **Header Respon Sukses (CSV)**:
+  ```http
+  Content-Type: text/csv; charset=UTF-8
+  Content-Disposition: attachment; filename="Laporan_SPJ_Bansos_Desa_Jarak_2026_YYYYMMDD_HHmmss.csv"
+  ```
+- **Header Respon Sukses (Excel)**:
+  ```http
+  Content-Type: application/vnd.ms-excel; charset=UTF-8
+  Content-Disposition: attachment; filename="Laporan_SPJ_Bansos_Desa_Jarak_2026_YYYYMMDD_HHmmss.xls"
+  ```
+- **Contoh Permintaan cURL**:
+  ```bash
+  # Unduh format Excel SpreadsheetML dengan styling tabel resmi
+  curl -X GET "http://localhost:8000/api/desa/reports/spj/excel?year=2026" \
+    -H "Authorization: Bearer <access_token>" \
+    -o "Laporan_SPJ_2026.xls"
+
+  # Unduh format CSV (dengan delimiter titik-koma Excel Indonesia)
+  curl -X GET "http://localhost:8000/api/desa/reports/spj/csv?year=2026&delimiter=;" \
+    -H "Authorization: Bearer <access_token>" \
+    -o "Laporan_SPJ_2026.csv"
+  ```
+
+---
+
+### 4.9 Mengunduh Master Register Penerima Bantuan Sosial Desa (Format CSV & Excel)
+Menghasilkan master data seluruh usulan dan penerima bantuan sosial untuk kebutuhan arsip internal aparatur desa. Data disajikan secara lengkap (Nama lengkap, NIK, No. KK, No. HP, status DTKS, skor kelayakan, status pengerjaan, dan alokasi dana).
+
+- **Method**: `GET`
+- **Endpoint**: `/api/desa/reports/beneficiaries/export`
+- **Header Wajib**: `Authorization: Bearer <access_token>`
+- **Hak Akses Peran**: `kades`, `kasi_kesra`, `sekdes`, `admin`
+- **Query Parameter (Opsional)**:
+  - `format`: `csv` (default) atau `excel` / `xls`
+  - `delimiter`: `,` (default) atau `;`
+  - `status`: Filter status pengajuan (`SUBMITTED`, `APPROVED`, `COMPLETED`, dll.)
+  - `assistance_type`: `RTLH` atau `DISABILITAS`
+  - `hamlet_id`: Filter ID dusun
+  - `year`: Filter tahun pengajuan
+- **Header Respon Sukses (CSV)**:
+  ```http
+  Content-Type: text/csv; charset=UTF-8
+  Content-Disposition: attachment; filename="Rekapitulasi_Penerima_Bansos_Desa_Jarak_YYYYMMDD_HHmmss.csv"
+  ```
+- **Contoh Permintaan cURL**:
+  ```bash
+  curl -X GET "http://localhost:8000/api/desa/reports/beneficiaries/export?assistance_type=RTLH&format=excel" \
+    -H "Authorization: Bearer <access_token>" \
+    -o "Master_Penerima_RTLH.xls"
   ```
 
 ---

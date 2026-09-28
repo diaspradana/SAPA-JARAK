@@ -28,7 +28,7 @@ Analisis ini menguraikan fitur yang **belum diimplementasikan**, fitur yang **ma
 | **FR-016** | Dashboard transparansi publik | **Must** | ✅ Selesai | ✅ Selesai | 🟡 Perlu Integrasi | Open ledger dan agregat metrik berfungsi penuh di UI. |
 | **FR-017** | Notifikasi status via WhatsApp | **Must** | 🟡 Simulasi | 🟡 Simulasi | 🟡 Perlu Gateway | Frontend menampilkan modal pesan; backend memiliki HTTP scaffold Fonnte. |
 | **FR-018** | Ekspor Laporan PDF | **Must** | 🟡 Client Print | ✅ Selesai | 🟢 Siap di API | Generator server-side DomPDF aktif untuk Tanda Terima, BAST, dan Laporan SPJ APBDes. |
-| **FR-019** | Ekspor Laporan Excel/CSV | **Must** | ✅ Selesai | 🟡 JSON Saja | 🟢 Siap di UI | Ekspor CSV langsung dari browser berhasil; backend baru menyediakan JSON. |
+| **FR-019** | Ekspor Laporan Excel/CSV | **Must** | ✅ Selesai | ✅ Selesai | 🟢 Siap di API | Streaming CSV (UTF-8 BOM) dan Excel XML SpreadsheetML aktif di API dengan alokasi memori O(1) (< 2MB RAM). |
 | **FR-020** | Log jejak audit kepatuhan (Audit Log) | **Should** | ❌ Belum Ada di UI | ✅ Selesai | 🟡 Backend Saja | Model & migrasi `audit_logs` ada di Laravel, namun belum ada tab audit di UI. |
 | **FR-021** | Privacy masking data warga | **Must** | ✅ Selesai | ✅ Selesai | 🟢 Siap | NIK/Nama disamarkan (`Bpk. S*****`) di antarmuka dan accessor model. |
 | **FR-022** | Antarmuka Mobile-First | **Must** | ✅ Selesai | N/A | 🟢 Siap | Desain responsif Tailwind CSS sangat baik di viewport ponsel. |
@@ -137,13 +137,17 @@ Analisis ini menguraikan fitur yang **belum diimplementasikan**, fitur yang **ma
 ---
 
 ### 2.8 Pengujian Otomatis (*Automated Testing Suite*)
-- **Kondisi Terkini (Sedang Dikerjakan di Branch `backend-rz` 🟡)**:
-  - File konfigurasi [`phpunit.xml`](file:///home/ascension/Projects/SAPA-JARAK/phpunit.xml) dan test runner telah ditambahkan.
-  - Pengujian kalkulator penilaian kelayakan dan validasi parameter telah diimplementasikan pada [`tests/Feature/ScoringApiTest.php`](file:///home/ascension/Projects/SAPA-JARAK/tests/Feature/ScoringApiTest.php) (mencakup pengujian RTLH, Disabilitas, dan validasi 422).
-  - Rincian lengkap dicatat pada [docs/11-team-backend-rz-scoring-and-testing.md](11-team-backend-rz-scoring-and-testing.md).
-- **Kebutuhan Pengujian Lanjutan**:
-  - Feature test alur pengajuan tiket dan verifikasi OTP (`ApplicationSubmissionTest.php`).
-  - Feature test validasi otorisasi peran kasun dan desa.
+- **Status Implementasi (Backend Selesai & Terverifikasi ✅)**:
+  - File konfigurasi [`phpunit.xml`](../phpunit.xml) dan test runner PHPUnit 11 aktif menggunakan basis data SQLite *In-Memory* (`:memory:`) dengan isolasi transaksi penuh via `RefreshDatabase` (eksekusi cepat $< 2$ detik).
+  - **Rangkaian Pengujian Unit (`tests/Unit/`)**:
+    - [`ExportServiceTest.php`](../tests/Unit/ExportServiceTest.php): 6 skenario pengujian unit yang memverifikasi pembentukan UTF-8 BOM `\xEF\xBB\xBF`, pemformatan preservasi 16 digit NIK/KK sebagai formula teks string `="3506..."`, kustomisasi delimiter titik-koma (`;`), struktur valid XML SpreadsheetML (`<Workbook>`, `<Worksheet>`, styling header, dan format Currency), integritas unmasked master register aparatur desa, aturan privasi sensor warga, serta isolasi antrean survei per wilayah kasun.
+  - **Rangkaian Pengujian Fitur (`tests/Feature/`)**:
+    - [`ExportApiTest.php`](../tests/Feature/ExportApiTest.php): 8 skenario pengujian HTTP integration yang memvalidasi header MIME (`text/csv; charset=UTF-8` dan `application/vnd.ms-excel; charset=UTF-8`), proteksi otentikasi Sanctum (penolakan 401 Unauthorized tanpa token), otorisasi peran (Kades vs Kasun), serta seluruh endpoint unduh publik dan kedinasan.
+    - [`ScoringApiTest.php`](../tests/Feature/ScoringApiTest.php): Skenario pengujian simulasi scoring kelayakan RTLH dan Disabilitas.
+  - **Hasil Eksekusi**: 14 tests, 73 assertions lulus 100% (`OK (14 tests, 73 assertions)`).
+  - Dokumentasi teknis terperinci dicatat pada [docs/13-automated-testing-and-export-suite.md](13-automated-testing-and-export-suite.md).
+- **Pengembangan Pengujian Lanjutan (Opsional)**:
+  - Feature test alur pengajuan tiket publik dan simulasi OTP (`ApplicationSubmissionTest.php`).
   - Frontend unit test (Vitest) atau E2E (Playwright / Cypress).
 
 ---
@@ -154,3 +158,26 @@ Analisis ini menguraikan fitur yang **belum diimplementasikan**, fitur yang **ma
 - **Kondisi Saat Ini**:
   - Pengaturan nama dusun, kasun, dan bobot scoring masih berada di file konfigurasi statis (`desaConfig.js` dan `ScoringService.php`).
   - Belum ada antarmuka bagi admin desa untuk menambah aparatur baru atau mengubah bobot persentase scoring secara dinamis dari dashboard.
+
+---
+
+### 2.10 Mesin Ekspor Dokumen Excel & CSV Sisi Server (*Server-Side Spreadsheet & CSV Engine*)
+- **Status Implementasi (Backend Selesai ✅)**:
+  - Dirancang khusus agar **aman dan optimal untuk VPS spesifikasi 1 vCPU / 1GB RAM**: menggunakan arsitektur *streaming chunked response* (`Symfony\Component\HttpFoundation\StreamedResponse` dan Eloquent `cursor()`) dengan alokasi memori **$O(1)$ (< 2MB RAM)** tanpa pembengkakan memori akibat pustaka spreadsheet berat seperti PhpSpreadsheet.
+  - Layanan [`App\Services\ExportService`](../app/Services/ExportService.php) mendukung dua format ekspor:
+    1. **Format CSV Streaming RFC 4180**:
+       - Dilengkapi dengan *UTF-8 Byte Order Mark (BOM)* `\xEF\xBB\xBF` di baris pertama agar Microsoft Excel, LibreOffice Calc, dan Google Sheets mendeteksi encoding karakter secara otomatis tanpa teks rusak (*garbled text*).
+       - Mendukung kustomisasi pemisah kolom (koma `,` bawaan atau titik-koma `;` untuk locale Windows Excel Indonesia via query param `?delimiter=;`).
+       - Mempertahankan integritas 16 digit NIK/KK agar tidak terkonversi menjadi format ilmiah (*scientific notation*, misalnya `3.50612E+15`) melalui pemformatan formula teks string `= "3506..."`.
+    2. **Format Excel XML Spreadsheet (SpreadsheetML)**:
+       - Format native XML Spreadsheet 2003 yang dapat langsung dibuka oleh Microsoft Excel, LibreOffice, dan Google Sheets.
+       - Menyertakan *styling* korporat: header biru tua tebal, kolom rata tengah, pemformatan mata uang numerik (`Rp #,##0`), dan baris total kalkulasi bawah bergaris ganda.
+  - Endpoint HTTP Ekspor Aktif:
+    - `GET /api/desa/reports/spj/export` (Ekspor realisasi APBDes tuntas, filter `?year=...&hamlet_id=...&format=csv|excel`).
+    - `GET /api/desa/reports/spj/excel` (Shortcut ekspor SPJ format Excel `.xls`).
+    - `GET /api/desa/reports/spj/csv` (Shortcut ekspor SPJ format CSV `.csv`).
+    - `GET /api/desa/reports/beneficiaries/export` (Ekspor master register penerima bansos internal aparatur desa, filter `?status=...&assistance_type=...`).
+    - `GET /api/public/transparency/export` (Ekspor open data transparansi publik berstatus anonim/sensor privasi UU PDP No. 27/2022).
+    - `GET /api/kasun/reports/export` (Ekspor antrean survei lapangan Kepala Dusun terisolir per wilayah kasun).
+  - Dokumentasi API lengkap dicatat pada [docs/05-api-reference.md](05-api-reference.md).
+

@@ -23,6 +23,7 @@ Route::prefix('public')->group(function () {
     Route::get('/applications/{ticket}/pdf', [PublicApplicationController::class, 'downloadReceiptPdf']);
     Route::get('/transparency/metrics', [PublicTransparencyController::class, 'metrics']);
     Route::get('/transparency/ledger', [PublicTransparencyController::class, 'ledger']);
+    Route::get('/transparency/export', [PublicTransparencyController::class, 'export']);
 });
 
 // Auth Routes (Login Resmi & Demo Switcher)
@@ -40,6 +41,7 @@ Route::prefix('auth')->group(function () {
 // Kasun (Surveyor & Verifikator Wilayah) - Dilindungi Sanctum & Peran Kasun
 Route::prefix('kasun')->middleware(['auth:sanctum', 'role:kasun,admin'])->group(function () {
     Route::get('/queue', [KasunController::class, 'queue']);
+    Route::get('/reports/export', [KasunController::class, 'export']);
     Route::post('/applications/{id}/survey', [KasunController::class, 'submitSurvey']);
     Route::post('/ai-recommendation', [KasunController::class, 'getAiRecommendation']);
 });
@@ -53,6 +55,10 @@ Route::prefix('desa')->middleware(['auth:sanctum', 'role:kades,kasi_kesra,sekdes
     Route::get('/applications/{id}/bast/pdf', [DesaController::class, 'downloadBastPdf']);
     Route::get('/reports/spj', [DesaController::class, 'spjReport']);
     Route::get('/reports/spj/pdf', [DesaController::class, 'downloadSpjPdf']);
+    Route::get('/reports/spj/export', [DesaController::class, 'exportSpj']);
+    Route::get('/reports/spj/excel', [DesaController::class, 'exportSpjExcel']);
+    Route::get('/reports/spj/csv', [DesaController::class, 'exportSpjCsv']);
+    Route::get('/reports/beneficiaries/export', [DesaController::class, 'exportBeneficiaries']);
 });
 
 // Modul Pengunggahan Berkas & Media Storage (Upload, Kompresi, dan Privasi Sensor Wajah)

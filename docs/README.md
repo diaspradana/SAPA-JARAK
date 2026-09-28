@@ -26,6 +26,7 @@ Dokumentasi ini disusun berdasarkan kode sumber aktual (*source code*), konfigur
 | **10** | **Privacy AI Face Blurring** | Spesifikasi teknis sensor wajah otomatis (*Face Blurring Engine*) berbasis Deep Learning OpenCV YuNet 232 KB & mode Pixelate TV. | [10-face-blur-privacy-service.md](./10-face-blur-privacy-service.md) |
 | **11** | **Backend Testing & Scoring** | Dokumentasi pengerjaan tim backend-rz: kalkulator simulasi scoring preview dan implementasi test suite PHPUnit. | [11-team-backend-rz-scoring-and-testing.md](./11-team-backend-rz-scoring-and-testing.md) |
 | **12** | **CI/CD Pipeline Architecture** | Arsitektur pipeline CI/CD GitHub Actions: kompilasi cloud runner, registri GHCR, dan deployment otomatis zero-downtime ke VPS 1 vCPU. | [12-ci-cd-pipeline-architecture.md](./12-ci-cd-pipeline-architecture.md) |
+| **13** | **Automated Testing & Export Suite** | Dokumentasi rangkaian pengujian otomatis PHPUnit 11 (Unit & Feature Tests), isolasi in-memory SQLite, verifikasi modul ekspor spreadsheet/CSV, dan panduan eksekusi pengujian. | [13-automated-testing-and-export-suite.md](./13-automated-testing-and-export-suite.md) |
 
 ---
 
