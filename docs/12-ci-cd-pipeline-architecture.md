@@ -149,8 +149,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  APP_IMAGE: ghcr.io/${{ github.repository }}/app
-  AI_IMAGE: ghcr.io/${{ github.repository }}/ai
 
 jobs:
   # =============================================================
@@ -238,6 +236,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Konversi Nama Image ke Huruf Kecil (Lowercase)
+        run: |
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "APP_IMAGE=ghcr.io/${REPO_LOWER}/app" >> $GITHUB_ENV
+          echo "AI_IMAGE=ghcr.io/${REPO_LOWER}/ai" >> $GITHUB_ENV
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -275,6 +279,12 @@ jobs:
     needs: [build-and-push]
     runs-on: ubuntu-latest
     steps:
+      - name: Konversi Nama Image ke Huruf Kecil (Lowercase)
+        run: |
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "APP_IMAGE=ghcr.io/${REPO_LOWER}/app:latest" >> $GITHUB_ENV
+          echo "AI_IMAGE=ghcr.io/${REPO_LOWER}/ai:latest" >> $GITHUB_ENV
+
       - name: Execute Deployment Commands on VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -282,6 +292,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_SSH_PORT || 22 }}
+          envs: APP_IMAGE,AI_IMAGE
           script: |
             set -e
             cd /opt/sapa-jarak
@@ -290,10 +301,10 @@ jobs:
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
             echo "2. Mengunduh image kontainer terbaru..."
-            docker compose pull app ai_assistant
+            APP_IMAGE="$APP_IMAGE" AI_IMAGE="$AI_IMAGE" docker compose pull app ai_assistant
             
             echo "3. Me-restart kontainer layanan..."
-            docker compose up -d app ai_assistant
+            APP_IMAGE="$APP_IMAGE" AI_IMAGE="$AI_IMAGE" docker compose up -d app ai_assistant
             
             echo "4. Menjalankan migrasi basis data..."
             docker compose exec -T app php artisan migrate --force

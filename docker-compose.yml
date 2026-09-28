@@ -1,5 +1,6 @@
 services:
   app:
+    image: "${APP_IMAGE:-sapa-jarak-app:latest}"
     build:
       context: .
       dockerfile: Dockerfile
@@ -63,6 +64,7 @@ services:
       start_period: 25s
 
   ai_assistant:
+    image: "${AI_IMAGE:-sapa-jarak-ai:latest}"
     build:
       context: ./ml_service
       dockerfile: Dockerfile
