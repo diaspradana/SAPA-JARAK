@@ -66,6 +66,8 @@ class PublicApplicationController extends Controller
             'description' => 'nullable|string',
             'needs_description' => 'nullable|string',
             'otp' => 'required|string',
+            'document_ids' => 'nullable|array',
+            'document_ids.*' => 'integer|exists:documents,id',
         ]);
 
         // Verify OTP from notifications table (last 10 mins)
@@ -84,6 +86,13 @@ class PublicApplicationController extends Controller
         }
 
         $application = $this->applicationService->createApplication($validated);
+
+        // Link any pre-uploaded documents to this new application
+        if (!empty($validated['document_ids'])) {
+            \App\Models\Document::whereIn('id', $validated['document_ids'])
+                ->whereNull('application_id')
+                ->update(['application_id' => $application->id]);
+        }
 
         // Send confirmation WhatsApp message
         $this->whatsappService->notifyStatusChange($application, 'SUBMITTED', 'Pengajuan berhasil diterima dan masuk ke antrean verifikasi Kasun.');
@@ -116,6 +125,7 @@ class PublicApplicationController extends Controller
             'funding',
             'procurement',
             'handover',
+            'documents' => fn($q) => $q->where('visibility', 'PUBLIC_MASKED'),
             'auditLogs' => fn($q) => $q->latest()
         ])->where('ticket_number', $ticket)->first();
 
@@ -141,5 +151,26 @@ class PublicApplicationController extends Controller
             'success' => true,
             'data' => Hamlet::where('status', 'active')->get(),
         ]);
+    }
+
+    /**
+     * Download registration receipt as server-side generated PDF.
+     */
+    public function downloadReceiptPdf(string $ticket, \App\Services\PdfService $pdfService)
+    {
+        $normalizedTicket = ltrim($ticket, '#');
+        $application = Application::with(['beneficiary', 'hamlet'])
+            ->where('ticket_number', $normalizedTicket)
+            ->orWhere('ticket_number', "#{$normalizedTicket}")
+            ->first();
+
+        if (!$application) {
+            return response()->json([
+                'success' => false,
+                'message' => "Pengajuan dengan nomor tiket {$ticket} tidak ditemukan.",
+            ], 404);
+        }
+
+        return $pdfService->generateReceiptPdf($application);
     }
 }

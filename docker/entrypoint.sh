@@ -32,8 +32,8 @@ mkdir -p \
     database
 
 # 3. Ensure proper permissions
-chown -R www-data:www-data storage bootstrap/cache database
-chmod -R 775 storage bootstrap/cache database
+chown -R www-data:www-data storage bootstrap/cache database /var/lib/nginx /var/log/nginx
+chmod -R 775 storage bootstrap/cache database /var/lib/nginx
 
 # 4. Generate Application Key if not present
 if [ -z "$APP_KEY" ] && ! grep -E -q "^APP_KEY=base64:.+" .env 2>/dev/null; then

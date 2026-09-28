@@ -190,31 +190,35 @@ def predict_eligibility(features: CitizenFeatures):
 
 MAX_UPLOAD_SIZE = 15 * 1024 * 1024  # 15 MB limit to protect memory on 1 vCPU VPS
 
-@app.post("/blur-face", summary="Pengaburan Wajah Otomatis (Face Blurring)")
+@app.post("/blur-face", summary="Pengaburan Wajah Otomatis (Face Blurring / Pixelate)")
 async def blur_face_endpoint(
     file: UploadFile = File(..., description="Berkas gambar (JPEG, PNG, WebP)"),
-    blur_strength: int = Query(51, ge=11, le=151, description="Kekuatan kernel Gaussian blur (angka ganjil)"),
-    padding: float = Query(0.15, ge=0.0, le=0.5, description="Margin padding di sekeliling wajah (0.0 - 0.5)"),
+    blur_type: str = Query("pixelate", regex="^(pixelate|mosaic|gaussian)$", description="Gaya sensor: 'pixelate' (TV mosaic sensor, anonimitas 100%) atau 'gaussian' (blur halus)"),
+    blur_strength: int = Query(51, ge=11, le=151, description="Kekuatan kernel Gaussian blur (angka ganjil, aktif jika blur_type=gaussian)"),
+    padding: float = Query(0.20, ge=0.0, le=0.5, description="Margin padding di sekeliling wajah (default: 0.20 / 20%)"),
+    score_threshold: float = Query(0.55, ge=0.1, le=0.99, description="Ambang batas kepercayaan deteksi Deep Learning YuNet"),
     return_format: str = Query("image", regex="^(image|json)$", description="'image' untuk binary JPEG stream, 'json' untuk base64 + metadata")
 ):
     """
-    Mendeteksi wajah pada foto dokumentasi warga dan melakukan pengaburan (blur)
-    secara otomatis untuk mematuhi PRD Seksi 18 dan prinsip privasi UU PDP.
+    Mendeteksi wajah pada foto dokumentasi warga menggunakan Deep Learning OpenCV YuNet
+    dan menyamarkan wajah secara otomatis (Pixelate/Gaussian) untuk kepatuhan UU PDP & PRD Seksi 18.
     
     Dirancang khusus untuk VPS 1 vCPU:
-    - Downscaled detection pass (< 35ms)
-    - Alokasi memori rendah (< 40MB)
-    - Full-resolution blended output
+    - Model Deep Learning YuNet hanya 232 KB (inferensi 20-45ms)
+    - Alokasi memori sangat rendah (< 35MB RAM)
+    - Pilihan gaya sensor: 'pixelate' (TV broadcast mosaic) atau 'gaussian'
     """
     contents = await file.read()
     if len(contents) > MAX_UPLOAD_SIZE:
         raise HTTPException(status_code=413, detail="Ukuran berkas melebihi batas maksimal 15MB.")
 
     try:
-        output_bytes, boxes, elapsed_ms, mime_type = process_image_bytes(
+        output_bytes, boxes, elapsed_ms, mime_type, detector_name = process_image_bytes(
             contents,
+            blur_type=blur_type,
             blur_strength=blur_strength,
-            padding=padding
+            padding=padding,
+            score_threshold=score_threshold
         )
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
@@ -228,6 +232,8 @@ async def blur_face_endpoint(
             headers={
                 "X-Faces-Detected": str(len(boxes)),
                 "X-Processing-Time-Ms": str(elapsed_ms),
+                "X-Detector-Used": detector_name,
+                "X-Blur-Type": blur_type,
                 "Cache-Control": "no-cache",
             }
         )
@@ -237,19 +243,22 @@ async def blur_face_endpoint(
     return {
         "status": "success",
         "faces_detected": len(boxes),
+        "detector_used": detector_name,
+        "blur_type": blur_type,
         "processing_time_ms": elapsed_ms,
         "boxes": boxes,
         "mime_type": mime_type,
         "blurred_image_base64": f"data:{mime_type};base64,{b64_str}"
     }
 
-@app.post("/detect-faces", summary="Deteksi Koordinat Wajah (Bounding Boxes)")
+@app.post("/detect-faces", summary="Deteksi Koordinat Wajah (Bounding Boxes via YuNet)")
 async def detect_faces_endpoint(
     file: UploadFile = File(..., description="Berkas gambar (JPEG, PNG, WebP)"),
-    padding: float = Query(0.15, ge=0.0, le=0.5, description="Margin padding di sekeliling wajah")
+    padding: float = Query(0.20, ge=0.0, le=0.5, description="Margin padding di sekeliling wajah (default: 0.20)"),
+    score_threshold: float = Query(0.55, ge=0.1, le=0.99, description="Ambang batas kepercayaan deteksi YuNet")
 ):
     """
-    Mengembalikan koordinat kotak pembatas (bounding boxes) wajah tanpa memodifikasi gambar.
+    Mengembalikan koordinat kotak pembatas (bounding boxes) wajah menggunakan YuNet Deep Learning.
     """
     contents = await file.read()
     if len(contents) > MAX_UPLOAD_SIZE:
@@ -263,11 +272,16 @@ async def detect_faces_endpoint(
         raise HTTPException(status_code=400, detail="Format berkas gambar tidak valid atau korup.")
 
     h, w = image.shape[:2]
-    boxes, elapsed_ms = detect_face_bounding_boxes(image, padding=padding)
+    boxes, elapsed_ms, detector_name = detect_face_bounding_boxes(
+        image,
+        padding=padding,
+        score_threshold=score_threshold
+    )
 
     return {
         "status": "success",
         "faces_detected": len(boxes),
+        "detector_used": detector_name,
         "processing_time_ms": elapsed_ms,
         "image_dimensions": {"width": w, "height": h},
         "boxes": boxes

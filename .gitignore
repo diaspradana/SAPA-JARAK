@@ -39,7 +39,9 @@ coverage/
 Thumbs.db
 
 #personal for my environment
-/docs 
+#/docs 
+/docs/09-machine-learning-implementation-roadmap.md
+/docs/11-team-backend-rz-scoring-and-testing.md
 
 # Python / FastAPI / Machine Learning
 __pycache__/

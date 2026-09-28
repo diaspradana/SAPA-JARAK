@@ -24,26 +24,32 @@ class ImagePrivacyService
      * Send an image to the FastAPI Privacy AI microservice for face blurring.
      * Returns raw binary JPEG bytes of the blurred image, or null on failure.
      */
-    public function blurImage(string $imageBytes, int $blurStrength = 51, float $padding = 0.15): ?array
-    {
+    public function blurImage(
+        string $imageBytes,
+        string $blurType = 'pixelate',
+        int $blurStrength = 51,
+        float $padding = 0.20,
+        float $scoreThreshold = 0.55
+    ): ?array {
         try {
-            $response = Http::timeout(5.0)
+            $response = Http::timeout(6.0)
                 ->attach('file', $imageBytes, 'image.jpg', ['Content-Type' => 'image/jpeg'])
                 ->post("{$this->aiServiceUrl}/blur-face", [
+                    'blur_type' => $blurType,
                     'blur_strength' => $blurStrength,
                     'padding' => $padding,
+                    'score_threshold' => $scoreThreshold,
                     'return_format' => 'image',
                 ]);
 
             if ($response->successful()) {
-                $facesDetected = (int) $response->header('X-Faces-Detected', 0);
-                $processingTimeMs = (float) $response->header('X-Processing-Time-Ms', 0.0);
-
                 return [
                     'success' => true,
                     'image_bytes' => $response->body(),
-                    'faces_detected' => $facesDetected,
-                    'processing_time_ms' => $processingTimeMs,
+                    'faces_detected' => (int) $response->header('X-Faces-Detected', 0),
+                    'detector_used' => $response->header('X-Detector-Used', 'YuNet-DNN'),
+                    'blur_type' => $response->header('X-Blur-Type', $blurType),
+                    'processing_time_ms' => (float) $response->header('X-Processing-Time-Ms', 0.0),
                 ];
             }
         } catch (\Throwable $e) {

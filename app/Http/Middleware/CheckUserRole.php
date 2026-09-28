@@ -21,14 +21,15 @@ class CheckUserRole
         if (!$user) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthenticated access.',
+                'message' => 'Akses ditolak: Autentikasi diperlukan. Sertakan Authorization Bearer Token yang sah.',
             ], 401);
         }
 
         if (!in_array($user->role, $roles) && $user->role !== 'admin') {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized role access.',
+                'message' => "Akses ditolak: Peran akun '{$user->role}' tidak memiliki izin untuk mengakses sumber daya ini.",
+                'required_roles' => $roles,
             ], 403);
         }
 

@@ -178,7 +178,7 @@ class DesaController extends Controller
     }
 
     /**
-     * Generate SPJ Report.
+     * Generate SPJ Report (JSON).
      */
     public function spjReport(Request $request)
     {
@@ -189,5 +189,26 @@ class DesaController extends Controller
             'success' => true,
             'data' => $report,
         ]);
+    }
+
+    /**
+     * Download Berita Acara Serah Terima (BAST) as PDF.
+     */
+    public function downloadBastPdf(int $id, \App\Services\PdfService $pdfService)
+    {
+        $application = Application::findOrFail($id);
+        return $pdfService->generateBastPdf($application);
+    }
+
+    /**
+     * Download SPJ Report as PDF.
+     */
+    public function downloadSpjPdf(Request $request, \App\Services\PdfService $pdfService)
+    {
+        $filters = [
+            'hamlet_id' => $request->input('hamlet_id'),
+            'year' => $request->input('year', date('Y')),
+        ];
+        return $pdfService->generateSpjPdf($filters);
     }
 }
