@@ -24,7 +24,7 @@ Analisis ini menguraikan fitur yang **belum diimplementasikan**, fitur yang **ma
 | **FR-012** | Alokasi sumber dana (APBDes/BKK/dll) | **Must** | ✅ Selesai | ✅ Selesai | 🟡 Perlu Integrasi | 4 sumber dana telah dimodelkan di JS dan database SQL. |
 | **FR-013** | Pengelolaan pengadaan & RAB | **Should** | ✅ Selesai | ✅ Selesai | 🟡 Perlu Integrasi | Kalkulator RAB dan persentase pengerjaan berfungsi di antarmuka. |
 | **FR-014** | Unggah & Terbitkan BAST | **Must** | ✅ Selesai | ✅ Selesai | 🟡 Perlu Integrasi | Tanda tangan digital canvas aktif, BAST tampil dan siap cetak. |
-| **FR-015** | Dokumentasi progres 0%, 50%, 100% | **Must** | ✅ Selesai | 🟡 Mock Data | 🟡 Perlu Storage | Foto disimpan sebagai base64/URL eksternal, belum tersimpan di disk. |
+| **FR-015** | Dokumentasi progres 0%, 50%, 100% | **Must** | ✅ Selesai | ✅ Selesai | 🟢 Siap di API | Penyimpanan fisik multi-part, kompresi Intervention Image, dan dual-storage privasi aktif di API. |
 | **FR-016** | Dashboard transparansi publik | **Must** | ✅ Selesai | ✅ Selesai | 🟡 Perlu Integrasi | Open ledger dan agregat metrik berfungsi penuh di UI. |
 | **FR-017** | Notifikasi status via WhatsApp | **Must** | 🟡 Simulasi | 🟡 Simulasi | 🟡 Perlu Gateway | Frontend menampilkan modal pesan; backend memiliki HTTP scaffold Fonnte. |
 | **FR-018** | Ekspor Laporan PDF | **Must** | 🟡 Client Print | ✅ Selesai | 🟢 Siap di API | Generator server-side DomPDF aktif untuk Tanda Terima, BAST, dan Laporan SPJ APBDes. |
@@ -83,13 +83,22 @@ Analisis ini menguraikan fitur yang **belum diimplementasikan**, fitur yang **ma
 ---
 
 ### 2.4 Penyimpanan Berkas & Pengunggahan Foto (*File & Media Storage*)
-- **Kondisi Saat Ini**:
-  - Komponen `ImageUploader.jsx` menghasilkan Data URL base64 atau menggunakan URL placeholder dari Unsplash.
-  - Belum ada endpoint dedicated untuk mengunggah berkas fisik multi-part (`POST /api/documents/upload`).
-- **Fitur yang Belum Ada**:
-  - Penyimpanan berkas ke filesystem server lokal (`storage/app/public`) atau cloud object storage (Cloudflare R2 / AWS S3).
-  - Kompresi gambar sisi server (*image optimization* menggunakan Intervention Image) sebelum disimpan ke disk.
-  - Validasi ketat MIME type dan ukuran berkas maksimum (misal: maksimum 5MB, format `.jpg`, `.png`, `.pdf`).
+- **Status Implementasi (Backend Selesai ✅)**:
+  - Telah diinstal pustaka `intervention/image` (v4.3) dengan driver GD murni untuk kompresi gambar sisi server (*image optimization*). Kamera smartphone beresolusi tinggi otomatis diturunkan skalanya ke dimensi maksimal 1920×1920 piksel dan dikompresi ke JPEG kualitas 82 (mereduksi ukuran berkas dari 5–10MB menjadi ~150–300KB).
+  - Layanan [`App\Services\MediaStorageService`](../app/Services/MediaStorageService.php) dibuat untuk mengelola siklus hidup berkas:
+    - **Validasi Ketat**: Membatasi ukuran berkas maksimal 10MB dan memvalidasi MIME type (`image/jpeg`, `image/png`, `image/webp`, `application/pdf`).
+    - **Arsitektur Penyimpanan Ganda (*Dual-Storage Architecture*)**:
+      - *Penyimpanan Internal* (`storage/app/internal/documents/YYYY/`): Menyimpan berkas asli beresolusi penuh. Hanya dapat diakses oleh aparatur terautentikasi (`kades`, `kasi_kesra`, `sekdes`, `admin`, `kasun`).
+      - *Penyimpanan Publik* (`storage/app/public/documents/YYYY/`): Khusus untuk foto dokumentasi warga (`FOTO_KONDISI_AWAL`, `FOTO_SURVEI_KASUN`, `FOTO_PROGRES_50`, `FOTO_SELESAI_100`). Terintegrasi dengan [`ImagePrivacyService`](../app/Services/ImagePrivacyService.php) dan microservice FastAPI untuk deteksi & pengaburan wajah otomatis (*automatic face blurring*) sebelum dipublikasikan ke portal transparansi desa.
+    - **Proteksi Identitas Sensitif**: Berkas bertipe `KTP_KK` dan `SURAT_KETERANGAN_DOKTER` secara mutlak dipaksa berstatus `INTERNAL_ONLY` dan tidak pernah diterbitkan salinan publiknya.
+  - Endpoint RESTful API pada [`App\Http\Controllers\Api\DocumentController`](../app/Http/Controllers/Api/DocumentController.php):
+    - `POST /api/documents/upload`: Unggah berkas fisik multi-part (dapat mandiri sebagai draf atau langsung terhubung ke tiket).
+    - `GET /api/documents`: Daftar riwayat berkas (otomatis terfilter `PUBLIC_MASKED` bagi masyarakat publik).
+    - `GET /api/documents/{id}`: Metadata detail berkas dan URL publik.
+    - `GET /api/documents/{id}/file`: Streaming/unduhan berkas fisik biner (terproteksi hak akses untuk versi asli/internal).
+    - `DELETE /api/documents/{id}`: Penghapusan dokumen dan berkas fisik dari disk (terproteksi `auth:sanctum`).
+  - Pemohon publik dapat menyertakan `document_ids` saat mengirimkan formulir tiket (`POST /api/public/applications`), dan hasil pelacakan tiket (`GET /api/public/applications/track/{ticket}`) otomatis menyertakan relasi berkas publik.
+  - Dokumentasi API lengkap diperbarui pada [docs/05-api-reference.md Seksi 7](05-api-reference.md).
 
 ---
 

@@ -743,3 +743,163 @@ Melakukan simulasi perhitungan skor kelayakan RTLH atau Disabilitas tanpa menyim
 - **Parameter URL**: `id` (ID permohonan / application)
 - **Deskripsi**: Menghitung simulasi skor berdasarkan tipe bantuan permohonan yang ada di database.
 
+---
+
+## 7. Modul Pengelolaan Berkas & Media Storage (`/api/documents/*`)
+
+### 7.1 Mengunggah Berkas Fisik & Foto Dokumentasi
+Mengunggah berkas fisik multi-part (`image/jpeg`, `image/png`, `image/webp`, `application/pdf`) dengan kompresi gambar otomatis sisi server (*Intervention Image*) dan deteksi/penyamaran wajah otomatis (*FastAPI Haar Cascades*) untuk foto dokumentasi warga.
+
+- **Method**: `POST`
+- **Endpoint**: `/api/documents/upload`
+- **Content-Type**: `multipart/form-data`
+- **Autentikasi**: Publik (dapat menyertakan Bearer Token aparatur untuk mencatat `uploaded_by`)
+- **Body Permintaan (Form-Data)**:
+  - `file` *(Wajib)*: Berkas fisik (maksimal 10MB; format JPG, PNG, WEBP, PDF)
+  - `document_type` *(Opsional)*: `FOTO_KONDISI_AWAL`, `FOTO_SURVEI_KASUN`, `FOTO_PROGRES_50`, `FOTO_SELESAI_100`, `KTP_KK`, `SURAT_KETERANGAN_DOKTER`, `BAST_SCAN`, `KUITANSI_SPJ` (default: `FOTO_KONDISI_AWAL`)
+  - `application_id` *(Opsional)*: ID permohonan bantuan (jika dikaitkan langsung)
+  - `ticket_number` *(Opsional)*: Nomor tiket permohonan (contoh: `#JRK-KLS-2026-001`)
+  - `visibility` *(Opsional)*: `PUBLIC_MASKED` atau `INTERNAL_ONLY` (Catatan: tipe `KTP_KK` dan `SURAT_KETERANGAN_DOKTER` secara mutlak dipaksa menjadi `INTERNAL_ONLY`)
+  - `description` *(Opsional)*: Keterangan deskriptif foto atau dokumen
+- **Respon Sukses (201 Created)**:
+  ```json
+  {
+    "success": true,
+    "message": "Berkas berhasil diunggah dan diproses ke penyimpanan media.",
+    "data": {
+      "id": 1,
+      "application_id": 1,
+      "document_type": "FOTO_KONDISI_AWAL",
+      "original_filename": "rumah_retak.jpg",
+      "file_size": 9792,
+      "formatted_size": "9.6 KB",
+      "mime_type": "image/jpeg",
+      "visibility": "PUBLIC_MASKED",
+      "is_image": true,
+      "public_url": "http://localhost:8000/storage/documents/2026/public_edd8ed99.jpg",
+      "has_blurred_public_copy": true,
+      "created_at": "2026-09-28T13:32:54.000000Z"
+    }
+  }
+  ```
+- **Respon Validasi Gagal (422 Unprocessable Content)**:
+  ```json
+  {
+    "message": "The file field must be a file of type: jpeg, jpg, png, webp, pdf.",
+    "errors": {
+      "file": ["The file field must be a file of type: jpeg, jpg, png, webp, pdf."]
+    }
+  }
+  ```
+
+---
+
+### 7.2 Mengambil Daftar Riwayat Dokumen
+Melihat daftar berkas dokumen yang tersimpan dalam sistem dengan paginasi dan filter. Pengguna publik tanpa login hanya menerima dokumen berstatus `PUBLIC_MASKED`.
+
+- **Method**: `GET`
+- **Endpoint**: `/api/documents`
+- **Query Parameter (Opsional)**:
+  - `application_id`: Filter berdasarkan ID permohonan
+  - `document_type`: Filter tipe dokumen
+  - `visibility`: Filter visibilitas (`PUBLIC_MASKED` / `INTERNAL_ONLY`, khusus aparatur login)
+  - `per_page`: Jumlah baris per halaman (default 20)
+- **Respon Sukses (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "data": [
+      {
+        "id": 1,
+        "application_id": 1,
+        "document_type": "FOTO_KONDISI_AWAL",
+        "original_filename": "rumah_retak.jpg",
+        "file_size": 9792,
+        "formatted_size": "9.6 KB",
+        "mime_type": "image/jpeg",
+        "visibility": "PUBLIC_MASKED",
+        "public_url": "http://localhost:8000/storage/documents/2026/public_edd8ed99.jpg",
+        "uploader": null
+      }
+    ],
+    "pagination": {
+      "current_page": 1,
+      "per_page": 20,
+      "total": 1,
+      "last_page": 1
+    }
+  }
+  ```
+
+---
+
+### 7.3 Mengambil Rincian Metadata Berkas
+Mengambil informasi lengkap berkas, pengunggah, relasi tiket permohonan, dan status URL publik.
+
+- **Method**: `GET`
+- **Endpoint**: `/api/documents/{id}`
+- **Parameter URL**: `id` (ID dokumen)
+- **Respon Sukses (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "id": 1,
+      "application_id": 1,
+      "document_type": "FOTO_KONDISI_AWAL",
+      "original_filename": "rumah_retak.jpg",
+      "visibility": "PUBLIC_MASKED",
+      "file_size": 9792,
+      "formatted_size": "9.6 KB",
+      "mime_type": "image/jpeg",
+      "public_url": "http://localhost:8000/storage/documents/2026/public_edd8ed99.jpg",
+      "application": {
+        "id": 1,
+        "ticket_number": "#JRK-KLS-2026-001",
+        "status": "COMPLETED"
+      }
+    }
+  }
+  ```
+- **Respon Akses Ditolak untuk Dokumen Internal (401 / 403)**:
+  ```json
+  {
+    "success": false,
+    "message": "Dokumen bersifat rahasia/internal. Otentikasi aparatur diperlukan."
+  }
+  ```
+
+---
+
+### 7.4 Mengunduh atau Streaming Berkas Fisik
+Mengambil berkas biner langsung dari penyimpanan server.
+
+- **Method**: `GET`
+- **Endpoint**: `/api/documents/{id}/file`
+- **Parameter URL**: `id` (ID dokumen)
+- **Query Parameter (Opsional)**:
+  - `version`: `auto` (default), `public` (salinan tersanitasi), atau `original` (berkas asli internal)
+- **Aturan Otorisasi**:
+  - Salinan publik (`version=public` atau dokumen `PUBLIC_MASKED`) dapat diakses langsung oleh masyarakat.
+  - Berkas asli (`version=original`) atau dokumen `INTERNAL_ONLY` (`KTP_KK`) **wajib menyertakan Bearer Token aparatur desa** (`kades`, `kasi_kesra`, `sekdes`, `admin`, `kasun`).
+- **Respon Sukses (200 OK)**:
+  Stream biner berkas dengan `Content-Type` yang sesuai (`image/jpeg`, `application/pdf`, dll).
+
+---
+
+### 7.5 Menghapus Dokumen & Berkas Fisik
+Menghapus rekaman database dan secara permanen membersihkan berkas fisik dari storage internal dan storage publik.
+
+- **Method**: `DELETE`
+- **Endpoint**: `/api/documents/{id}`
+- **Header Wajib**: `Authorization: Bearer <access_token>`
+- **Hak Akses**: Pemilik unggahan dokumen atau aparatur pengelola desa (`kades`, `kasi_kesra`, `admin`).
+- **Respon Sukses (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "message": "Dokumen #1 beserta berkas fisiknya berhasil dihapus."
+  }
+  ```
+
+

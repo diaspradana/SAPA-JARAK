@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\PublicTransparencyController;
 use App\Http\Controllers\Api\KasunController;
 use App\Http\Controllers\Api\DesaController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\DocumentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -53,4 +54,14 @@ Route::prefix('desa')->middleware(['auth:sanctum', 'role:kades,kasi_kesra,sekdes
     Route::get('/reports/spj', [DesaController::class, 'spjReport']);
     Route::get('/reports/spj/pdf', [DesaController::class, 'downloadSpjPdf']);
 });
+
+// Modul Pengunggahan Berkas & Media Storage (Upload, Kompresi, dan Privasi Sensor Wajah)
+Route::prefix('documents')->group(function () {
+    Route::post('/upload', [DocumentController::class, 'upload']);
+    Route::get('/', [DocumentController::class, 'index']);
+    Route::get('/{id}', [DocumentController::class, 'show']);
+    Route::get('/{id}/file', [DocumentController::class, 'download']);
+    Route::delete('/{id}', [DocumentController::class, 'destroy'])->middleware('auth:sanctum');
+});
+
 
