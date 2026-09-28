@@ -22,7 +22,10 @@ Dokumentasi ini disusun berdasarkan kode sumber aktual (*source code*), konfigur
 | **06** | **Database Schema & Data Dictionary** | Diagram ERD Mermaid, struktur 12 tabel SQL, relasi foreign key, tipe data, indeks, dan diagram mesin status (*state machine*). | [06-database-schema.md](./06-database-schema.md) |
 | **07** | **Setup & Deployment Guide** | Panduan instalasi dari nol, prasyarat sistem, migrasi & seeder, kompilasi aset Vite, konfigurasi `.env`, dan panduan produksi. | [07-setup-and-deployment-guide.md](./07-setup-and-deployment-guide.md) |
 | **08** | **Development Roadmap** | Rencana aksi bertahap (*action plan*) untuk menghubungkan frontend ke API backend, migrasi auth Sanctum produksi, integrasi gateway WhatsApp resmi, dan pengujian otomatis. | [08-development-roadmap.md](./08-development-roadmap.md) |
-| **10** | **Privacy AI Face Blurring** | Spesifikasi teknis dan panduan sensor wajah otomatis (*Face Blurring Engine*) berbasis OpenCV Haar Cascade yang dioptimalkan untuk VPS 1 vCPU. | [10-face-blur-privacy-service.md](./10-face-blur-privacy-service.md) |
+| **09** | **ML Implementation Roadmap** | Rencana implementasi Machine Learning: DSS Prioritas Kelayakan Bantuan (RandomForest) dan arsitektur microservice FastAPI. | [09-machine-learning-implementation-roadmap.md](./09-machine-learning-implementation-roadmap.md) |
+| **10** | **Privacy AI Face Blurring** | Spesifikasi teknis sensor wajah otomatis (*Face Blurring Engine*) berbasis Deep Learning OpenCV YuNet 232 KB & mode Pixelate TV. | [10-face-blur-privacy-service.md](./10-face-blur-privacy-service.md) |
+| **11** | **Backend Testing & Scoring** | Dokumentasi pengerjaan tim backend-rz: kalkulator simulasi scoring preview dan implementasi test suite PHPUnit. | [11-team-backend-rz-scoring-and-testing.md](./11-team-backend-rz-scoring-and-testing.md) |
+| **12** | **CI/CD Pipeline Architecture** | Arsitektur pipeline CI/CD GitHub Actions: kompilasi cloud runner, registri GHCR, dan deployment otomatis zero-downtime ke VPS 1 vCPU. | [12-ci-cd-pipeline-architecture.md](./12-ci-cd-pipeline-architecture.md) |
 
 ---
 

@@ -95,6 +95,9 @@ Dokumen ini memaparkan rencana aksi rekayasa perangkat lunak (*software engineer
    - Pengujian validasi input formulir `SubmissionWizardView.jsx`.
 3. **Pipa CI/CD GitHub Actions**:
    - Menjalankan linter, pengujian PHPUnit, dan `npm run build` otomatis pada setiap aktivitas push ke branch utama.
+   - Pembangunan kontainer Docker multi-stage di GitHub Actions dan pengunggahan ke GHCR.
+   - Deployment otomatis zero-downtime ke server VPS Desa via SSH.
+   - *Arsitektur dan konfigurasi alur lengkap didokumentasikan pada [docs/12-ci-cd-pipeline-architecture.md](./12-ci-cd-pipeline-architecture.md).*
 
 ---
 
