@@ -142,4 +142,25 @@ class PublicApplicationController extends Controller
             'data' => Hamlet::where('status', 'active')->get(),
         ]);
     }
+
+    /**
+     * Download registration receipt as server-side generated PDF.
+     */
+    public function downloadReceiptPdf(string $ticket, \App\Services\PdfService $pdfService)
+    {
+        $normalizedTicket = ltrim($ticket, '#');
+        $application = Application::with(['beneficiary', 'hamlet'])
+            ->where('ticket_number', $normalizedTicket)
+            ->orWhere('ticket_number', "#{$normalizedTicket}")
+            ->first();
+
+        if (!$application) {
+            return response()->json([
+                'success' => false,
+                'message' => "Pengajuan dengan nomor tiket {$ticket} tidak ditemukan.",
+            ], 404);
+        }
+
+        return $pdfService->generateReceiptPdf($application);
+    }
 }

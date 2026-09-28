@@ -19,6 +19,7 @@ Route::prefix('public')->group(function () {
     Route::post('/otp/request', [PublicApplicationController::class, 'requestOtp']);
     Route::post('/applications', [PublicApplicationController::class, 'submit']);
     Route::get('/applications/track/{ticket}', [PublicApplicationController::class, 'track']);
+    Route::get('/applications/{ticket}/pdf', [PublicApplicationController::class, 'downloadReceiptPdf']);
     Route::get('/transparency/metrics', [PublicTransparencyController::class, 'metrics']);
     Route::get('/transparency/ledger', [PublicTransparencyController::class, 'ledger']);
 });
@@ -48,5 +49,8 @@ Route::prefix('desa')->middleware(['auth:sanctum', 'role:kades,kasi_kesra,sekdes
     Route::post('/applications/{id}/validate', [DesaController::class, 'validateAndFund']);
     Route::post('/applications/{id}/procurement', [DesaController::class, 'updateProcurement']);
     Route::post('/applications/{id}/handover', [DesaController::class, 'completeHandover']);
+    Route::get('/applications/{id}/bast/pdf', [DesaController::class, 'downloadBastPdf']);
     Route::get('/reports/spj', [DesaController::class, 'spjReport']);
+    Route::get('/reports/spj/pdf', [DesaController::class, 'downloadSpjPdf']);
 });
+
