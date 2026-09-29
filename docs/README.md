@@ -52,7 +52,13 @@ Sistem mengelola dua kluster bantuan sosial prioritas:
   - Menggunakan state engine internal (`AppContext.jsx`) yang menyimpan seluruh mutasi data ke `localStorage`.
   - Dilengkapi fitur canggih: Geotagging GPS, Tanda Tangan Digital Canvas, Kalkulator RAB dinamis, 5 Dokumen Resmi Kedinasan cetak A4, Panduan Suara Web Speech TTS, dan Simulasi WhatsApp Gateway.
 - **Backend (Laravel 11 + SQLite/MySQL)**:
-  - Status: **100% Struktur API & Domain Service Siap**.
-  - 12 Migrations DDL, 4 Database Seeders, 12 Eloquent Models, 8 Dedicated Services, dan 16 RESTful API Endpoints telah selesai ditulis dan lolos validasi sintaks.
+  - Status: **100% Struktur API & Domain Service Siap Operasional**.
+  - **14 Migrations DDL**, **4 Database Seeders**, **12 Eloquent Models**, **12 Dedicated Domain Services**, dan **26 RESTful API Endpoints** aktif mencakup:
+    - *Autentikasi Produksi Sanctum* dengan proteksi rute berbasis peran (`kades`, `kasi_kesra`, `sekdes`, `kasun`, `admin`).
+    - *Mesin Generator Dokumen PDF Sisi Server* (Barryvdh DomPDF v3.1: Bukti Tanda Terima QR, BAST Digital, dan Laporan SPJ A4).
+    - *Dual-Storage Media & Kompresi Citra* (Intervention Image v4.3) terintegrasi dengan *Deep Learning Face Blurring Engine* (OpenCV YuNet 232 KB & TV Mosaic Pixelate).
+    - *Mesin Ekspor Dokumen Spreadsheet* (CSV UTF-8 BOM & Excel XML SpreadsheetML) berkinerja tinggi dengan alokasi memori streaming $O(1)$ (< 2MB RAM).
+  - **Rangkaian Pengujian Otomatis (*Automated Testing Suite*)**: PHPUnit 11 dengan isolasi database in-memory SQLite (`:memory:`) lulus 100% (*14 tests, 73 assertions*).
+  - **Pipeline CI/CD**: Otomasi GitHub Actions dengan Docker multi-stage build, registri GHCR, dan auto-deployment zero-downtime ke VPS.
 - **Titik Integrasi (Current Gap)**:
-  - Frontend saat ini belum melakukan pemanggilan jaringan (`fetch` / `axios`) langsung ke endpoint backend Laravel; data berjalan melalui state reaktif frontend. Integrasi langsung API telah dipetakan secara detail pada [Dokumen 04](./04-unimplemented-and-gap-analysis.md) dan [Dokumen 08](./08-development-roadmap.md).
+  - Frontend saat ini telah memiliki antarmuka lengkap namun sebagian aksi masih berjalan di atas state reaktif internal `localStorage`. Integrasi pemanggilan langsung jaringan HTTP (`fetch` / `axios`) ke 26 endpoint backend telah siap dan dipetakan secara detail pada [Dokumen 04](./04-unimplemented-and-gap-analysis.md) dan [Dokumen 08](./08-development-roadmap.md).

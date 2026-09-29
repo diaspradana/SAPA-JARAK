@@ -8,17 +8,17 @@ Dokumen ini memaparkan rencana aksi rekayasa perangkat lunak (*software engineer
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│ FASE 1: Integrasi Jaringan Frontend-to-Backend (Sprint 1 — 2 Minggu)                   │
+│ FASE 1: Integrasi Jaringan Frontend-to-Backend (Backend Siap 🟢, Client Pending 🟡)   │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
-│ FASE 2: Autentikasi Produksi Sanctum & Proteksi Rute (Sprint 2 — 2 Minggu)             │
+│ FASE 2: Autentikasi Produksi Sanctum & Proteksi Rute (SELESAI DI BACKEND ✅)           │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
-│ FASE 3: Penyimpanan Berkas & Pengaburan Wajah Otomatis (Sprint 3 — 2 Minggu)           │
+│ FASE 3: Penyimpanan Berkas & Pengaburan Wajah Deep Learning YuNet (SELESAI ✅)         │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
-│ FASE 4: Aktivasi Gateway WhatsApp Live & Antrean Pesan (Sprint 4 — 1 Minggu)           │
+│ FASE 4: Aktivasi Gateway WhatsApp Live & Antrean Pesan (Scaffold Siap 🟡)              │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
-│ FASE 5: Rangkaian Pengujian Otomatis & Pipa CI/CD (Sprint 5 — 1 Minggu)                │
+│ FASE 5: Rangkaian Pengujian Otomatis PHPUnit 11 & Pipa CI/CD GHCR (SELESAI ✅)         │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
-│ FASE 6: PWA Offline Sync & Uji Coba Lapangan 5 Dusun (Sprint 6 — 2 Minggu)             │
+│ FASE 6: Ekspor Dokumen Spreadsheet O(1) & PWA Offline Sync (Ekspor Selesai ✅)        │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -44,34 +44,23 @@ Dokumen ini memaparkan rencana aksi rekayasa perangkat lunak (*software engineer
 
 ---
 
-### Fase 2: Autentikasi Produksi Sanctum & Proteksi Rute
+### Fase 2: Autentikasi Produksi Sanctum & Proteksi Rute (Backend Selesai ✅)
 **Tujuan**: Menggantikan tombol demo `RoleSwitcher` dengan sistem login formal yang aman untuk aparatur desa.
-
-1. **Implementasi Halaman Login Resmi (`LoginView.jsx`)**:
-   - Formulir login email dan kata sandi dengan validasi keamanan.
-   - Penanganan *remember me* dan batas percobaan login (*Rate Limiting Throttling*).
-2. **Pengamanan Rute Privat (*Route Guards*)**:
-   - Memastikan pengguna publik tidak dapat membuka dashboard validasi Pemdes.
-   - Memastikan akun Kasun Kalasan hanya dapat melihat dan menyurvei tiket Dusun Kalasan.
-3. **Penyimpanan Token Sanctum**:
-   - Menggunakan Laravel Sanctum SPA Cookie Session (*stateful authentication*) untuk mencegah pencurian token via XSS.
+- **Status Backend**: Telah aktif dan diverifikasi via `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/switch-role`, `POST /api/auth/logout`, dan middleware `role:kades,kasi_kesra,sekdes,kasun,admin`.
+- **Kebutuhan Frontend**: Menyediakan formulir login kedinasan yang menyimpan Bearer Token ke browser storage dan memasukkannya ke header `Authorization: Bearer <token>`.
 
 ---
 
-### Fase 3: Penyimpanan Berkas & Pengaburan Wajah Otomatis (Privacy AI)
+### Fase 3: Penyimpanan Berkas & Pengaburan Wajah Otomatis (Privacy AI) (Selesai ✅)
 **Tujuan**: Mengamankan foto dokumentasi fisik warga rentan dan mematuhi [PRD Seksi 18](../PRD_SAPA-JARAK_Laravel.md).
-
-1. **Endpoint Pengunggahan Berkas**:
-   - Membangun endpoint `POST /api/documents/upload` yang memvalidasi ukuran berkas (maks 5MB), MIME type (`image/jpeg`, `image/png`, `image/webp`), dan menghasilkan tautan publik.
-   - Konfigurasi perintah `php artisan storage:link`.
-2. **Penyamaran Wajah Otomatis (*Face Blur Engine*)**:
-   - Opsi A: Integrasi pustaka sisi klien `face-api.js` (TensorFlow.js) untuk mendeteksi koordinat wajah pada foto sebelum diunggah ke server.
-   - Opsi B: Pemrosesan sisi server menggunakan ekstensi PHP GD/Imagick dengan modul deteksi wajah otomatis.
-   - Foto versi publik otomatis dikaburkan, sementara foto asli beresolusi penuh hanya dapat diakses oleh Kades dan Kasi Kesra melalui tautan bertanda tangan (*signed URL*).
+- **Status Backend & AI**:
+  - Endpoint upload multi-part (`POST /api/documents/upload`) dengan kompresi `Intervention\Image` (downscale maks 1920px).
+  - Arsitektur Dual-Storage: `storage/app/internal/` (foto asli) vs `storage/app/public/documents/` (foto tersensor).
+  - Microservice Deep Learning OpenCV YuNet 232 KB (`ml_service/face_blur.py`) dengan teknik TV Mosaic Pixelate aktif untuk sensor wajah warga.
 
 ---
 
-### Fase 4: Aktivasi Gateway WhatsApp Live & Antrean Pesan
+### Fase 4: Aktivasi Gateway WhatsApp Live & Antrean Pesan (Scaffold Siap 🟡)
 **Tujuan**: Menghubungkan gateway Fonnte / WhatsApp Business API asli milik Pemerintah Desa Jarak.
 
 1. **Pendaftaran Akun Gateway & Kredensial**:
@@ -83,11 +72,12 @@ Dokumen ini memaparkan rencana aksi rekayasa perangkat lunak (*software engineer
 
 ---
 
-### Fase 5: Rangkaian Pengujian Otomatis & Pipa CI/CD
+### Fase 5: Rangkaian Pengujian Otomatis & Pipa CI/CD (Selesai ✅)
 **Tujuan**: Menjamin stabilitas kode, mencegah regresi, dan mengotomatiskan deployment.
-
-1. **Pengujian Unit & Fitur Backend (PHPUnit / Pest)**:
-   - Pengujian kalkulator kelayakan RTLH dan Disabilitas (`ScoringServiceTest.php`).
+- **Status Backend**:
+  - Konfigurasi `phpunit.xml` aktif dengan in-memory SQLite (`:memory:`).
+  - Rangkaian pengujian unit [`ExportServiceTest.php`](../tests/Unit/ExportServiceTest.php) dan pengujian fitur [`ExportApiTest.php`](../tests/Feature/ExportApiTest.php) tuntas dieksekusi 100% (*14 tests, 73 assertions*).
+  - Pipeline GitHub Actions [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) aktif membangun Docker image GHCR dan auto-deploy zero-downtime ke VPS. Rincian lengkap tersedia di [docs/12-ci-cd-pipeline-architecture.md](./12-ci-cd-pipeline-architecture.md) dan [docs/13-automated-testing-and-export-suite.md](./13-automated-testing-and-export-suite.md).
    - Pengujian siklus hidup status tiket (`ApplicationWorkflowTest.php`).
    - Pengujian proteksi middleware peran (`RoleAccessTest.php`).
 2. **Pengujian Antarmuka Frontend (Vitest)**:

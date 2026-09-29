@@ -100,6 +100,18 @@ Setiap kebutuhan bisnis memiliki kelas layanan mandiri yang terisolasi dan mudah
 8. [`WhatsAppNotificationService`](file:///home/ascension/Projects/SAPA-JARAK/app/Services/WhatsAppNotificationService.php):
    - Menghasilkan dan mendistribusikan kode OTP WhatsApp 6 digit.
    - Mengirim pembaruan status pengajuan ke nomor pelapor/penerima secara instan.
+9. [`PdfService`](file:///home/ascension/Projects/SAPA-JARAK/app/Services/PdfService.php):
+   - Menghasilkan berkas fisik PDF biner ukuran A4 menggunakan DomPDF v3.1 *pure PHP* (footprint < 15MB RAM).
+   - Menghasilkan Tanda Terima Pendaftaran dengan kode QR status, Berita Acara Serah Terima (BAST) bertanda tangan digital, dan Laporan Realisasi Anggaran SPJ APBDes (A4 lanskap).
+10. [`MediaStorageService`](file:///home/ascension/Projects/SAPA-JARAK/app/Services/MediaStorageService.php):
+    - Mengelola penyimpanan berkas fisik dengan arsitektur *dual-storage*: direktori privat internal (`storage/app/internal/`) untuk dokumen beresolusi penuh dan direktori publik (`storage/app/public/documents/`) untuk berkas yang telah disensor.
+    - Melakukan kompresi otomatis dan *downscaling* citra hingga resolusi maksimal 1920px menggunakan driver GD `Intervention\Image` v4.3.
+11. [`ImagePrivacyService`](file:///home/ascension/Projects/SAPA-JARAK/app/Services/ImagePrivacyService.php):
+    - Layanan penyamaran wajah otomatis (*Automated Face Blurring*) yang berkomunikasi dengan microservice Python FastAPI.
+    - Menggunakan model Deep Learning OpenCV YuNet (232 KB) dengan teknik sensor mozaik piksel TV (*broadcast pixelation*) untuk menjamin anonimitas identitas warga rentan sesuai UU PDP No. 27/2022.
+12. [`ExportService`](file:///home/ascension/Projects/SAPA-JARAK/app/Services/ExportService.php):
+    - Mesin streaming dokumen ekspor berkinerja tinggi dengan alokasi memori runtime konstan $O(1)$ (< 2MB RAM) berbasis `Symfony\Component\HttpFoundation\StreamedResponse` dan Eloquent `cursor()`.
+    - Menghasilkan format CSV berstandar RFC 4180 dengan *UTF-8 Byte Order Mark* (`\xEF\xBB\xBF`), preservasi 16 digit NIK/KK, dan dukungan delimiter kustom (koma atau titik-koma), serta format Microsoft Excel XML Spreadsheet (`SpreadsheetML` / `.xls`) dengan styling korporat lengkap.
 
 ---
 

@@ -206,3 +206,48 @@ server {
     }
 }
 ```
+
+---
+
+## 7. Menjalankan Rangkaian Pengujian Otomatis (*Automated Testing*)
+
+Backend dilengkapi rangkaian pengujian unit dan fitur berbasis PHPUnit 11 yang dapat dijalankan secara instan:
+
+### Menjalankan Seluruh Tes via Docker:
+```bash
+docker exec sapa_jarak_app vendor/bin/phpunit
+```
+
+### Menjalankan Tes dengan Output Deskriptif (*Testdox*):
+```bash
+docker exec sapa_jarak_app vendor/bin/phpunit --testdox
+```
+
+### Menjalankan Tes pada Lingkungan Host Lokal:
+```bash
+php artisan test
+# Atau langsung memanggil runner PHPUnit:
+vendor/bin/phpunit
+```
+
+*Seluruh pengujian unit dan fitur terisolasi pada database in-memory SQLite (`:memory:`) tanpa mempengaruhi basis data produksi. Rincian pengujian didokumentasikan pada [docs/13-automated-testing-and-export-suite.md](./13-automated-testing-and-export-suite.md).*
+
+---
+
+## 8. Penerapan Berbasis Kontainer Docker & Alur CI/CD
+
+### 8.1 Menjalankan Stack Kontainer Lokal
+```bash
+# Menyalakan seluruh service (App, AI Microservice, MySQL)
+docker compose up -d
+
+# Memeriksa status kesehatan kontainer
+docker compose ps
+```
+
+### 8.2 Alur Otomasi CI/CD (GitHub Actions ke VPS)
+Proyek ini mengadopsi alur deployment terotomatisasi penuh:
+1. Setiap commit pada branch `main` atau `Alfino-dev` secara otomatis memicu alur kerja [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml).
+2. GitHub Runner membangun image Docker multi-stage dan mendorong ke **GitHub Container Registry (GHCR)**.
+3. Server VPS Desa Jarak menarik (*pull*) image terbaru dan melakukan *rolling restart* tanpa *downtime*.
+4. Panduan arsitektur dan konfigurasi secrets VPS selengkapnya dicatat pada [docs/12-ci-cd-pipeline-architecture.md](./12-ci-cd-pipeline-architecture.md).
