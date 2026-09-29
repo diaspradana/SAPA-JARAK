@@ -20,6 +20,9 @@ Route::prefix('scoring')->group(function () {
     Route::post('/calculate/{id}', [ApplicationController::class, 'calculateForApplication']);
 });
 
+// Pengajuan: submit hasil survei lapangan Kasun (skor + penerusan ke Desa)
+Route::post('/applications/{id}/submit-survey', [ApplicationController::class, 'submitSurvey']);
+
 // Public Routes (Masyarakat / Pelapor)
 Route::prefix('public')->group(function () {
     Route::get('/hamlets', [PublicApplicationController::class, 'hamlets']);

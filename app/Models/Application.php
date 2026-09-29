@@ -42,6 +42,14 @@ class Application extends Model
         return $this->hasMany(ApplicationScore::class);
     }
 
+    /**
+     * Hasil agregat scoring engine untuk pengajuan ini (satu baris survei).
+     */
+    public function score()
+    {
+        return $this->hasOne(ApplicationScore::class);
+    }
+
     public function beneficiary()
     {
         return $this->belongsTo(Beneficiary::class);
