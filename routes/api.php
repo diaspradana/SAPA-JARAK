@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\KasunController;
 use App\Http\Controllers\Api\DesaController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ApplicationController;
+use App\Http\Controllers\Api\VillageController;
 
 /*
 |--------------------------------------------------------------------------
@@ -46,6 +47,11 @@ Route::prefix('desa')->group(function () {
     Route::post('/applications/{id}/procurement', [DesaController::class, 'updateProcurement']);
     Route::post('/applications/{id}/handover', [DesaController::class, 'completeHandover']);
     Route::get('/reports/spj', [DesaController::class, 'spjReport']);
+});
+
+// Pemerintah Desa: daftar, filter, dan ranking pengajuan tahap VILLAGE_REVIEW
+Route::prefix('village')->group(function () {
+    Route::get('/applications', [VillageController::class, 'applications']);
 });
 
 // Auth & Interactive Demo Role Switcher
