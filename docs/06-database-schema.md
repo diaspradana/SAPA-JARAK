@@ -260,6 +260,16 @@ Menyimpan token akses *Personal Access Token* (Bearer Token) untuk aparatur desa
   - `criterion_id`: Foreign key ke tabel `criteria`.
   - `value`: Nilai kuantitatif permohonan untuk kriteria tersebut.
 
+### 2.4 Tabel Konfigurasi & Pengaturan Sistem Dinamis (*Admin Settings*)
+- **`settings`**: Menyimpan konfigurasi dinamis sistem, profil wilayah Desa Jarak, pembobotan parameter scoring kriteria RTLH/Disabilitas, batas ambang passing grade, preferensi notifikasi WhatsApp, dan regulasi keterbukaan transparansi publik (UU PDP No. 27/2022).
+  - `id`: Primary key (BigInteger, Auto Increment).
+  - `key`: Kunci unik konfigurasi berindeks (contoh: `village.name`, `scoring.rtlh_weights`, `notification.whatsapp_enabled`).
+  - `value`: Nilai konfigurasi bertipe longText / JSON yang di-cast otomatis ke tipe native PHP oleh model `App\Models\Setting`.
+  - `group`: Pengelompokan konfigurasi berindeks (`village`, `scoring`, `notification`, `transparency`, `general`).
+  - `type`: Tipe data nilai (`string`, `integer`, `boolean`, `json`, `array`).
+  - `description`: Penjelasan deskriptif kegunaan parameter konfigurasi.
+  - `created_at` / `updated_at`: Waktu pencatatan dan pembaruan konfigurasi.
+
 ---
 
 ## 3. Diagram Mesin Status Siklus Hidup Permohonan (Application State Machine)

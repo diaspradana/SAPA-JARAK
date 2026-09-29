@@ -29,7 +29,7 @@ Analisis ini menguraikan fitur yang **belum diimplementasikan**, fitur yang **ma
 | **FR-017** | Notifikasi status via WhatsApp | **Must** | 🟡 Simulasi | 🟡 Simulasi | 🟡 Perlu Gateway | Frontend menampilkan modal pesan; backend memiliki HTTP scaffold Fonnte. |
 | **FR-018** | Ekspor Laporan PDF | **Must** | 🟡 Client Print | ✅ Selesai | 🟢 Siap di API | Generator server-side DomPDF aktif untuk Tanda Terima, BAST, dan Laporan SPJ APBDes. |
 | **FR-019** | Ekspor Laporan Excel/CSV | **Must** | ✅ Selesai | ✅ Selesai | 🟢 Siap di API | Streaming CSV (UTF-8 BOM) dan Excel XML SpreadsheetML aktif di API dengan alokasi memori O(1) (< 2MB RAM). |
-| **FR-020** | Log jejak audit kepatuhan (Audit Log) | **Should** | ❌ Belum Ada di UI | ✅ Selesai | 🟡 Backend Saja | Model & migrasi `audit_logs` ada di Laravel, namun belum ada tab audit di UI. |
+| **FR-020** | Log jejak audit kepatuhan (Audit Log) | **Should** | ❌ Belum Ada di UI | ✅ Selesai | 🟢 Siap di API | Model, migrasi, dan REST API query/filter audit logs aktif di `/api/admin/audit-logs`. |
 | **FR-021** | Privacy masking data warga | **Must** | ✅ Selesai | ✅ Selesai | 🟢 Siap | NIK/Nama disamarkan (`Bpk. S*****`) di antarmuka dan accessor model. |
 | **FR-022** | Antarmuka Mobile-First | **Must** | ✅ Selesai | N/A | 🟢 Siap | Desain responsif Tailwind CSS sangat baik di viewport ponsel. |
 | **FR-023** | Penyimpanan draft offline (PWA) | **Should** | 🟡 Sebagian | N/A | 🔴 Belum Ada SW | Menggunakan `localStorage`, belum ada Service Worker PWA sejati. |
@@ -153,11 +153,27 @@ Analisis ini menguraikan fitur yang **belum diimplementasikan**, fitur yang **ma
 ---
 
 ### 2.9 Panel Pengaturan Administrasi Desa (*Admin Settings Panel*)
-- **Kondisi PRD**:
-  - [PRD Seksi 21](../PRD_SAPA-JARAK_Laravel.md) menguraikan fungsi manajemen aparatur, penyesuaian bobot parameter scoring, dan pengawasan log audit.
-- **Kondisi Saat Ini**:
-  - Pengaturan nama dusun, kasun, dan bobot scoring masih berada di file konfigurasi statis (`desaConfig.js` dan `ScoringService.php`).
-  - Belum ada antarmuka bagi admin desa untuk menambah aparatur baru atau mengubah bobot persentase scoring secara dinamis dari dashboard.
+- **Status Implementasi (Backend Selesai ✅)**:
+  - Telah diimplementasikan pengendali administrasi terpadu [`App\Http\Controllers\Api\AdminController`](../app/Http/Controllers/Api/AdminController.php) yang dilindungi oleh middleware `auth:sanctum` dan `role:admin,kades`.
+  - **Fitur Utama yang Diselesaikan**:
+    1. **Manajemen Aparatur Desa (`/api/admin/users`)**:
+       - Operasi CRUD penuh untuk akun pamong desa (`admin`, `kades`, `sekdes`, `kasi_kesra`, `kasun`, `public`).
+       - Validasi keunikan email & nomor telepon, enkripsi password bcrypt (`Hash::make`), penugasan wilayah dusun (*hamlet binding*), proteksi larangan menghapus akun sendiri (*self-deletion prevention*), serta pencatatan otomatis ke `audit_logs` (`USER_CREATED`, `USER_UPDATED`, `USER_DELETED`).
+    2. **Manajemen Wilayah Dusun (`/api/admin/hamlets`)**:
+       - Pengelolaan 5 dusun resmi (Kalasan, Sagi, Jarak Lor, Jarak Kidul, Simbar) beserta nama dan nomor kontak Kepala Dusun.
+       - Proteksi integritas referensial: dusun yang memiliki arsip pengajuan aktif tidak dapat dihapus sembarangan.
+    3. **Pengaturan Konfigurasi Sistem & Profil Desa (`/api/admin/settings`)**:
+       - Tabel database dinamis `settings` (`key`, `value`, `group`, `type`, `description`) dengan model [`App\Models\Setting`](../app/Models/Setting.php) yang mendukung *type-casting* otomatis (string, integer, boolean, json).
+       - Seeder bawaan [`SettingSeeder`](../database/seeders/SettingSeeder.php) yang memuat konfigurasi profil Desa Jarak, koordinat kantor, tahun anggaran aktif, dan preferensi notifikasi WhatsApp.
+    4. **Mesin Penyesuaian Bobot Scoring Dinamis (*Dynamic Scoring Weights*)**:
+       - Layanan [`App\Services\ScoringService`](../app/Services/ScoringService.php) kini membaca bobot kriteria RTLH (`scoring.rtlh_weights`) dan Disabilitas (`scoring.disability_weights`) secara dinamis langsung dari database dengan fallback aman ke nilai default (25% per komponen RTLH).
+       - Admin desa dapat memperbarui bobot scoring kapan saja via `PUT /api/admin/settings` tanpa perlu redeploy atau mengedit kode sumber.
+    5. **Pengawasan Log Jejak Audit (*Audit Log Viewer* FR-020)**:
+       - Endpoint `GET /api/admin/audit-logs` dilengkapi filter lengkap: tindakan (`action`), nama aktor, ID pengguna, tipe entitas, rentang tanggal (`date_from` - `date_to`), dan pencarian teks.
+       - Menyertakan ringkasan agregat telemetri: total log, log hari ini, dan aksi paling sering dilakukan.
+       - Endpoint detail `GET /api/admin/audit-logs/{id}` menampilkan perbandingan nilai sebelum dan sesudah mutasi (*old vs new values*).
+  - Rangkaian pengujian fitur [`tests/Feature/AdminApiTest.php`](../tests/Feature/AdminApiTest.php) mencakup 13 skenario uji dengan 87 assertions lulus 100%.
+  - Dokumentasi API lengkap dicatat pada [docs/05-api-reference.md Seksi 8](05-api-reference.md).
 
 ---
 
