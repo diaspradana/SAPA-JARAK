@@ -27,9 +27,9 @@ Analisis ini menguraikan fitur yang **belum diimplementasikan**, fitur yang **ma
 | **FR-015** | Dokumentasi progres 0%, 50%, 100% | **Must** | ✅ Selesai | ✅ Selesai | 🟢 Siap di API | Penyimpanan fisik multi-part, kompresi Intervention Image, dan dual-storage privasi aktif di API. |
 | **FR-016** | Dashboard transparansi publik | **Must** | ✅ Selesai | ✅ Selesai | 🟡 Perlu Integrasi | Open ledger dan agregat metrik berfungsi penuh di UI. |
 | **FR-017** | Notifikasi status via WhatsApp | **Must** | 🟡 Simulasi | 🟡 Simulasi | 🟡 Perlu Gateway | Frontend menampilkan modal pesan; backend memiliki HTTP scaffold Fonnte. |
-| **FR-018** | Ekspor Laporan PDF | **Must** | 🟡 Client Print | ✅ Selesai | 🟢 Siap di API | Generator server-side DomPDF aktif untuk Tanda Terima, BAST, dan Laporan SPJ APBDes. |
-| **FR-019** | Ekspor Laporan Excel/CSV | **Must** | ✅ Selesai | ✅ Selesai | 🟢 Siap di API | Streaming CSV (UTF-8 BOM) dan Excel XML SpreadsheetML aktif di API dengan alokasi memori O(1) (< 2MB RAM). |
-| **FR-020** | Log jejak audit kepatuhan (Audit Log) | **Should** | ❌ Belum Ada di UI | ✅ Selesai | 🟢 Siap di API | Model, migrasi, dan REST API query/filter audit logs aktif di `/api/admin/audit-logs`. |
+| **FR-018** | Ekspor Laporan PDF | **Must** | 🟡 Client Print | ✅ Selesai | 🟡 Perlu Integrasi | Generator server-side DomPDF aktif untuk Tanda Terima, BAST, dan Laporan SPJ APBDes. |
+| **FR-019** | Ekspor Laporan Excel/CSV | **Must** | ✅ Selesai | ✅ Selesai | 🟡 Perlu Integrasi | Streaming CSV (UTF-8 BOM) dan Excel XML SpreadsheetML aktif di API dengan alokasi memori O(1) (< 2MB RAM). |
+| **FR-020** | Log jejak audit kepatuhan (Audit Log) | **Should** | ❌ Belum Ada di UI | ✅ Selesai | 🟡 Siap di API | Model, migrasi, dan REST API query/filter audit logs aktif di `/api/admin/audit-logs`. |
 | **FR-021** | Privacy masking data warga | **Must** | ✅ Selesai | ✅ Selesai | 🟢 Siap | NIK/Nama disamarkan (`Bpk. S*****`) di antarmuka dan accessor model. |
 | **FR-022** | Antarmuka Mobile-First | **Must** | ✅ Selesai | N/A | 🟢 Siap | Desain responsif Tailwind CSS sangat baik di viewport ponsel. |
 | **FR-023** | Penyimpanan draft offline (PWA) | **Should** | 🟡 Sebagian | N/A | 🔴 Belum Ada SW | Menggunakan `localStorage`, belum ada Service Worker PWA sejati. |
