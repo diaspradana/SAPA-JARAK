@@ -124,6 +124,20 @@ services:
     profiles:
       - tools
 
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: sapa_jarak_tunnel
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      TUNNEL_TOKEN: "${CLOUDFLARE_TUNNEL_TOKEN:-}"
+    networks:
+      - sapa_network
+    depends_on:
+      - app
+    profiles:
+      - tunnel
+
 networks:
   sapa_network:
     driver: bridge
