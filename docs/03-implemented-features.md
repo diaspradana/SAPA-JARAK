@@ -161,7 +161,7 @@ Sistem menyediakan 5 format dokumen kedinasan lengkap dengan kop surat resmi Pem
 
 ## 6. Implementasi Backend Laravel 11
 
-### 6.1 Basis Data Relasional & Migrasi DDL (12 Tabel)
+### 6.1 Basis Data Relasional & Migrasi DDL (14 Tabel)
 - `hamlets`: Master 5 dusun resmi (nama, kode, batas wilayah, status).
 - `users`: Aparatur desa, kepala dusun, dan administrator sistem.
 - `beneficiaries`: Profil penerima manfaat dengan accessor `masked_name`.
@@ -171,14 +171,54 @@ Sistem menyediakan 5 format dokumen kedinasan lengkap dengan kop surat resmi Pem
 - `fundings`: Alokasi sumber dana APBDes/BKK/Dinsos, pagu anggaran, kode rekening.
 - `procurements`: Rincian JSON RAB material, kontraktor, persentase progres.
 - `handovers`: Catatan BAST, tanggal serah terima, vektor tanda tangan.
-- `documents`: Penyimpanan berkas foto fisik, KTP, dan surat pengantar.
+- `documents`: Penyimpanan berkas foto fisik dengan penanda disk storage, resolusi kompresi, dan path citra sensor privasi.
 - `notifications`: Rekam jejak pengiriman pesan WhatsApp dan kode OTP.
 - `audit_logs`: Log jejak audit kepatuhan (aktor, aksi, alamat IP, perubahan nilai).
+- `personal_access_tokens`: Token akses pribadi Laravel Sanctum untuk autentikasi API berbasis bearer token.
+- `criteria` & `application_scores`: Skema pendukung keputusan multi-kriteria (MCDM / SAW).
 
 ### 6.2 Seeders Basis Data Lengkap
 - [`HamletSeeder.php`](file:///home/ascension/Projects/SAPA-JARAK/database/seeders/HamletSeeder.php): Mengisi 5 dusun resmi Desa Jarak beserta titik sentroid.
 - [`UserSeeder.php`](file:///home/ascension/Projects/SAPA-JARAK/database/seeders/UserSeeder.php): Mengisi 9 akun aparatur (Kades, Sekdes, Kasi Kesra, dan 5 Kepala Dusun).
 - [`ApplicationSeeder.php`](file:///home/ascension/Projects/SAPA-JARAK/database/seeders/ApplicationSeeder.php): Mengisi data sampel permohonan dalam berbagai status (`SUBMITTED`, `WAITING_KASUN_VERIFICATION`, `FORWARDED_TO_VILLAGE`, `APPROVED`, `COMPLETED`).
 
-### 6.3 RESTful API Endpoints (16 Rute)
-Seluruh 16 rute di `routes/api.php` telah terhubung ke Controller dan Service Layer terkait dengan validasi ketat dan format respon JSON standar.
+### 6.3 RESTful API Endpoints (26 Rute Aktif)
+Seluruh 26 rute di `routes/api.php` telah terhubung ke Controller dan Service Layer terkait dengan validasi ketat dan format respon JSON/Biner standar. Rincian lengkap tersedia di [docs/05-api-reference.md](./05-api-reference.md).
+
+### 6.4 Modul Autentikasi Sanctum Produksi
+- Endpoint verifikasi kredensial aparatur (`POST /api/auth/login`) yang menerbitkan Bearer Token Sanctum dengan masa berlaku aman.
+- Middleware otorisasi peran dinamis ([`CheckUserRole.php`](file:///home/ascension/Projects/SAPA-JARAK/app/Http/Middleware/CheckUserRole.php)) yang melindungi endpoint privat berdasarkan peran (`kades`, `kasi_kesra`, `sekdes`, `kasun`, `admin`).
+- Endpoint inspeksi profil aktif (`GET /api/auth/me`), pengalih peran instan demo (`POST /api/auth/switch-role`), dan pencabutan token (`POST /api/auth/logout`).
+
+### 6.5 Modul Manajemen Dokumen & Dual-Storage Media
+- Endpoint pengunggahan berkas multi-part (`POST /api/documents/upload`) dengan batas ukuran 10MB dan validasi MIME type (`jpeg`, `png`, `webp`, `pdf`).
+- Pemrosesan gambar otomatis menggunakan `Intervention\Image` v4.3 (GD Driver): *downscaling* citra beresolusi tinggi hingga maksimal 1920px untuk menghemat ruang penyimpanan server.
+- Arsitektur *Dual-Storage*: berkas asli beresolusi penuh disimpan di direktori privat internal (`storage/app/internal/`) yang hanya dapat diakses oleh pejabat berwenang, sedangkan berkas tersensor publik disimpan di (`storage/app/public/documents/`).
+
+### 6.6 Modul Sensor Wajah Otomatis (*Deep Learning Privacy Face Blurring*)
+- Layanan [`ImagePrivacyService`](file:///home/ascension/Projects/SAPA-JARAK/app/Services/ImagePrivacyService.php) terintegrasi dengan microservice Python FastAPI.
+- Menggunakan arsitektur Deep Learning OpenCV YuNet (`face_detection_yunet_2023mar.onnx` berukuran 232 KB) dengan teknik sensor mozaik TV (*broadcast pixelation*) untuk memastikan 100% anonimitas wajah warga rentan pada foto dokumentasi serah terima publik (UU PDP No. 27/2022).
+
+### 6.7 Modul Generator Dokumen PDF Sisi Server
+- Menggunakan paket `barryvdh/laravel-dompdf` v3.1 yang berjalan *pure PHP* (footprint memori sangat hemat < 15MB RAM per render).
+- Menghasilkan 3 berkas PDF resmi:
+  1. **Bukti Tanda Terima Pendaftaran** (`GET /api/public/applications/{ticket}/pdf`): Berkas A4 potret dengan kode QR pelacakan status dan klausul persetujuan UU PDP No. 27/2022.
+  2. **Berita Acara Serah Terima (BAST)** (`GET /api/desa/applications/{id}/bast/pdf`): Dokumen formal A4 potret dengan nomor surat resmi dan tanda tangan digital para pihak.
+  3. **Laporan Pertanggungjawaban Realisasi Anggaran (SPJ)** (`GET /api/desa/reports/spj/pdf`): Dokumen A4 lanskap memuat rekapitulasi realisasi belanja per dusun, sisa pagu, dan pengesahan Kades.
+
+### 6.8 Modul Ekspor Spreadsheet Excel (.xls) & CSV Streaming (O(1) Memory)
+- Layanan [`ExportService`](file:///home/ascension/Projects/SAPA-JARAK/app/Services/ExportService.php) menyajikan ekspor streaming dengan memori konstan $O(1)$ (< 2MB RAM) berbasis `Symfony\Component\HttpFoundation\StreamedResponse` dan Eloquent `cursor()`.
+- **Format CSV Streaming RFC 4180**: Dilengkapi *UTF-8 Byte Order Mark* (`\xEF\xBB\xBF`), preservasi 16 digit NIK/KK melalui formula teks string `="3506..."` agar tidak rusak oleh notasi ilmiah Excel, serta dukungan delimiter kustom (`,`, `;`).
+- **Format Excel XML Spreadsheet (`SpreadsheetML` / `.xls`)**: Format XML 2003 native yang langsung terbuka di Microsoft Excel lengkap dengan header tebal biru tua, teks rata tengah, pemformatan angka mata uang numerik (`Rp #,##0`), dan baris total akumulasi bawah.
+- Endpoint aktif:
+  - `GET /api/desa/reports/spj/export` (serta shortcut `/excel` dan `/csv`)
+  - `GET /api/desa/reports/beneficiaries/export`
+  - `GET /api/public/transparency/export`
+  - `GET /api/kasun/reports/export`
+
+### 6.9 Rangkaian Pengujian Otomatis (*Automated Testing Suite*)
+- Dikonfigurasi menggunakan **PHPUnit 11** dan basis data *in-memory* SQLite (`:memory:`) pada [`phpunit.xml`](file:///home/ascension/Projects/SAPA-JARAK/phpunit.xml).
+- Mencakup pengujian unit [`ExportServiceTest.php`](file:///home/ascension/Projects/SAPA-JARAK/tests/Unit/ExportServiceTest.php) dan pengujian fitur [`ExportApiTest.php`](file:///home/ascension/Projects/SAPA-JARAK/tests/Feature/ExportApiTest.php) dengan hasil kelulusan 100% (*14 tests, 73 assertions* dieksekusi dalam $\approx 1.5$ detik). Rincian lengkap dicatat pada [docs/13-automated-testing-and-export-suite.md](./13-automated-testing-and-export-suite.md).
+
+### 6.10 Otomasi CI/CD & Deployment Pipeline
+- Alur kerja otomatisasi terintegrasi via GitHub Actions ([`.github/workflows/deploy.yml`](file:///home/ascension/Projects/SAPA-JARAK/.github/workflows/deploy.yml)) mencakup kompilasi Docker image multi-stage, pengunggahan ke GitHub Container Registry (GHCR), dan *zero-downtime rolling update* ke server VPS. Rincian lengkap dicatat pada [docs/12-ci-cd-pipeline-architecture.md](./12-ci-cd-pipeline-architecture.md).

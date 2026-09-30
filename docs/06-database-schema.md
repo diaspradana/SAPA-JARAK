@@ -202,13 +202,51 @@ Mencatat pengesahan serah terima bantuan antara pihak desa dan penerima manfaat.
 
 ---
 
-### 2.9 Tabel `notifications` & `audit_logs`
+### 2.9 Tabel `documents` (Dokumentasi Foto Fisik & Berkas Pendukung)
+Menyimpan meta data berkas foto fisik kondisi rumah/disabilitas, KTP, KK, serta bukti BAST dengan pemisahan penyimpanan internal privat dan publik.
+
+| Nama Kolom | Tipe Data | Nullable | Default | Keterangan & Batasan |
+|:---|:---|:---:|:---:|:---|
+| `id` | `BIGINT UNSIGNED` | NO | Auto Increment | Kunci Utama. |
+| `application_id` | `BIGINT UNSIGNED` | YES | NULL | Foreign Key ke `applications.id` (nullable untuk pra-unggah). |
+| `file_path` | `VARCHAR(255)` | NO | - | Lokasi penyimpanan fisik internal berkas asli (`internal/...`). |
+| `public_file_path` | `VARCHAR(255)` | YES | NULL | Lokasi berkas tersensor publik (`public/documents/...`). |
+| `original_filename`| `VARCHAR(255)` | NO | - | Nama asli berkas saat diunggah klien. |
+| `file_size` | `BIGINT UNSIGNED` | YES | NULL | Ukuran berkas dalam satuan bytes. |
+| `mime_type` | `VARCHAR(100)` | YES | NULL | Tipe MIME berkas (cth: `image/jpeg`, `image/webp`). |
+| `document_type` | `VARCHAR(50)` | NO | `'FOTO_KONDISI'`| Kategori: `FOTO_KONDISI`, `KTP`, `KK`, `SURAT_KETERANGAN`, `BAST`. |
+| `visibility` | `VARCHAR(20)` | NO | `'PUBLIC'` | Visibilitas: `PUBLIC` (tersensor) atau `INTERNAL` (privat). |
+| `description` | `TEXT` | YES | NULL | Deskripsi tambahan catatan berkas. |
+| `created_at` | `TIMESTAMP` | YES | NULL | Waktu pengunggahan berkas. |
+| `updated_at` | `TIMESTAMP` | YES | NULL | Waktu pembaruan data. |
+
+---
+
+### 2.10 Tabel `notifications` & `audit_logs`
 - **`notifications`**: Menyimpan log pengiriman pesan SMS/WhatsApp, kode OTP verifikasi, isi pesan notifikasi, dan status transmisi (`SENT`/`FAILED`).
 - **`audit_logs`**: Menyimpan rekam jejak kepatuhan (*compliance log*) yang mencatat aktor pengubah, jenis aksi (`APPLICATION_SUBMITTED`, `STATUS_CHANGED`, dll), nilai lama (*old values*), nilai baru (*new values*), alamat IP, dan user-agent peramban.
 
 ---
 
-### 2.10 Tabel `criteria` & `application_scores` (Multi-Kriteria SAW / MCDM)
+### 2.11 Tabel `personal_access_tokens` (Autentikasi API Laravel Sanctum)
+Menyimpan token akses *Personal Access Token* (Bearer Token) untuk aparatur desa dan pengguna terautentikasi sistem.
+
+| Nama Kolom | Tipe Data | Nullable | Default | Keterangan & Batasan |
+|:---|:---|:---:|:---:|:---|
+| `id` | `BIGINT UNSIGNED` | NO | Auto Increment | Kunci Utama. |
+| `tokenable_type` | `VARCHAR(255)` | NO | - | Tipe polimorfik entitas pemilik token (`App\Models\User`). |
+| `tokenable_id` | `BIGINT UNSIGNED` | NO | - | ID entitas pemilik token. |
+| `name` | `TEXT` | NO | - | Nama perangkat atau sesi login (cth: `desktop-kades`). |
+| `token` | `VARCHAR(64)` | NO | - | Hash SHA-256 dari personal access token (Unik). |
+| `abilities` | `TEXT` | YES | NULL | Hak akses kemampuan token (cth: `["role:kades","*"]`). |
+| `last_used_at` | `TIMESTAMP` | YES | NULL | Waktu terakhir token digunakan untuk permintaan API. |
+| `expires_at` | `TIMESTAMP` | YES | NULL | Waktu kedaluwarsa token. |
+| `created_at` | `TIMESTAMP` | YES | NULL | Waktu penerbitan token. |
+| `updated_at` | `TIMESTAMP` | YES | NULL | Waktu pembaruan data token. |
+
+---
+
+### 2.12 Tabel `criteria` & `application_scores` (Multi-Kriteria SAW / MCDM)
 *(Ditambahkan oleh tim di branch `backend-rz`)*
 
 - **`criteria`**: Menyimpan master kriteria penentuan kelayakan bantuan sosial berbasis bobot (*Simple Additive Weighting* / SAW).
@@ -221,6 +259,16 @@ Mencatat pengesahan serah terima bantuan antara pihak desa dan penerima manfaat.
   - `application_id`: Foreign key ke tabel `applications`.
   - `criterion_id`: Foreign key ke tabel `criteria`.
   - `value`: Nilai kuantitatif permohonan untuk kriteria tersebut.
+
+### 2.4 Tabel Konfigurasi & Pengaturan Sistem Dinamis (*Admin Settings*)
+- **`settings`**: Menyimpan konfigurasi dinamis sistem, profil wilayah Desa Jarak, pembobotan parameter scoring kriteria RTLH/Disabilitas, batas ambang passing grade, preferensi notifikasi WhatsApp, dan regulasi keterbukaan transparansi publik (UU PDP No. 27/2022).
+  - `id`: Primary key (BigInteger, Auto Increment).
+  - `key`: Kunci unik konfigurasi berindeks (contoh: `village.name`, `scoring.rtlh_weights`, `notification.whatsapp_enabled`).
+  - `value`: Nilai konfigurasi bertipe longText / JSON yang di-cast otomatis ke tipe native PHP oleh model `App\Models\Setting`.
+  - `group`: Pengelompokan konfigurasi berindeks (`village`, `scoring`, `notification`, `transparency`, `general`).
+  - `type`: Tipe data nilai (`string`, `integer`, `boolean`, `json`, `array`).
+  - `description`: Penjelasan deskriptif kegunaan parameter konfigurasi.
+  - `created_at` / `updated_at`: Waktu pencatatan dan pembaruan konfigurasi.
 
 ---
 

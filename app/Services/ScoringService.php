@@ -2,24 +2,35 @@
 
 namespace App\Services;
 
+use App\Models\Setting;
+
 class ScoringService
 {
     /**
      * Calculate score for RTLH assistance.
-     * Weight:
-     * - Dinding bambu/gedek (25%)
-     * - Lantai tanah/semen rusak (25%)
-     * - Atap rapuh/bocor (25%)
-     * - Tidak memiliki sanitasi MCK (25%)
+     * Dynamic weights from settings with static fallback.
      */
     public function calculateRtlhScore(array $params): array
     {
-        $dinding = !empty($params['dinding_rusak']) ? 25 : 0;
-        $lantai = !empty($params['lantai_tanah']) ? 25 : 0;
-        $atap = !empty($params['atap_bocor']) ? 25 : 0;
-        $mck = !empty($params['tidak_ada_mck']) ? 25 : 0;
+        $weights = Setting::get('scoring.rtlh_weights', [
+            'dinding' => 25,
+            'lantai' => 25,
+            'atap' => 25,
+            'mck' => 25,
+        ]);
+
+        $wDinding = (int) ($weights['dinding'] ?? 25);
+        $wLantai  = (int) ($weights['lantai'] ?? 25);
+        $wAtap    = (int) ($weights['atap'] ?? 25);
+        $wMck     = (int) ($weights['mck'] ?? 25);
+
+        $dinding = !empty($params['dinding_rusak']) ? $wDinding : 0;
+        $lantai = !empty($params['lantai_tanah']) ? $wLantai : 0;
+        $atap = !empty($params['atap_bocor']) ? $wAtap : 0;
+        $mck = !empty($params['tidak_ada_mck']) ? $wMck : 0;
 
         $totalScore = $dinding + $lantai + $atap + $mck;
+        $minScore = (int) Setting::get('scoring.minimum_passing_score', 50);
 
         return [
             'total_score' => $totalScore,
@@ -30,24 +41,36 @@ class ScoringService
                 'sanitasi_mck' => $mck,
             ],
             'urgency' => $this->determineUrgency($totalScore),
-            'is_eligible' => $totalScore >= 50,
+            'is_eligible' => $totalScore >= $minScore,
         ];
     }
 
     /**
      * Calculate score for Disabilitas assistance.
-     * Weight:
-     * - Tingkat disabilitas / ketergantungan (40%)
-     * - Kondisi ekonomi keluarga (30%)
-     * - Rekomendasi nakes Puskesmas (30%)
+     * Dynamic weights from settings with static fallback.
      */
     public function calculateDisabilityScore(array $params): array
     {
-        $disabilitasLevel = (int) ($params['tingkat_disabilitas'] ?? 0); // 0 - 40
-        $ekonomi = (int) ($params['kondisi_ekonomi'] ?? 0); // 0 - 30
-        $nakes = !empty($params['rekomendasi_nakes']) ? 30 : 0; // 0 or 30
+        $weights = Setting::get('scoring.disability_weights', [
+            'tingkat_disabilitas' => 40,
+            'kondisi_ekonomi' => 30,
+            'rekomendasi_nakes' => 30,
+        ]);
+
+        $wDisabilitas = (int) ($weights['tingkat_disabilitas'] ?? 40);
+        $wEkonomi     = (int) ($weights['kondisi_ekonomi'] ?? 30);
+        $wNakes       = (int) ($weights['rekomendasi_nakes'] ?? 30);
+
+        $disabilitasInput = (int) ($params['tingkat_disabilitas'] ?? 0);
+        $disabilitasLevel = min($wDisabilitas, $disabilitasInput);
+
+        $ekonomiInput = (int) ($params['kondisi_ekonomi'] ?? 0);
+        $ekonomi = min($wEkonomi, $ekonomiInput);
+
+        $nakes = !empty($params['rekomendasi_nakes']) ? $wNakes : 0;
 
         $totalScore = min(100, $disabilitasLevel + $ekonomi + $nakes);
+        $minScore = (int) Setting::get('scoring.minimum_passing_score', 50);
 
         return [
             'total_score' => $totalScore,
@@ -57,7 +80,7 @@ class ScoringService
                 'rekomendasi_nakes' => $nakes,
             ],
             'urgency' => $this->determineUrgency($totalScore),
-            'is_eligible' => $totalScore >= 50,
+            'is_eligible' => $totalScore >= $minScore,
         ];
     }
 
@@ -66,8 +89,11 @@ class ScoringService
      */
     public function determineUrgency(int $score): string
     {
-        if ($score >= 75) return 'TINGGI';
-        if ($score >= 50) return 'SEDANG';
+        $highThreshold = (int) Setting::get('scoring.high_urgency_threshold', 75);
+        $minScore = (int) Setting::get('scoring.minimum_passing_score', 50);
+
+        if ($score >= $highThreshold) return 'TINGGI';
+        if ($score >= $minScore) return 'SEDANG';
         return 'RENDAH';
     }
 }

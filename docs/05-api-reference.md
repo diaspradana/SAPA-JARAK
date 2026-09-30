@@ -300,6 +300,39 @@ Mendapatkan daftar penerima manfaat yang telah disetujui atau selesai dengan ide
 
 ---
 
+### 2.8 Mengunduh Rekapitulasi Terbuka Transparansi Publik (Format CSV / Excel)
+Menghasilkan dan mengunduh berkas rekapitulasi data transparansi publik bantuan sosial dalam format CSV atau Excel (.xls). Seluruh identitas warga disensor sesuai kepatuhan privasi UU No. 27/2022 (*masked name*).
+
+- **Method**: `GET`
+- **Endpoint**: `/api/public/transparency/export`
+- **Query Parameter (Opsional)**:
+  - `format`: `csv` (default) atau `excel` / `xls`
+  - `delimiter`: `,` (default) atau `;` (untuk Excel locale Indonesia)
+  - `hamlet_id`: Filter ID dusun
+  - `assistance_type`: `RTLH` atau `DISABILITAS`
+  - `search`: Kata kunci pencarian nomor tiket
+- **Autentikasi**: Tidak diperlukan (Publik)
+- **Header Respon Sukses (CSV)**:
+  ```http
+  Content-Type: text/csv; charset=UTF-8
+  Content-Disposition: attachment; filename="Transparansi_Bansos_Desa_Jarak_YYYYMMDD_HHmmss.csv"
+  ```
+- **Header Respon Sukses (Excel)**:
+  ```http
+  Content-Type: application/vnd.ms-excel; charset=UTF-8
+  Content-Disposition: attachment; filename="Transparansi_Bansos_Desa_Jarak_YYYYMMDD_HHmmss.xls"
+  ```
+- **Contoh Permintaan cURL**:
+  ```bash
+  # Unduh format CSV (RFC 4180 dengan UTF-8 BOM)
+  curl -X GET "http://localhost:8000/api/public/transparency/export?format=csv" -o "Transparansi_Publik.csv"
+
+  # Unduh format Excel (SpreadsheetML bergaya resmi)
+  curl -X GET "http://localhost:8000/api/public/transparency/export?format=excel" -o "Transparansi_Publik.xls"
+  ```
+
+---
+
 ## 3. Modul Kepala Dusun (`/api/kasun/*`)
 
 ### 3.1 Mengambil Antrean Survei Wilayah Kasun
@@ -374,6 +407,69 @@ Menyimpan penilaian faktual, koordinat GPS, menghitung skor otomatis, dan meneta
       "status": "FORWARDED_TO_VILLAGE"
     }
   }
+  ```
+
+---
+
+### 3.3 Rekomendasi Kecerdasan Buatan (AI Decision Support)
+Mengambil probabilitas dan rekomendasi kelayakan bantuan secara real-time dari microservice machine learning FastAPI berbasis Random Forest Classifier.
+
+- **Method**: `POST`
+- **Endpoint**: `/api/kasun/ai-recommendation`
+- **Header Wajib**: `Authorization: Bearer <access_token>`
+- **Hak Akses Peran**: `kasun`, `admin`
+- **Body Permintaan (JSON)**:
+  ```json
+  {
+    "tanggungan_keluarga": 3,
+    "usia_kepala_keluarga": 54,
+    "ada_disabilitas_lansia": 0,
+    "desil_dtks": 1,
+    "daya_listrik_va": 450,
+    "pendapatan_bulanan": 650000,
+    "kondisi_dinding": "gedek",
+    "kondisi_lantai": "tanah",
+    "kondisi_atap": "rapuh_bocor",
+    "sanitasi_mck": "tidak_ada",
+    "status_tanah": "milik_sendiri"
+  }
+  ```
+- **Respon Sukses (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "recommendation": "LAYAK",
+      "probability": 0.89,
+      "confidence": "HIGH"
+    }
+  }
+  ```
+
+---
+
+### 3.4 Mengunduh Rekapitulasi Antrean Survei Kasun (Format CSV / Excel)
+Mengunduh berkas antrean dan hasil verifikasi survei lapangan warga binaan Kepala Dusun. Data otomatis terisolasi pada wilayah kerja dusun masing-masing demi menjaga integritas batas wilayah administratif.
+
+- **Method**: `GET`
+- **Endpoint**: `/api/kasun/reports/export`
+- **Header Wajib**: `Authorization: Bearer <access_token>`
+- **Hak Akses Peran**: `kasun`, `admin`
+- **Query Parameter (Opsional)**:
+  - `format`: `csv` (default) atau `excel` / `xls`
+  - `delimiter`: `,` (default) atau `;`
+  - `status`: Filter status pengajuan (misal `WAITING_KASUN_VERIFICATION`, `SUBMITTED`, dll.)
+  - `hamlet_id`: Filter dusun (hanya berlaku jika login sebagai admin desa)
+- **Header Respon Sukses (CSV)**:
+  ```http
+  Content-Type: text/csv; charset=UTF-8
+  Content-Disposition: attachment; filename="Antrean_Survei_Kasun_Dusun_Kalasan_YYYYMMDD_HHmmss.csv"
+  ```
+- **Contoh Permintaan cURL**:
+  ```bash
+  curl -X GET "http://localhost:8000/api/kasun/reports/export?format=excel" \
+    -H "Authorization: Bearer <access_token>" \
+    -o "Antrean_Kasun_Kalasan.xls"
   ```
 
 ---
@@ -575,6 +671,74 @@ Menghasilkan dokumen laporan resmi Laporan Pertanggungjawaban Realisasi Anggaran
   curl -X GET "http://localhost:8000/api/desa/reports/spj/pdf?year=2026" \
     -H "Authorization: Bearer <access_token>" \
     -o "Laporan_SPJ_2026.pdf"
+  ```
+
+---
+
+### 4.8 Mengunduh Laporan SPJ Realisasi APBDes (Format CSV & Excel SpreadsheetML)
+Menghasilkan berkas rekapitulasi realisasi belanja bantuan sosial APBDes berstatus tuntas (`COMPLETED`) dengan alokasi memori streaming O(1) yang aman untuk VPS 1-vCPU. Berkas menyertakan kode rekening, sumber pendanaan, nomor BAST, pagu anggaran, realisasi belanja, sisa pagu, serta baris total kalkulasi resmi.
+
+- **Method**: `GET`
+- **Endpoint**:
+  - `/api/desa/reports/spj/export` (Bebas memilih parameter `?format=csv|excel`)
+  - `/api/desa/reports/spj/excel` (Shortcut unduh langsung format Excel `.xls`)
+  - `/api/desa/reports/spj/csv` (Shortcut unduh langsung format CSV `.csv`)
+- **Header Wajib**: `Authorization: Bearer <access_token>`
+- **Hak Akses Peran**: `kades`, `kasi_kesra`, `sekdes`, `admin`
+- **Query Parameter (Opsional)**:
+  - `format`: `csv` (default) atau `excel` / `xls`
+  - `year`: Filter tahun realisasi (default tahun berjalan, contoh: `2026`)
+  - `hamlet_id`: Filter ID dusun
+  - `delimiter`: `,` (default) atau `;` (locale Windows Excel Indonesia)
+- **Header Respon Sukses (CSV)**:
+  ```http
+  Content-Type: text/csv; charset=UTF-8
+  Content-Disposition: attachment; filename="Laporan_SPJ_Bansos_Desa_Jarak_2026_YYYYMMDD_HHmmss.csv"
+  ```
+- **Header Respon Sukses (Excel)**:
+  ```http
+  Content-Type: application/vnd.ms-excel; charset=UTF-8
+  Content-Disposition: attachment; filename="Laporan_SPJ_Bansos_Desa_Jarak_2026_YYYYMMDD_HHmmss.xls"
+  ```
+- **Contoh Permintaan cURL**:
+  ```bash
+  # Unduh format Excel SpreadsheetML dengan styling tabel resmi
+  curl -X GET "http://localhost:8000/api/desa/reports/spj/excel?year=2026" \
+    -H "Authorization: Bearer <access_token>" \
+    -o "Laporan_SPJ_2026.xls"
+
+  # Unduh format CSV (dengan delimiter titik-koma Excel Indonesia)
+  curl -X GET "http://localhost:8000/api/desa/reports/spj/csv?year=2026&delimiter=;" \
+    -H "Authorization: Bearer <access_token>" \
+    -o "Laporan_SPJ_2026.csv"
+  ```
+
+---
+
+### 4.9 Mengunduh Master Register Penerima Bantuan Sosial Desa (Format CSV & Excel)
+Menghasilkan master data seluruh usulan dan penerima bantuan sosial untuk kebutuhan arsip internal aparatur desa. Data disajikan secara lengkap (Nama lengkap, NIK, No. KK, No. HP, status DTKS, skor kelayakan, status pengerjaan, dan alokasi dana).
+
+- **Method**: `GET`
+- **Endpoint**: `/api/desa/reports/beneficiaries/export`
+- **Header Wajib**: `Authorization: Bearer <access_token>`
+- **Hak Akses Peran**: `kades`, `kasi_kesra`, `sekdes`, `admin`
+- **Query Parameter (Opsional)**:
+  - `format`: `csv` (default) atau `excel` / `xls`
+  - `delimiter`: `,` (default) atau `;`
+  - `status`: Filter status pengajuan (`SUBMITTED`, `APPROVED`, `COMPLETED`, dll.)
+  - `assistance_type`: `RTLH` atau `DISABILITAS`
+  - `hamlet_id`: Filter ID dusun
+  - `year`: Filter tahun pengajuan
+- **Header Respon Sukses (CSV)**:
+  ```http
+  Content-Type: text/csv; charset=UTF-8
+  Content-Disposition: attachment; filename="Rekapitulasi_Penerima_Bansos_Desa_Jarak_YYYYMMDD_HHmmss.csv"
+  ```
+- **Contoh Permintaan cURL**:
+  ```bash
+  curl -X GET "http://localhost:8000/api/desa/reports/beneficiaries/export?assistance_type=RTLH&format=excel" \
+    -H "Authorization: Bearer <access_token>" \
+    -o "Master_Penerima_RTLH.xls"
   ```
 
 ---
@@ -901,5 +1065,454 @@ Menghapus rekaman database dan secara permanen membersihkan berkas fisik dari st
     "message": "Dokumen #1 beserta berkas fisiknya berhasil dihapus."
   }
   ```
+
+---
+
+## 8. Modul Pengaturan Sistem & Administrasi Desa (`/api/admin/*`)
+
+Modul ini mengimplementasikan fungsi administrasi desa sesuai [PRD Seksi 21](PRD_SAPA-JARAK_Laravel.md) dan pengawasan log audit kepatuhan ([FR-020](04-unimplemented-and-gap-analysis.md)). Seluruh endpoint pada modul ini dilindungi secara ketat oleh middleware `auth:sanctum` dan `role:admin,kades`.
+
+---
+
+### 8.1 Ringkasan Sistem & Telemetri Administrasi
+Mendapatkan statistik ringkasan pengguna aparatur, dusun, berkas pengajuan, log audit, total penyimpanan berkas, dan konfigurasi profil desa aktif.
+
+- **Method**: `GET`
+- **Endpoint**: `/api/admin/overview`
+- **Header Wajib**: `Authorization: Bearer <access_token>`
+- **Hak Akses**: `admin`, `kades`
+- **Respon Sukses (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "users": {
+        "total": 9,
+        "active": 9,
+        "inactive": 0,
+        "by_role": {
+          "admin": 1,
+          "kades": 1,
+          "sekdes": 1,
+          "kasi_kesra": 1,
+          "kasun": 5,
+          "public": 0
+        }
+      },
+      "hamlets": {
+        "total": 5,
+        "active": 5
+      },
+      "applications": {
+        "total": 12,
+        "submitted": 2,
+        "approved": 5,
+        "completed": 4,
+        "rejected": 1
+      },
+      "audit_logs": {
+        "total": 24,
+        "today": 3
+      },
+      "storage": {
+        "total_files": 18,
+        "total_bytes": 14589200
+      },
+      "village_profile": {
+        "village.name": "Desa Jarak",
+        "village.district": "Kecamatan Plosoklaten",
+        "village.regency": "Kabupaten Kediri",
+        "village.active_budget_year": 2026,
+        "village.head_name": "Bpk. Drs. H. Supriyadi"
+      },
+      "scoring": {
+        "scoring.minimum_passing_score": 50,
+        "scoring.rtlh_weights": {
+          "dinding": 25,
+          "lantai": 25,
+          "atap": 25,
+          "mck": 25
+        }
+      }
+    }
+  }
+  ```
+
+---
+
+### 8.2 Manajemen Aparatur Desa (`/api/admin/users`)
+
+#### 8.2.1 Mengambil Daftar Akun Aparatur
+- **Method**: `GET`
+- **Endpoint**: `/api/admin/users`
+- **Header Wajib**: `Authorization: Bearer <access_token>`
+- **Query Parameter (Opsional)**:
+  - `role`: Filter peran (`admin`, `kades`, `sekdes`, `kasi_kesra`, `kasun`, `public`).
+  - `hamlet_id`: Filter ID dusun penugasan.
+  - `status`: `active` atau `inactive`.
+  - `search`: Pencarian nama, email, atau nomor telepon.
+  - `per_page`: Jumlah data per halaman (default 15, maks 100).
+  - `all`: `true` untuk mendapatkan seluruh daftar tanpa paginasi (keperluan dropdown).
+- **Respon Sukses (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "data": [
+      {
+        "id": 5,
+        "name": "Bpk. Agus Santoso (Kasun Kalasan)",
+        "email": "kasun.kalasan@jarak-kediri.desa.id",
+        "phone": "081234567803",
+        "role": "kasun",
+        "hamlet_id": 1,
+        "status": "active",
+        "hamlet": {
+          "id": 1,
+          "name": "Dusun Kalasan",
+          "code": "KLS",
+          "head_name": "Bpk. Agus Santoso"
+        }
+      }
+    ],
+    "pagination": {
+      "current_page": 1,
+      "last_page": 1,
+      "per_page": 15,
+      "total": 9
+    }
+  }
+  ```
+
+#### 8.2.2 Menambah Akun Aparatur Baru
+- **Method**: `POST`
+- **Endpoint**: `/api/admin/users`
+- **Header Wajib**: `Authorization: Bearer <access_token>`
+- **Payload Request**:
+  ```json
+  {
+    "name": "Bpk. Subagyo (Staf Kesra)",
+    "email": "staf.kesra@jarak-kediri.desa.id",
+    "phone": "081234567099",
+    "password": "PasswordAman123!",
+    "role": "kasi_kesra",
+    "hamlet_id": null,
+    "status": "active"
+  }
+  ```
+- **Respon Sukses (201 Created)**:
+  ```json
+  {
+    "success": true,
+    "message": "Akun aparatur desa 'Bpk. Subagyo (Staf Kesra)' (kasi_kesra) berhasil ditambahkan.",
+    "data": {
+      "id": 10,
+      "name": "Bpk. Subagyo (Staf Kesra)",
+      "email": "staf.kesra@jarak-kediri.desa.id",
+      "phone": "081234567099",
+      "role": "kasi_kesra",
+      "status": "active"
+    }
+  }
+  ```
+- *Catatan Kepatuhan*: Sistem secara otomatis mencatat entri `USER_CREATED` pada tabel `audit_logs`.
+
+#### 8.2.3 Mengambil Detail Akun Aparatur
+- **Method**: `GET`
+- **Endpoint**: `/api/admin/users/{id}`
+- **Respon Sukses (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "id": 5,
+      "name": "Bpk. Agus Santoso",
+      "email": "kasun.kalasan@jarak-kediri.desa.id",
+      "phone": "081234567803",
+      "role": "kasun",
+      "hamlet_id": 1,
+      "status": "active",
+      "verifications_count": 8,
+      "audit_logs_count": 14
+    }
+  }
+  ```
+
+#### 8.2.4 Memperbarui Akun Aparatur
+- **Method**: `PUT`
+- **Endpoint**: `/api/admin/users/{id}`
+- **Payload Request (Parsial / Penuh)**:
+  ```json
+  {
+    "name": "Bpk. Agus Santoso S.Sos",
+    "phone": "081234567899",
+    "status": "active"
+  }
+  ```
+- **Respon Sukses (200 OK)**: Mengembalikan profil aparatur terbarui dan mencatat mutasi `USER_UPDATED` ke log audit.
+
+#### 8.2.5 Menghapus Akun Aparatur
+- **Method**: `DELETE`
+- **Endpoint**: `/api/admin/users/{id}`
+- **Aturan Keamanan**: Menolak upaya administrator menghapus akun miliknya sendiri yang sedang login (422 Unprocessable Content).
+- **Respon Sukses (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "message": "Akun aparatur 'Bpk. Subagyo' berhasil dihapus dari sistem."
+  }
+  ```
+
+---
+
+### 8.3 Manajemen Wilayah Dusun (`/api/admin/hamlets`)
+
+#### 8.3.1 Mengambil Daftar Wilayah Dusun
+- **Method**: `GET`
+- **Endpoint**: `/api/admin/hamlets`
+- **Respon Sukses (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "data": [
+      {
+        "id": 1,
+        "name": "Dusun Kalasan",
+        "code": "KLS",
+        "head_name": "Bpk. Agus Santoso",
+        "head_phone": "081234567803",
+        "status": "active",
+        "applications_count": 4,
+        "beneficiaries_count": 4,
+        "users_count": 1
+      }
+    ]
+  }
+  ```
+
+#### 8.3.2 Menambah Wilayah Dusun Baru
+- **Method**: `POST`
+- **Endpoint**: `/api/admin/hamlets`
+- **Payload Request**:
+  ```json
+  {
+    "name": "Dusun Krajan Makmur",
+    "code": "KM",
+    "head_name": "Bpk. Suyanto",
+    "head_phone": "081233889900",
+    "status": "active"
+  }
+  ```
+- **Respon Sukses (201 Created)**: Mengembalikan entitas dusun baru dan mencatat `HAMLET_CREATED` ke audit log.
+
+#### 8.3.3 Memperbarui Data Wilayah Dusun
+- **Method**: `PUT`
+- **Endpoint**: `/api/admin/hamlets/{id}`
+- **Payload Request**:
+  ```json
+  {
+    "head_name": "Bpk. Drs. Suyanto",
+    "head_phone": "081233889911"
+  }
+  ```
+- **Respon Sukses (200 OK)**: Mengembalikan entitas dusun terbarui.
+
+#### 8.3.4 Menghapus Wilayah Dusun
+- **Method**: `DELETE`
+- **Endpoint**: `/api/admin/hamlets/{id}`
+- **Proteksi Integritas**: Ditolak (422) jika terdapat riwayat berkas pengajuan atau data penerima bansos yang terhubung dengan dusun tersebut.
+
+---
+
+### 8.4 Pengaturan Konfigurasi Sistem & Scoring Dinamis (`/api/admin/settings`)
+
+#### 8.4.1 Mengambil Semua Pengaturan
+- **Method**: `GET`
+- **Endpoint**: `/api/admin/settings`
+- **Query Parameter (Opsional)**: `?group=village` atau `?group=scoring`
+- **Respon Sukses (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "grouped": {
+      "village": {
+        "village.name": "Desa Jarak",
+        "village.district": "Kecamatan Plosoklaten",
+        "village.regency": "Kabupaten Kediri",
+        "village.office_phone": "(0354) 7482910",
+        "village.whatsapp_center": "0812-3456-7890",
+        "village.active_budget_year": 2026
+      },
+      "scoring": {
+        "scoring.rtlh_weights": {
+          "dinding": 25,
+          "lantai": 25,
+          "atap": 25,
+          "mck": 25
+        },
+        "scoring.disability_weights": {
+          "tingkat_disabilitas": 40,
+          "kondisi_ekonomi": 30,
+          "rekomendasi_nakes": 30
+        },
+        "scoring.minimum_passing_score": 50,
+        "scoring.high_urgency_threshold": 75
+      },
+      "notification": {
+        "notification.whatsapp_enabled": true,
+        "notification.simulation_mode": true
+      },
+      "transparency": {
+        "transparency.privacy_masking_enabled": true,
+        "transparency.open_ledger_enabled": true
+      }
+    }
+  }
+  ```
+
+#### 8.4.2 Memperbarui Pengaturan (*Batch Update*)
+Memperbarui satu atau lebih parameter konfigurasi sekaligus. Scoring engine ([`ScoringService.php`](file:///home/ascension/Projects/SAPA-JARAK/app/Services/ScoringService.php)) langsung menerapkan bobot baru tanpa redeploy aplikasi.
+
+- **Method**: `PUT`
+- **Endpoint**: `/api/admin/settings`
+- **Header Wajib**: `Authorization: Bearer <access_token>`
+- **Payload Request**:
+  ```json
+  {
+    "settings": {
+      "village.office_phone": "(0354) 7482910-PST",
+      "scoring.rtlh_weights": {
+        "dinding": 30,
+        "lantai": 30,
+        "atap": 20,
+        "mck": 20
+      },
+      "scoring.minimum_passing_score": 55
+    }
+  }
+  ```
+- **Respon Sukses (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "message": "Konfigurasi pengaturan administrasi dan scoring berhasil diperbarui.",
+    "data": { ... }
+  }
+  ```
+- *Catatan Audit*: Perubahan dicatat ke `audit_logs` dengan aksi `SETTINGS_UPDATED` menyertakan komparasi `old_values` dan `new_values`.
+
+#### 8.4.3 Mengambil Pengaturan Berdasarkan Kunci Tunggal
+- **Method**: `GET`
+- **Endpoint**: `/api/admin/settings/{key}` (Contoh: `/api/admin/settings/village.active_budget_year`)
+- **Respon Sukses (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "key": "village.active_budget_year",
+    "value": 2026
+  }
+  ```
+
+#### 8.4.4 Memperbarui Pengaturan Kunci Tunggal
+- **Method**: `PUT`
+- **Endpoint**: `/api/admin/settings/{key}`
+- **Payload Request**:
+  ```json
+  {
+    "value": 2027
+  }
+  ```
+- **Respon Sukses (200 OK)**.
+
+---
+
+### 8.5 Pengawasan Log Jejak Audit Kepatuhan ([FR-020](04-unimplemented-and-gap-analysis.md))
+
+Endpoint pemantauan audit bagi Kepala Desa dan Admin untuk menginspeksi seluruh aktivitas mutasi sistem, otentikasi, perizinan, dan alur bansos.
+
+#### 8.5.1 Mengambil Daftar Log Jejak Audit
+- **Method**: `GET`
+- **Endpoint**: `/api/admin/audit-logs`
+- **Header Wajib**: `Authorization: Bearer <access_token>`
+- **Query Parameter (Opsional)**:
+  - `action`: Filter aksi (contoh: `STATUS_CHANGED`, `USER_CREATED`, `SETTINGS_UPDATED`, `DOCUMENT_UPLOADED`).
+  - `actor_name`: Filter nama aparatur pembuat tindakan.
+  - `user_id`: Filter ID pengguna.
+  - `entity_type`: Filter kelas entitas (misal: `App\Models\Application`).
+  - `date_from`: Tanggal awal pencarian (`YYYY-MM-DD`).
+  - `date_to`: Tanggal akhir pencarian (`YYYY-MM-DD`).
+  - `search`: Pencarian teks bebas pada nama aksi, aktor, atau alamat IP.
+  - `per_page`: Jumlah entri per halaman (default 20, maks 100).
+- **Respon Sukses (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "stats": {
+      "total_logs": 42,
+      "today_logs": 8,
+      "top_actions": [
+        { "action": "STATUS_CHANGED", "count": 20 },
+        { "action": "USER_CREATED", "count": 8 },
+        { "action": "SETTINGS_UPDATED", "count": 6 }
+      ]
+    },
+    "data": [
+      {
+        "id": 42,
+        "application_id": 1,
+        "user_id": 1,
+        "actor_name": "Administrator SAPA-JARAK",
+        "action": "SETTINGS_UPDATED",
+        "entity_type": "App\\Models\\Setting",
+        "entity_id": null,
+        "old_values": {
+          "village.office_phone": "(0354) 7482910"
+        },
+        "new_values": {
+          "village.office_phone": "(0354) 7482910-PST"
+        },
+        "ip_address": "127.0.0.1",
+        "user_agent": "Mozilla/5.0 ...",
+        "created_at": "2026-09-29T11:49:36.000000Z",
+        "user": {
+          "id": 1,
+          "name": "Administrator SAPA-JARAK",
+          "role": "admin",
+          "email": "admin@jarak-kediri.desa.id"
+        },
+        "application": null
+      }
+    ],
+    "pagination": {
+      "current_page": 1,
+      "last_page": 3,
+      "per_page": 20,
+      "total": 42
+    }
+  }
+  ```
+
+#### 8.5.2 Mengambil Detail Log Jejak Audit
+- **Method**: `GET`
+- **Endpoint**: `/api/admin/audit-logs/{id}`
+- **Header Wajib**: `Authorization: Bearer <access_token>`
+- **Respon Sukses (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "id": 42,
+      "actor_name": "Administrator SAPA-JARAK",
+      "action": "SETTINGS_UPDATED",
+      "entity_type": "App\\Models\\Setting",
+      "old_values": { ... },
+      "new_values": { ... },
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0 ...",
+      "created_at": "2026-09-29T11:49:36.000000Z",
+      "user": { ... }
+    }
+  }
+  ```
+
 
 

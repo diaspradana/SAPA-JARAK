@@ -114,4 +114,15 @@ class KasunController extends Controller
             'data' => $recommendation,
         ]);
     }
+
+    /**
+     * Export Kasun survey queue & assessment data to Excel (.xls) or CSV.
+     */
+    public function export(Request $request, \App\Services\ExportService $exportService)
+    {
+        $user = $request->user();
+        $filters = $request->only(['hamlet_id', 'status', 'delimiter']);
+        $format = $request->input('format', 'csv');
+        return $exportService->exportKasunQueue($filters, $user, $format);
+    }
 }

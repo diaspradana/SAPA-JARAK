@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             HamletSeeder::class,
             UserSeeder::class,
             ApplicationSeeder::class,
+            SettingSeeder::class,
         ]);
     }
 }
