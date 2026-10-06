@@ -375,17 +375,174 @@ docker exec sapa_jarak_app php artisan test
 
 ---
 
-## 7. Pengaturan Reverse Proxy Eksternal Host & SSL HTTPS (Certbot)
+## 7. Metode Penerbitan Domain Publik & SSL HTTPS (*Domain Binding & Ingress Options*)
 
-Di lingkungan produksi publik, kontainer `sapa_jarak_app` (port 8000) harus diletakkan di belakang Reverse Proxy Nginx pada sistem operasi induk (*host OS*) untuk menangani enkripsi sertifikat SSL HTTPS (Let's Encrypt).
+Di lingkungan produksi publik, aplikasi SAPA-JARAK memerlukan nama domain resmi (misal: `sapa-jarak.desa.id`) dengan enkripsi sertifikat SSL HTTPS. Tersedia dua pilihan metode arsitektur ingress:
+1. **Metode A: Cloudflare Tunnel (`cloudflared`) Terkontainerisasi** (*Modern, Zero-Inbound-Port, & Sangat Disarankan*)
+2. **Metode B: Reverse Proxy Nginx Host Tradisional & Certbot Let's Encrypt** (*Metode Konvensional / Host-Level*)
 
-### 7.1 Pasang Nginx dan Certbot pada Host VPS
+### Matriks Perbandingan Ingress:
+
+| Aspek Evaluasi | Metode A: Cloudflare Tunnel Kontainer | Metode B: Host Nginx & Certbot |
+|:---|:---|:---|
+| **Port Terbuka Firewall VPS (UFW)** | **0 Port Web Terbuka** (Hanya SSH 22 yang diizinkan) | Port 80 (HTTP) dan 443 (HTTPS) wajib dibuka ke publik |
+| **Eksposur Alamat IP Publik VPS** | **Terlindungi 100%** (Disembunyikan di balik Cloudflare Edge) | Terekspos langsung ke internet publik |
+| **Ketergantungan Paket Host OS** | **Nol** (Semua komponen berjalan di dalam Docker) | Wajib pasang `nginx`, `certbot`, `python3-certbot-nginx` di Ubuntu |
+| **Manajemen Sertifikat SSL** | Otomatis di-handle oleh Cloudflare Edge (*Managed Edge SSL*) | Wajib perpanjangan Certbot berkala via Cron / Systemd Timer |
+| **Ketahanan Jaringan (NAT/CGNAT)** | Berjalan stabil meski VPS berada di balik NAT / tanpa IP statis | Wajib memiliki IP Publik Statis ter-binding langsung ke VPS |
+| **Beban Memori (*Overhead*)** | `cloudflared` hanya ~25 – 35 MB RAM | Nginx Host master+worker + Certbot ~30 – 50 MB RAM |
+| **Perlindungan DDoS & WAF** | Bawaan (*Built-in Cloudflare L3/L4/L7 Mitigation & Bot Fight*) | Bergantung pada konfigurasi manual iptables/fail2ban di host |
+
+---
+
+### 7.1 METODE A: Cloudflare Tunnel dalam Docker Stack (Direkomendasikan)
+
+Cloudflare Tunnel (`cloudflared`) memungkinkan kontainer aplikasi terhubung langsung ke jaringan global Cloudflare Edge melalui koneksi terowongan keluar (*outbound tunnel*) terenkripsi (QUIC/HTTPS). Kontainer bertindak sebagai inisiator koneksi keluar sehingga VPS tidak memerlukan port masuk (*inbound port*) yang terbuka.
+
+```mermaid
+flowchart LR
+    Citizen["Warga & Pamong Desa<br/>(Peramban / Smartphone)"] -->|HTTPS :443| CFEdge["Cloudflare Edge Network<br/>(DDoS Protection, WAF, Edge SSL)"]
+    
+    subgraph VPS ["Peladen VPS Desa Jarak (Firewall: Port 80/443 Ditutup Total)"]
+        subgraph DockerNet ["Docker Network: sapa_network (Bridge)"]
+            CFTunnel["Kontainer: sapa_jarak_tunnel<br/>(cloudflare/cloudflared)"]
+            AppCont["Kontainer: sapa_jarak_app<br/>(Nginx Internal :80 / PHP-FPM :9000)"]
+        end
+    end
+
+    CFTunnel -.->|Koneksi Outbound Terenkripsi<br/>(QUIC / HTTPS Port 7844)| CFEdge
+    CFEdge -->|Tunnel Payload Ingress| CFTunnel
+    CFTunnel -->|HTTP Internal Docker DNS :80| AppCont
+```
+
+#### Langkah-Langkah Penerapan:
+
+##### 1. Pembuatan Tunnel pada Cloudflare Zero Trust Dashboard
+1. Buka [Cloudflare Zero Trust Dashboard](https://one.dash.cloudflare.com/) menggunakan akun pengelola domain desa.
+2. Navigasikan ke menu **Networks** ➔ **Tunnels** ➔ Klik tombol **Create a tunnel**.
+3. Pilih konektor tipe **Cloudflared**, beri nama tunnel (contoh: `sapa-jarak-vps`), lalu klik **Save tunnel**.
+4. Pada tahapan *Install and run a connector*, pilih lingkungan **Docker** dan salin nilai token tunnel base64 yang ditampilkan (parameter setelah `--token`).
+5. Masuk ke tab **Public Hostnames**, lalu daftarkan domain aplikasi:
+   - **Subdomain / Domain**: Masukkan domain desa (misal: `sapa-jarak` pada domain `desa.id`).
+   - **Type**: `HTTP`
+   - **URL**: `app:80` *(menggunakan nama servis internal Docker `app` pada port internal 80)*
+6. *(Opsional - Proteksi phpMyAdmin)*: Anda dapat menambahkan Public Hostname kedua:
+   - **Subdomain / Domain**: `pma.sapa-jarak.desa.id`
+   - **Type**: `HTTP`
+   - **URL**: `phpmyadmin:80`
+   - Pasang kebijakan autentikasi email OTP / Zero Trust Access agar panel basis data tidak dapat diakses orang asing.
+
+##### 2. Daftarkan Service `tunnel` pada `docker-compose.yml`
+Tambahkan blok layanan `tunnel` di bawah `services` pada berkas `docker-compose.yml`:
+
+```yaml
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: sapa_jarak_tunnel
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      TUNNEL_TOKEN: "${CLOUDFLARE_TUNNEL_TOKEN:-}"
+    networks:
+      - sapa_network
+    depends_on:
+      - app
+```
+
+##### 3. Konfigurasi Berkas Lingkungan `.env`
+Buka berkas `.env` pada VPS dan cantumkan token yang diperoleh dari Cloudflare, serta sesuaikan `APP_URL`:
+
+```ini
+APP_URL=https://sapa-jarak.desa.id
+CLOUDFLARE_TUNNEL_TOKEN=eyJhIjoiYmE5Mm...kredensial_token_panjang_dari_cloudflare...
+```
+
+##### 4. Penyesuaian Penanganan Trusted Proxies di Laravel 11 (`bootstrap/app.php`)
+Karena Cloudflare Tunnel menerima lalu lintas HTTPS dari pengguna lalu meneruskannya ke port HTTP internal `app:80`, Laravel perlu mempercayai header proksi (`X-Forwarded-Proto`, `CF-Connecting-IP`). Hal ini krusial untuk mencegah galat *infinite redirect loop* dan memastikan URL aset, rute API, dan pagination otomatis menggunakan skema `https://`.
+
+Tambahkan baris `$middleware->trustProxies(at: '*');` pada berkas `bootstrap/app.php`:
+
+```php
+    ->withMiddleware(function (Middleware $middleware) {
+        // Percayai seluruh header proksi Cloudflare Tunnel & Nginx internal
+        $middleware->trustProxies(at: '*');
+
+        $middleware->validateCsrfTokens(except: [
+            'api/*',
+        ]);
+        $middleware->redirectGuestsTo(fn (\Illuminate\Http\Request $request) => $request->is('api/*') ? null : '/');
+        $middleware->alias([
+            'role' => \App\Http\Middleware\CheckUserRole::class,
+        ]);
+    })
+```
+
+##### 5. Pengerasan Firewall Host (UFW Zero Inbound Web Ports)
+Setelah Cloudflare Tunnel aktif, Anda dapat menutup port 80, 443, dan 8000 secara total pada firewall host VPS:
+
+```bash
+# Hapus aturan izin port web jika sebelumnya aktif
+sudo ufw delete allow 80/tcp
+sudo ufw delete allow 443/tcp
+sudo ufw delete allow 8000/tcp
+
+# Pastikan hanya port SSH yang diizinkan masuk
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow 22/tcp comment 'SSH Remote Access'
+sudo ufw reload
+sudo ufw status verbose
+```
+
+---
+
+#### Analisis Batasan Teknis & Pertimbangan Operasional (*Technical Limitations & Trade-offs*):
+
+Meskipun metode Cloudflare Tunnel sangat disarankan untuk kepraktisan dan keamanannya, tim administrator sistem wajib memperhatikan 7 batasan teknis berikut:
+
+1. **Batas Ukuran Payload Request Body (100 MB Limit di Paket Free/Pro)**:
+   - Cloudflare membatasi ukuran unggahan HTTP POST/PUT maksimal **100 MB** untuk akun Free/Pro.
+   - *Dampak pada SAPA-JARAK*: Berkas foto bukti verifikasi lapangan (KTP, kondisi fisik rumah/RTLH) pada sistem SAPA-JARAK dibatasi maksimal 20–25 MB sehingga aman. Namun, jika ada kebutuhan mengunggah video dokumentasi berdurasi panjang atau arsip data mentah berukuran > 100 MB, unggahan akan langsung ditolak oleh edge Cloudflare dengan galat `413 Request Entity Too Large`.
+
+2. **Batas Waktu Timeout Respon Origin 100 Detik (HTTP 524 Gateway Timeout)**:
+   - Cloudflare memberlakukan batas waktu tunggu maksimal **100 detik** untuk respon dari origin server pada paket gratis tanpa pengecualian.
+   - *Dampak pada SAPA-JARAK*: Pada VPS 1 vCPU, proses komputasi sinkron yang berat (seperti pembuatan dokumen PDF DomPDF ratusan halaman sekaligus atau inferensi batch face blurring) wajib selesai dalam tempo < 100 detik. Jika melampaui 100 detik, Cloudflare akan memutuskan sambungan dengan pesan galat `HTTP 524 A Timeout Occurred`.
+   - *Mitigasi*: Eksekusi ekspor masif harus menggunakan arsitektur streaming memori rendah ($O(1)$) seperti modul `ExportService` yang telah teruji pada Dokumen 13, atau dipindahkan ke *background queue worker*.
+
+3. **Kewajiban Pengalihan Authoritative Nameserver (DNS Delegation)**:
+   - Penggunaan Cloudflare mewajibkan pengelolaan *Authoritative DNS* domain dialihkan ke nameserver Cloudflare (misal: `ns1.cloudflare.com`).
+   - *Dampak pada Domain `.desa.id`*: Tim IT Desa Jarak harus memiliki akses administratif ke portal pengelola domain instansi (PANDI / Kominfo / Diskominfo Kabupaten) untuk mengganti NS. Apabila terdapat kebijakan institusional daerah yang mewajibkan nameserver tetap berada di DNS induk Kominfo, maka metode Cloudflare Tunnel tidak dapat diaktifkan dan harus menggunakan Metode B.
+
+4. **Resolusi Real Client IP pada Log Audit & Rate Limiting**:
+   - Paket data TCP yang diterima kontainer `sapa_jarak_app` secara fisik berasal dari kontainer `sapa_jarak_tunnel` (alamat IP bridge Docker privat `172.x.x.x`).
+   - *Dampak pada SAPA-JARAK*: Jika penyesuaian `trustProxies(at: '*')` di Laravel diabaikan, fitur log audit kepatuhan (FR-020) dan proteksi rate limiting OTP hanya akan mencatat IP internal Docker. IP asli pemohon tersimpan di header `CF-Connecting-IP` atau `X-Forwarded-For`.
+
+5. **Inkompatibilitas Perangkat Keamanan Host-Level (`fail2ban`)**:
+   - Karena port 80 dan 443 ditutup di level firewall host, utilitas keamanan tradisional seperti `fail2ban` berbasis `iptables` di host OS tidak akan pernah melihat adanya paket masuk dari penyerang web.
+   - *Solusi*: Seluruh mitigasi serangan web, pembatasan laju (*rate limiting*), dan penangkalan bot harus dikonfigurasi melalui menu **WAF & Security Rules** pada dashboard Cloudflare atau middleware Laravel.
+
+6. **Ketiadaan Akses Langsung Jaringan Lokal (*Offline / LAN Isolation*)**:
+   - Jika peladen VPS ditempatkan secara fisik di Kantor Desa dan koneksi internet desa mengalami gangguan (down), pamong desa di kantor tidak dapat mengakses sistem melalui domain `sapa-jarak.desa.id` karena lalu lintas harus berputar melewati Cloudflare Edge di internet.
+   - *Mitigasi*: Tetap pertahankan binding port internal host (`127.0.0.1:8000:80` atau IP lokal LAN) untuk kebutuhan akses darurat jika server beroperasi secara lokal (*on-premises*).
+
+7. **Ketergantungan Infrastruktur Pihak Ketiga (*Third-Party Vendor Lock-in*)**:
+   - Ketersediaan operasional sistem sepenuhnya bergantung pada uptime jaringan tepi dan terowongan Cloudflare. Jika terjadi gangguan jaringan routing internasional atau pemadaman sistem Cloudflare, aplikasi tidak dapat diakses warga dari internet publik.
+
+---
+
+### 7.2 METODE B: Reverse Proxy Nginx Host Tradisional & SSL Certbot (Metode Konvensional)
+
+Metode ini digunakan jika domain desa (`.desa.id`) tidak dapat dialihkan nameserver-nya ke Cloudflare karena regulasi Diskominfo, atau jika sistem memerlukan keterikatan IP publik statis secara langsung.
+
+Kontainer `sapa_jarak_app` (port 8000) diletakkan di belakang Reverse Proxy Nginx pada sistem operasi induk (*host OS*) untuk menangani enkripsi sertifikat SSL HTTPS (Let's Encrypt).
+
+#### 7.2.1 Pasang Nginx dan Certbot pada Host VPS
 ```bash
 sudo apt-get update
 sudo apt-get install -y nginx certbot python3-certbot-nginx
 ```
 
-### 7.2 Buat Konfigurasi Virtual Host Nginx Host
+#### 7.2.2 Buat Konfigurasi Virtual Host Nginx Host
 Buat file konfigurasi `/etc/nginx/sites-available/sapa-jarak`:
 ```nginx
 server {
@@ -393,7 +550,7 @@ server {
     listen [::]:80;
     server_name sapa-jarak.desa.id www.sapa-jarak.desa.id;
 
-    # Batasan Ukuran Maksimal Unggah Dokumen (20MB)
+    # Batasan Ukuran Maksimal Unggah Dokumen (25MB)
     client_max_body_size 25M;
 
     # Gzip Compression
@@ -426,7 +583,7 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-### 7.3 Pasang Sertifikat SSL Gratis (Let's Encrypt)
+#### 7.2.3 Pasang Sertifikat SSL Gratis (Let's Encrypt)
 ```bash
 sudo certbot --nginx -d sapa-jarak.desa.id -d www.sapa-jarak.desa.id --agree-tos -m admin@jarak-kediri.desa.id --redirect
 ```
