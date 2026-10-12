@@ -441,3 +441,127 @@ export const INITIAL_NOTIFICATIONS = [
     message: "Bantuan Rehabilitasi RTLH #JRK-KLS-2026-009 telah selesai 100% dan Berita Acara Serah Terima (BAST) telah disahkan. Terima kasih atas partisipasi aktif masyarakat Desa Jarak."
   }
 ];
+
+export const OFFICIAL_KASUN_ACCOUNTS = [
+  {
+    id: "kasun-jaraklor",
+    name: "Putro Dwi S.",
+    email: "kasun.jaraklor@jarak-kediri.desa.id",
+    phone: "081234567801",
+    password: "123456",
+    role: "kasun_jaraklor",
+    roleLabel: "Kasun Jarak Lor",
+    badgeVariant: "info",
+    nik: "3506121102850001",
+    dusunId: "jaraklor",
+    dusunName: "Jarak Lor",
+    rt: "01",
+    rw: "01",
+    address: "Dusun Jarak Lor, Desa Jarak",
+    avatarInitials: "PD",
+    subtitle: "Wilayah Dusun Jarak Lor (RT 01–07)",
+    description: "Akun verifikator lapangan Kasun Jarak Lor untuk penilaian RTLH dan Disabilitas."
+  },
+  {
+    id: "kasun-sagi",
+    name: "Miftahudin",
+    email: "kasun.sagi@jarak-kediri.desa.id",
+    phone: "081234567804",
+    password: "123456",
+    role: "kasun_sagi",
+    roleLabel: "Kasun Sagi",
+    badgeVariant: "info",
+    nik: "3506121406870002",
+    dusunId: "sagi",
+    dusunName: "Sagi",
+    rt: "01",
+    rw: "01",
+    address: "Dusun Sagi, Desa Jarak",
+    avatarInitials: "MF",
+    subtitle: "Wilayah Dusun Sagi (RT 01–08)",
+    description: "Akun verifikator lapangan Kasun Sagi untuk penilaian RTLH dan Disabilitas."
+  },
+  {
+    id: "kasun-kalasantimur",
+    name: "SeptianYoga P.",
+    email: "kasun.kalasantimur@jarak-kediri.desa.id",
+    phone: "081234567803",
+    password: "123456",
+    role: "kasun_kalasan",
+    roleLabel: "Kasun Kalasan Timur",
+    badgeVariant: "info",
+    nik: "3506121909900003",
+    dusunId: "kalasan",
+    dusunName: "Kalasan Timur",
+    rt: "01",
+    rw: "01",
+    address: "Dusun Kalasan Timur, Desa Jarak",
+    avatarInitials: "SY",
+    subtitle: "Wilayah Dusun Kalasan Timur (RT 01–06)",
+    description: "Akun verifikator lapangan Kasun Kalasan Timur untuk penilaian RTLH dan Disabilitas."
+  },
+  {
+    id: "kasun-kalasanbarat",
+    name: "Rindi Egawanto",
+    email: "kasun.kalasanbarat@jarak-kediri.desa.id",
+    phone: "081234567805",
+    password: "123456",
+    role: "kasun_simbar",
+    roleLabel: "Kasun Kalasan Barat",
+    badgeVariant: "info",
+    nik: "3506122511880004",
+    dusunId: "simbar",
+    dusunName: "Kalasan Barat",
+    rt: "01",
+    rw: "01",
+    address: "Dusun Kalasan Barat / Simbar, Desa Jarak",
+    avatarInitials: "RE",
+    subtitle: "Wilayah Dusun Kalasan Barat (RT 01–04)",
+    description: "Akun verifikator lapangan Kasun Kalasan Barat untuk penilaian RTLH dan Disabilitas."
+  }
+];
+
+export const DEMO_ACCOUNTS = [
+  {
+    id: "demo-warga",
+    name: "Danang Prasetyo",
+    email: "warga@jarak-kediri.desa.id",
+    phone: "081399881234",
+    password: "password",
+    role: "public",
+    roleLabel: "Warga / Pelapor Publik",
+    badgeVariant: "neutral",
+    nik: "3506121908620002",
+    kkNumber: "3506122005080015",
+    dusunId: "kalasan",
+    dusunName: "Kalasan Timur",
+    rt: "03",
+    rw: "01",
+    address: "RT 03 / RW 01, Dusun Kalasan Timur, Desa Jarak",
+    avatarInitials: "DP",
+    subtitle: "Warga Dusun Kalasan Timur RT 03/RW 01",
+    description: "Akun simulasi warga masyarakat untuk mengajukan bantuan RTLH/Disabilitas dan memantau tiket secara mandiri."
+  },
+  ...OFFICIAL_KASUN_ACCOUNTS,
+  {
+    id: "demo-desa",
+    name: "Bpk. Ahmad Fauzi",
+    email: "kesra@jarak-kediri.desa.id",
+    phone: "081234567001",
+    password: "password",
+    role: "desa",
+    roleLabel: "Pemerintah Desa (Kasi Kesra)",
+    badgeVariant: "success",
+    nik: "3506121010800002",
+    kkNumber: "3506122005080002",
+    dusunId: null,
+    dusunName: "Kantor Balai Desa",
+    rt: "00",
+    rw: "00",
+    address: "Kantor Balai Desa Jarak",
+    avatarInitials: "AF",
+    subtitle: "Kasi Kesra & Pengelola Anggaran APBDes",
+    description: "Akun aparatur desa untuk verifikasi DTKS, alokasi APBDes, monitoring pengerjaan, dan pengesahan BAST."
+  }
+];
+

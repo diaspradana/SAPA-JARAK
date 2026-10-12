@@ -16,6 +16,8 @@ import TransparencyView from './views/public/TransparencyView';
 import KasunDashboardView from './views/kasun/KasunDashboardView';
 import KasunSurveyView from './views/kasun/KasunSurveyView';
 import DesaDashboardView from './views/desa/DesaDashboardView';
+import LoginView from './views/auth/LoginView';
+import RegisterView from './views/auth/RegisterView';
 
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
 
@@ -26,6 +28,10 @@ function MainRouter() {
     switch (currentView) {
       case 'home':
         return <HomeView />;
+      case 'login':
+        return <LoginView />;
+      case 'register':
+        return <RegisterView />;
       case 'ajukan':
         return <SubmissionWizardView />;
       case 'lacak':

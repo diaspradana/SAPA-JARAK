@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useVoice } from '../../context/VoiceContext';
-import RoleSwitcher from './RoleSwitcher';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { 
@@ -16,9 +15,23 @@ import {
   RotateCcw,
   Sun,
   Moon,
-  Sparkles,
-  ShieldCheck
+  ShieldCheck,
+  LogIn,
+  UserPlus,
+  LogOut,
+  ChevronDown,
+  PhoneCall,
+  User,
+  HeartHandshake
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator
+} from '../ui/dropdown-menu';
 
 export default function Navbar() {
   const { 
@@ -31,17 +44,19 @@ export default function Navbar() {
     lowBandwidthMode,
     setLowBandwidthMode,
     resetDatabase,
-    showConfirm
+    showConfirm,
+    currentUser,
+    logout
   } = useApp();
 
   const { voiceEnabled, toggleVoice } = useVoice();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems = [
-    { id: 'home', label: 'Beranda Pelayanan' },
-    { id: 'ajukan', label: 'Pengajuan Bantuan' },
-    { id: 'lacak', label: 'Pelacakan Tiket' },
-    { id: 'transparansi', label: 'Transparansi APBDes' },
+    { id: 'home', label: 'Beranda' },
+    { id: 'ajukan', label: 'Ajukan Bantuan' },
+    { id: 'lacak', label: 'Lacak Permohonan' },
+    { id: 'transparansi', label: 'Transparansi Dana' },
   ];
 
   const handleNavClick = (id) => {
@@ -52,10 +67,10 @@ export default function Navbar() {
 
   const handleReset = async () => {
     const result = await showConfirm({
-      title: 'Reset Database Simulasi?',
-      text: 'Semua berkas dan riwayat pengajuan akan dikembalikan ke data awal demo.',
-      confirmButtonText: 'Reset Data',
-      confirmColorClass: 'bg-rose-700 hover:bg-rose-800',
+      title: 'Kembalikan ke Data Awal Demo?',
+      text: 'Semua formulir pengajuan dan berkas survei akan direset ke kondisi awal demo.',
+      confirmButtonText: 'Ya, Reset Data',
+      confirmColorClass: 'bg-rose-600 hover:bg-rose-700',
       icon: 'warning'
     });
     if (result.isConfirmed) {
@@ -64,62 +79,69 @@ export default function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b border-border shadow-2xs transition-colors">
+    <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-md border-b border-border shadow-xs transition-colors">
       
-      {/* Top Institutional Banner Strip */}
-      <div className="bg-primary/95 text-primary-foreground text-[11px] font-medium py-1 px-4 sm:px-6 border-b border-primary/20">
+      {/* Top Banner Strip */}
+      <div className="bg-emerald-900 text-emerald-100 text-xs font-medium py-1.5 px-4 sm:px-6 border-b border-emerald-800">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="font-extrabold tracking-wide">PEMERINTAH KABUPATEN KEDIRI</span>
-            <span className="opacity-40">•</span>
-            <span className="opacity-90">Kecamatan Plosoklaten</span>
-            <span className="opacity-40">•</span>
-            <span className="font-black text-emerald-300">Desa Jarak</span>
+            <span className="font-extrabold tracking-wide text-white">PEMDES JARAK</span>
+            <span className="opacity-50">•</span>
+            <span className="opacity-90">Kec. Plosoklaten, Kab. Kediri</span>
+            <span className="opacity-50 hidden sm:inline">•</span>
+            <span className="hidden sm:inline text-emerald-300 font-semibold">Layanan Sosial RTLH & Disabilitas</span>
           </div>
 
-          <div className="hidden sm:flex items-center gap-4 text-[10px] opacity-80 font-mono">
-            <span>Standar Pelayanan Publik Trans-Desa</span>
-            <span>Kode: 35.06.12.2005</span>
+          <div className="flex items-center gap-4 text-xs font-medium">
+            <a 
+              href="https://wa.me/6281234567890" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="flex items-center gap-1.5 text-emerald-200 hover:text-white transition-colors"
+            >
+              <PhoneCall size={12} className="text-emerald-400" />
+              <span>Bantuan WA: <b>0812-3456-7890</b></span>
+            </a>
           </div>
         </div>
       </div>
 
       {/* Main Navigation Bar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-18 flex items-center justify-between gap-4">
         
         {/* Brand / Emblem */}
         <div 
-          className="flex items-center gap-3 cursor-pointer select-none group" 
+          className="flex items-center gap-3.5 cursor-pointer select-none group" 
           onClick={() => handleNavClick('home')}
         >
-          <div className="w-9 h-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-black text-sm border border-primary/30 shadow-xs group-hover:scale-105 transition-transform">
-            <Building2 size={18} className="text-emerald-300" />
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-700 to-emerald-900 text-white flex items-center justify-center font-black shadow-md group-hover:scale-105 transition-transform">
+            <Building2 size={22} className="text-emerald-200" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-black text-base text-foreground tracking-tight">SAPA-JARAK</span>
-              <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 font-bold border-border bg-muted/60 text-muted-foreground uppercase">
-                Verifikasi 3 Tingkat
-              </Badge>
+              <span className="font-black text-lg sm:text-xl text-foreground tracking-tight">SAPA-JARAK</span>
+              <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-xs px-2 py-0.5 rounded-full font-bold">
+                Desa Jarak
+              </span>
             </div>
-            <p className="text-[11px] text-muted-foreground font-medium line-clamp-1">
-              Sistem Aspirasi & Bantuan Sosial RTLH & Disabilitas
+            <p className="text-xs text-muted-foreground font-medium hidden sm:block">
+              Sistem Bantuan Sosial & Kesejahteraan Warga
             </p>
           </div>
         </div>
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden md:flex items-center gap-1 bg-muted/50 p-1 rounded-lg border border-border/50">
+        <nav className="hidden lg:flex items-center gap-1.5 bg-muted/60 p-1.5 rounded-xl border border-border/60">
           {navItems.map((item) => {
             const isActive = currentView === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => handleNavClick(item.id)}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                className={`px-3.5 py-2 rounded-lg text-sm font-bold transition-all ${
                   isActive 
-                    ? 'bg-background text-foreground shadow-xs font-bold border border-border/60' 
-                    : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+                    ? 'bg-background text-emerald-700 dark:text-emerald-400 shadow-xs border border-border/60' 
+                    : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
                 }`}
               >
                 {item.label}
@@ -129,71 +151,130 @@ export default function Navbar() {
         </nav>
 
         {/* Header Right Actions */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex items-center gap-2">
           
-          {/* Dark / Light Mode Toggle Button */}
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={toggleTheme}
-            className="h-8 w-8 text-foreground border-border bg-background shadow-2xs"
-            title={theme === 'dark' ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}
-            aria-label="Toggle Theme"
-          >
-            {theme === 'dark' ? (
-              <Sun size={15} className="text-amber-400" />
-            ) : (
-              <Moon size={15} className="text-primary" />
-            )}
-          </Button>
-
           {/* Voice Guide Toggle */}
           <Button
             variant={voiceEnabled ? "secondary" : "outline"}
             size="sm"
             onClick={toggleVoice}
-            className={`h-8 gap-1.5 px-2.5 text-xs font-semibold shadow-2xs ${
-              voiceEnabled ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30' : 'border-border'
+            className={`h-9 gap-1.5 px-3 text-xs font-bold rounded-lg border-border ${
+              voiceEnabled ? 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950 dark:text-amber-200' : ''
             }`}
-            title="Aksesibilitas Suara (Text-to-Speech)"
+            title="Bantuan Suara (Text-to-Speech untuk lansia dan disabilitas netra)"
           >
-            {voiceEnabled ? <Volume2 size={14} className="text-amber-600 dark:text-amber-400" /> : <VolumeX size={14} className="text-muted-foreground" />}
+            {voiceEnabled ? <Volume2 size={16} className="text-amber-600" /> : <VolumeX size={16} className="text-muted-foreground" />}
             <span className="hidden xl:inline">{voiceEnabled ? 'Suara Aktif' : 'Panduan Suara'}</span>
           </Button>
 
-          {/* Low Bandwidth Mode Toggle */}
+          {/* Theme Toggle Button */}
           <Button
-            variant={lowBandwidthMode ? "secondary" : "outline"}
-            size="sm"
-            onClick={() => setLowBandwidthMode(!lowBandwidthMode)}
-            className={`h-8 gap-1.5 px-2.5 text-xs font-semibold shadow-2xs ${
-              lowBandwidthMode ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30' : 'border-border'
-            }`}
-            title="Mode Hemat Kuota (Offline First)"
+            variant="outline"
+            size="icon"
+            onClick={toggleTheme}
+            className="h-9 w-9 text-foreground border-border rounded-lg"
+            title={theme === 'dark' ? 'Ganti ke Mode Terang' : 'Ganti ke Mode Gelap'}
+            aria-label="Toggle Theme"
           >
-            {lowBandwidthMode ? <WifiOff size={14} className="text-emerald-600 dark:text-emerald-400" /> : <Wifi size={14} className="text-muted-foreground" />}
-            <span className="hidden xl:inline">{lowBandwidthMode ? 'Hemat Aktif' : 'Hemat Kuota'}</span>
+            {theme === 'dark' ? (
+              <Sun size={17} className="text-amber-400" />
+            ) : (
+              <Moon size={17} className="text-emerald-700" />
+            )}
           </Button>
 
-          {/* Simulated WhatsApp Notification Bell */}
+          {/* WhatsApp Notification Bell */}
           <Button
             variant="outline"
             size="icon"
             onClick={() => setIsNotifDrawerOpen(true)}
-            className="relative h-8 w-8 border-border bg-background text-foreground shadow-2xs"
-            title="Pusat Log Pesan WhatsApp"
+            className="relative h-9 w-9 border-border text-foreground rounded-lg"
+            title="Riwayat Pesan WhatsApp"
           >
-            <Bell size={15} />
+            <Bell size={17} />
             {notifications.length > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-emerald-600 text-white text-[9px] font-bold flex items-center justify-center animate-pulse">
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-4.5 px-1 rounded-full bg-emerald-600 text-white text-[11px] font-bold flex items-center justify-center animate-pulse">
                 {notifications.length}
               </span>
             )}
           </Button>
 
-          {/* Role Switcher Widget */}
-          <div className="hidden sm:block">
-            <RoleSwitcher />
+          {/* User Auth Buttons or Profile Dropdown (Desktop) */}
+          <div className="hidden sm:flex items-center gap-2 pl-1 border-l border-border/80">
+            {currentUser ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9 gap-2 px-3 font-bold border-emerald-600/40 bg-background hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-lg">
+                    <div className="w-6 h-6 rounded-full bg-emerald-700 text-white text-xs flex items-center justify-center font-bold">
+                      {currentUser.avatarInitials || 'U'}
+                    </div>
+                    <span className="max-w-[130px] truncate text-xs font-bold text-foreground">
+                      {currentUser.name}
+                    </span>
+                    <ChevronDown size={14} className="text-muted-foreground" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-72 p-2 shadow-xl border-border rounded-2xl">
+                  <DropdownMenuLabel className="p-2">
+                    <div className="text-sm font-extrabold text-foreground">{currentUser.name}</div>
+                    <div className="text-xs text-muted-foreground truncate">{currentUser.email || currentUser.phone}</div>
+                    <div className="mt-1.5">
+                      <span className="inline-block text-xs px-2 py-0.5 rounded-md font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                        {currentUser.roleLabel || currentUser.role}
+                      </span>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {currentUser.role.startsWith('kasun') && (
+                    <DropdownMenuItem onClick={() => handleNavClick('kasun_dashboard')} className="p-2 text-xs font-semibold cursor-pointer rounded-lg">
+                      📋 Buka Dashboard Survei Kasun
+                    </DropdownMenuItem>
+                  )}
+                  {(currentUser.role === 'desa' || currentUser.role === 'admin') && (
+                    <DropdownMenuItem onClick={() => handleNavClick('desa_dashboard')} className="p-2 text-xs font-semibold cursor-pointer rounded-lg">
+                      🏛️ Buka Dashboard Pengelolaan Desa
+                    </DropdownMenuItem>
+                  )}
+                  {currentUser.role === 'public' && (
+                    <>
+                      <DropdownMenuItem onClick={() => handleNavClick('ajukan')} className="p-2 text-xs font-semibold cursor-pointer rounded-lg">
+                        ✍️ Ajukan Permohonan Bantuan Baru
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleNavClick('lacak')} className="p-2 text-xs font-semibold cursor-pointer rounded-lg">
+                        🔍 Lacak Status Tiket Saya
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={logout} className="p-2 text-xs font-bold cursor-pointer text-rose-600 focus:text-rose-600 focus:bg-rose-50 dark:focus:bg-rose-950/50 rounded-lg">
+                    <LogOut size={14} className="mr-2" />
+                    Keluar Akun
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleNavClick('login')}
+                  className={`h-9 px-3.5 text-xs font-bold rounded-lg ${
+                    currentView === 'login' ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200' : 'text-foreground'
+                  }`}
+                >
+                  <LogIn size={15} className="mr-1.5" />
+                  <span>Masuk</span>
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => handleNavClick('register')}
+                  className="h-9 px-3.5 text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg shadow-xs"
+                >
+                  <UserPlus size={15} className="mr-1.5" />
+                  <span>Daftar Warga</span>
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Mobile Menu Trigger */}
@@ -201,31 +282,59 @@ export default function Navbar() {
             variant="outline"
             size="icon"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden h-8 w-8 border-border"
+            className="lg:hidden h-9 w-9 border-border rounded-lg"
+            aria-label="Buka Menu"
           >
-            {mobileMenuOpen ? <X size={16} /> : <Menu size={16} />}
+            {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
           </Button>
         </div>
       </div>
 
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-border bg-background p-4 space-y-3 animate-in slide-in-from-top-2 duration-200">
-          <div className="pb-2 border-b border-border flex items-center justify-between">
-            <div>
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Peran Uji Coba:</span>
-              <RoleSwitcher />
-            </div>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={toggleTheme}
-              className="gap-1.5 h-8 font-bold border-border"
-            >
-              {theme === 'dark' ? <Sun size={14} className="text-amber-400" /> : <Moon size={14} className="text-primary" />}
-              <span>{theme === 'dark' ? 'Terang' : 'Gelap'}</span>
-            </Button>
+        <div className="lg:hidden border-t border-border bg-background p-4 space-y-4 animate-in slide-in-from-top-2 duration-200 shadow-xl">
+          {/* Mobile Auth Actions */}
+          <div>
+            {currentUser ? (
+              <div className="p-3 rounded-xl bg-muted/60 border border-border flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-full bg-emerald-700 text-white text-sm flex items-center justify-center font-bold">
+                    {currentUser.avatarInitials || 'U'}
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-foreground">{currentUser.name}</div>
+                    <div className="text-xs text-muted-foreground">{currentUser.roleLabel || currentUser.role}</div>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    logout();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="h-8 text-xs font-bold text-rose-600 border-rose-300 hover:bg-rose-50"
+                >
+                  Keluar
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2.5">
+                <Button
+                  variant="outline"
+                  onClick={() => handleNavClick('login')}
+                  className="w-full text-sm font-bold h-11 gap-2 rounded-xl"
+                >
+                  <LogIn size={16} /> Masuk Akun
+                </Button>
+                <Button
+                  onClick={() => handleNavClick('register')}
+                  className="w-full text-sm font-bold h-11 gap-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl"
+                >
+                  <UserPlus size={16} /> Daftar Warga
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="space-y-1">
@@ -233,24 +342,25 @@ export default function Navbar() {
               <button
                 key={item.id}
                 onClick={() => handleNavClick(item.id)}
-                className={`w-full text-left py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
+                className={`w-full text-left py-3 px-4 rounded-xl text-sm font-bold flex items-center justify-between transition-colors ${
                   currentView === item.id 
-                    ? 'bg-primary/10 text-primary font-bold' 
+                    ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200' 
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                 }`}
               >
                 <span>{item.label}</span>
+                <span>→</span>
               </button>
             ))}
           </div>
 
-          <div className="pt-2 flex items-center justify-between text-xs text-muted-foreground border-t border-border">
-            <span>Desa Jarak (Kec. Plosoklaten)</span>
+          <div className="pt-3 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
+            <span>Kantor Balai Desa Jarak</span>
             <button
               onClick={handleReset}
-              className="text-primary hover:underline font-bold flex items-center gap-1 text-xs"
+              className="text-emerald-700 dark:text-emerald-400 hover:underline font-bold flex items-center gap-1"
             >
-              <RotateCcw size={12} /> Reset Data
+              <RotateCcw size={12} /> Reset Data Demo
             </button>
           </div>
         </div>

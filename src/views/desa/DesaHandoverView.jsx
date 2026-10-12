@@ -84,28 +84,28 @@ export default function DesaHandoverView({ onBack }) {
   }
 
   return (
-    <div className="space-y-5 animate-in fade-in-0 duration-200 text-xs">
+    <div className="space-y-6 animate-in fade-in-0 duration-200 text-sm">
       
       {/* Header */}
-      <Card className="border-border/80 shadow-sm">
-        <CardContent className="p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      <Card className="border-border/80 shadow-sm rounded-2xl">
+        <CardContent className="p-4 sm:p-5 flex items-center justify-between">
+          <div className="flex items-center gap-3.5">
             <Button
               variant="outline"
               size="icon"
               onClick={onBack}
-              className="h-8 w-8 border-border shadow-2xs"
+              className="h-9 w-9 rounded-xl border-border shadow-xs hover:bg-muted"
             >
-              <ArrowLeft size={15} />
+              <ArrowLeft size={16} />
             </Button>
             <div>
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="font-mono font-bold text-[11px] border-border bg-muted/40">
+                <Badge variant="outline" className="font-mono font-bold text-xs border-border bg-muted/40">
                   #{app.ticketNumber}
                 </Badge>
                 <StatusBadge status={app.status} size="sm" />
               </div>
-              <h2 className="text-sm sm:text-base font-bold text-foreground mt-0.5">
+              <h2 className="text-base sm:text-lg font-bold text-foreground mt-0.5">
                 Pengesahan Berita Acara Serah Terima (BAST)
               </h2>
             </div>
@@ -115,15 +115,15 @@ export default function DesaHandoverView({ onBack }) {
             variant="outline"
             size="sm"
             onClick={() => setDocModalOpen(true)}
-            className="gap-1.5 font-bold border-border shadow-2xs text-xs"
+            className="gap-2 font-bold border-border shadow-xs text-xs sm:text-sm h-9 rounded-xl"
           >
-            <Printer size={13} />
+            <Printer size={15} />
             <span>Cetak Dokumen BAST (A4)</span>
           </Button>
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Left Column: Official BAST Letter preview */}
         <div className="lg:col-span-7 space-y-4">

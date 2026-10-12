@@ -4,7 +4,7 @@ import StatusBadge from '../../components/common/StatusBadge';
 import OfficialDocumentModal from '../../components/common/OfficialDocumentModal';
 import { DUSUN_LIST, FUNDING_SOURCES } from '../../data/desaConfig';
 import { Button } from '../../components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
 import { 
@@ -28,14 +28,12 @@ import {
   ShieldCheck, 
   ExternalLink, 
   Eye, 
-  X, 
-  FileCheck2, 
-  Building2, 
-  Download, 
   Printer, 
   FileSpreadsheet,
-  ArrowUpDown,
-  Filter
+  Coins,
+  Users,
+  Home,
+  Accessibility
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -104,95 +102,95 @@ export default function TransparencyView() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6 animate-in fade-in-0 duration-200 text-xs">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-8 animate-in fade-in-0 duration-200">
       
-      {/* Header */}
-      <Card className="border-border/80 shadow-sm">
-        <CardContent className="p-6 sm:p-8 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-4">
+      {/* Header Banner */}
+      <Card className="border-border rounded-3xl shadow-md bg-card overflow-hidden">
+        <CardContent className="p-6 sm:p-8 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5">
             <div>
-              <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider border-border bg-muted/40 text-foreground">
-                Open Ledger & Akuntabilitas Publik
-              </Badge>
-              <h1 className="text-xl sm:text-2xl font-black text-foreground mt-1">
-                Transparansi Bantuan Sosial Desa Jarak
+              <span className="inline-block bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-xs px-3 py-1 rounded-full font-bold">
+                Keterbukaan Informasi Publik Desa Jarak
+              </span>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight mt-1.5">
+                Transparansi Penyaluran Bantuan Sosial
               </h1>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2.5">
               <Button
                 variant="outline"
-                size="sm"
+                size="default"
                 onClick={handleExportCSV}
-                className="gap-1.5 font-bold border-border shadow-2xs text-xs"
+                className="h-11 px-4 gap-2 font-bold border-border rounded-xl shadow-xs text-xs sm:text-sm"
               >
-                <FileSpreadsheet size={14} className="text-emerald-600 dark:text-emerald-400" />
-                <span>Ekspor CSV / Excel</span>
+                <FileSpreadsheet size={16} className="text-emerald-600 dark:text-emerald-400" />
+                <span>Unduh Rekap CSV</span>
               </Button>
 
-              <Badge variant="secondary" className="gap-1.5 px-3 py-1 font-semibold text-[11px] border border-border">
-                <ShieldCheck size={13} className="text-emerald-600 dark:text-emerald-400" />
-                <span>Standar Privasi Anonim Terproteksi</span>
-              </Badge>
+              <div className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                <ShieldCheck size={16} />
+                <span>Data Pribadi Terlindungi</span>
+              </div>
             </div>
           </div>
 
-          <p className="text-muted-foreground leading-relaxed text-xs max-w-3xl">
-            Seluruh data realisasi bantuan sosial RTLH dan Alat Bantu Disabilitas disajikan secara agregat dan terbuka untuk menjamin akuntabilitas penyaluran anggaran desa.
+          <p className="text-sm text-muted-foreground leading-relaxed max-w-3xl">
+            Sistem mencatat seluruh permohonan RTLH dan alat disabilitas secara terbuka agar warga dapat memantau keadilan distribusi bantuan di 5 dusun Desa Jarak.
           </p>
 
           {/* 4 Financial Stat Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
-            <div className="bg-muted/40 p-3.5 rounded-lg border border-border/60 space-y-0.5">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Total Realisasi Dana</span>
-              <div className="text-lg sm:text-xl font-black text-foreground font-mono">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
+            <div className="bg-muted/40 p-4 rounded-2xl border border-border space-y-1">
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Total Anggaran Tersalurkan</span>
+              <div className="text-2xl font-black text-foreground font-mono">
                 Rp {(totalAllocatedBudget / 1000000).toFixed(0)} Juta
               </div>
-              <span className="text-[10px] text-muted-foreground">Tahun Anggaran 2026</span>
+              <span className="text-xs text-muted-foreground">Tahun Anggaran 2026</span>
             </div>
 
-            <div className="bg-muted/40 p-3.5 rounded-lg border border-border/60 space-y-0.5">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Penerima Manfaat</span>
-              <div className="text-lg sm:text-xl font-black text-foreground font-mono">
+            <div className="bg-muted/40 p-4 rounded-2xl border border-border space-y-1">
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Penerima Manfaat</span>
+              <div className="text-2xl font-black text-foreground font-mono">
                 {applications.length + 31} Warga
               </div>
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">Terdaftar Faktual</span>
+              <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">Terdata Faktual</span>
             </div>
 
-            <div className="bg-muted/40 p-3.5 rounded-lg border border-border/60 space-y-0.5">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Rehabilitasi RTLH</span>
-              <div className="text-lg sm:text-xl font-black text-foreground font-mono">
+            <div className="bg-muted/40 p-4 rounded-2xl border border-border space-y-1">
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Rehabilitasi RTLH</span>
+              <div className="text-2xl font-black text-foreground font-mono">
                 {applications.filter(a => a.assistanceType === 'RTLH').length + 14} Unit
               </div>
-              <span className="text-[10px] text-muted-foreground">Swakelola Desa</span>
+              <span className="text-xs text-muted-foreground">Swakelola Desa</span>
             </div>
 
-            <div className="bg-muted/40 p-3.5 rounded-lg border border-border/60 space-y-0.5">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Alat Disabilitas</span>
-              <div className="text-lg sm:text-xl font-black text-foreground font-mono">
+            <div className="bg-muted/40 p-4 rounded-2xl border border-border space-y-1">
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Alat Disabilitas</span>
+              <div className="text-2xl font-black text-foreground font-mono">
                 {applications.filter(a => a.assistanceType === 'DISABILITAS').length + 17} Unit
               </div>
-              <span className="text-[10px] text-muted-foreground">Realisasi Lapangan</span>
+              <span className="text-xs text-muted-foreground">Diserahkan Resmi</span>
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Filter Control Bar */}
-      <Card className="border-border/80 shadow-xs">
-        <CardContent className="p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+      <Card className="border-border rounded-2xl shadow-xs bg-card p-4 sm:p-5">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
           
           {/* Search Box */}
           <div className="relative flex-1">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
-              <Search size={14} />
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-foreground">
+              <Search size={16} />
             </div>
             <Input
               type="text"
-              placeholder="Cari nomor tiket, nama inisial, atau dusun..."
+              placeholder="Cari tiket, nama penerima, atau dusun..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 font-mono text-xs"
+              className="h-11 pl-10 text-xs sm:text-sm font-mono rounded-xl border-border"
             />
           </div>
 
@@ -201,9 +199,9 @@ export default function TransparencyView() {
             <select
               value={filterDusun}
               onChange={(e) => setFilterDusun(e.target.value)}
-              className="flex h-9 rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="h-11 rounded-xl border border-input bg-background px-3 text-xs sm:text-sm text-foreground shadow-xs font-semibold focus-visible:ring-2 focus-visible:ring-emerald-600"
             >
-              <option value="ALL">Semua Dusun (5 Wilayah)</option>
+              <option value="ALL">Semua Dusun</option>
               {DUSUN_LIST.map((d) => (
                 <option key={d.id} value={d.id}>Dusun {d.name}</option>
               ))}
@@ -212,22 +210,22 @@ export default function TransparencyView() {
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="flex h-9 rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="h-11 rounded-xl border border-input bg-background px-3 text-xs sm:text-sm text-foreground shadow-xs font-semibold focus-visible:ring-2 focus-visible:ring-emerald-600"
             >
               <option value="ALL">Semua Kategori</option>
-              <option value="RTLH">Rehabilitasi RTLH</option>
-              <option value="DISABILITAS">Alat Bantu Disabilitas</option>
+              <option value="RTLH">Rumah RTLH</option>
+              <option value="DISABILITAS">Alat Disabilitas</option>
             </select>
 
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="flex h-9 rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="h-11 rounded-xl border border-input bg-background px-3 text-xs sm:text-sm text-foreground shadow-xs font-semibold focus-visible:ring-2 focus-visible:ring-emerald-600"
             >
               <option value="ALL">Semua Status</option>
               <option value="COMPLETED">Selesai (BAST)</option>
-              <option value="IN_PROGRESS">Dalam Proses / Pengerjaan</option>
-              <option value="WAITING_KASUN">Menunggu Survei Kasun</option>
+              <option value="IN_PROGRESS">Sedang Dikerjakan</option>
+              <option value="WAITING_KASUN">Menunggu Survei</option>
             </select>
 
             {(searchQuery || filterDusun !== 'ALL' || filterType !== 'ALL' || filterStatus !== 'ALL') && (
@@ -240,44 +238,44 @@ export default function TransparencyView() {
                   setFilterType('ALL');
                   setFilterStatus('ALL');
                 }}
-                className="text-xs text-destructive hover:bg-destructive/10"
+                className="h-11 text-xs text-rose-600 hover:bg-rose-50 font-bold rounded-xl"
               >
                 Reset Filter
               </Button>
             )}
           </div>
 
-        </CardContent>
+        </div>
       </Card>
 
       {/* Table Data */}
-      <Card className="border-border/80 shadow-xs overflow-hidden">
+      <Card className="border-border rounded-3xl shadow-md overflow-hidden bg-card">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="w-10 text-center font-mono">No</TableHead>
-                <TableHead>Register Tiket</TableHead>
+              <TableRow className="bg-muted/50 border-b border-border">
+                <TableHead className="w-12 text-center font-mono">No</TableHead>
+                <TableHead>Nomor Tiket</TableHead>
                 <TableHead>Kategori</TableHead>
-                <TableHead>Penerima Manfaat</TableHead>
+                <TableHead>Penerima Bantuan</TableHead>
                 <TableHead>Wilayah Dusun</TableHead>
-                <TableHead>Status Alur</TableHead>
+                <TableHead>Status Permohonan</TableHead>
                 <TableHead>Alokasi Anggaran</TableHead>
-                <TableHead className="text-right">Aksi Dokumen</TableHead>
+                <TableHead className="text-right">Aksi</TableHead>
               </TableRow>
             </TableHeader>
 
             <TableBody>
               {filteredApps.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-16 text-muted-foreground text-sm">
                     Tidak ada data permohonan yang sesuai dengan filter pencarian.
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredApps.map((app, idx) => (
-                  <TableRow key={app.id} className="hover:bg-muted/40 transition-colors">
-                    <TableCell className="text-center font-mono text-muted-foreground">{idx + 1}</TableCell>
+                  <TableRow key={app.id} className="hover:bg-muted/30 transition-colors border-b border-border/60">
+                    <TableCell className="text-center font-mono text-muted-foreground text-xs">{idx + 1}</TableCell>
                     
                     <TableCell className="font-mono font-bold text-foreground">
                       <button
@@ -286,52 +284,55 @@ export default function TransparencyView() {
                           setCurrentView('lacak');
                           window.scrollTo({ top: 0, behavior: 'smooth' });
                         }}
-                        className="hover:text-primary hover:underline"
+                        className="text-emerald-700 dark:text-emerald-400 hover:underline font-bold"
                       >
                         #{app.ticketNumber}
                       </button>
                     </TableCell>
 
                     <TableCell>
-                      <Badge variant={app.assistanceType === 'RTLH' ? 'success' : 'info'} className="text-[10px] px-1.5 py-0 font-bold">
-                        {app.assistanceType}
-                      </Badge>
+                      <span className={cn(
+                        "text-xs px-2.5 py-1 rounded-md font-bold",
+                        app.assistanceType === 'RTLH' ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" : "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300"
+                      )}>
+                        {app.assistanceType === 'RTLH' ? 'Rumah RTLH' : 'Alat Disabilitas'}
+                      </span>
                     </TableCell>
 
                     <TableCell>
-                      <div className="font-bold text-foreground">{app.beneficiaryMaskedName}</div>
-                      <span className="text-[10px] text-muted-foreground">Pelapor: {app.reporterName}</span>
+                      <div className="font-bold text-foreground text-sm">{app.beneficiaryMaskedName}</div>
+                      <span className="text-xs text-muted-foreground">Pelapor: {app.reporterName}</span>
                     </TableCell>
 
                     <TableCell>
-                      <span className="font-medium text-foreground">Dusun {app.dusunName}</span>
-                      <span className="text-[10px] text-muted-foreground block font-mono">RT {app.rt} / RW {app.rw}</span>
+                      <span className="font-semibold text-foreground text-xs sm:text-sm">Dusun {app.dusunName}</span>
+                      <span className="text-xs text-muted-foreground block font-mono">RT {app.rt} / RW {app.rw}</span>
                     </TableCell>
 
                     <TableCell>
                       <StatusBadge status={app.status} size="sm" />
                     </TableCell>
 
-                    <TableCell className="font-mono font-semibold text-foreground">
+                    <TableCell className="font-mono text-xs sm:text-sm font-bold text-foreground">
                       {app.funding ? (
                         <div>
                           <span>Rp {app.funding.budget.toLocaleString('id-ID')}</span>
-                          <span className="text-[10px] text-muted-foreground block">{app.funding.source}</span>
+                          <span className="text-xs text-muted-foreground block font-sans font-normal">{app.funding.source}</span>
                         </div>
                       ) : (
-                        <span className="text-muted-foreground italic text-[11px]">Asesmen Kasun</span>
+                        <span className="text-muted-foreground italic text-xs">Menunggu Survei Kasun</span>
                       )}
                     </TableCell>
 
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1.5">
+                      <div className="flex items-center justify-end gap-2">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => setSelectedDetailModal(app)}
-                          className="h-7 px-2 text-[11px] gap-1 font-bold border-border shadow-2xs"
+                          className="h-8 px-3 text-xs gap-1 font-bold border-border rounded-lg"
                         >
-                          <Eye size={12} />
+                          <Eye size={13} />
                           <span>Rincian</span>
                         </Button>
 
@@ -339,10 +340,10 @@ export default function TransparencyView() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleOpenDocModal(app)}
-                          className="h-7 px-2 text-[11px] gap-1 font-bold text-primary hover:text-primary"
-                          title="Cetak Dokumen Resmi"
+                          className="h-8 w-8 text-emerald-700 hover:text-emerald-800 rounded-lg p-0"
+                          title="Cetak Surat Resmi"
                         >
-                          <Printer size={12} />
+                          <Printer size={15} />
                         </Button>
                       </div>
                     </TableCell>
@@ -354,53 +355,53 @@ export default function TransparencyView() {
         </div>
 
         {/* Footer info strip */}
-        <div className="p-3.5 bg-muted/30 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-muted-foreground">
+        <div className="p-4 bg-muted/30 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
           <span>Menampilkan <b>{filteredApps.length}</b> dari total <b>{applications.length}</b> permohonan bantuan</span>
-          <span>Sesuai UU Keterbukaan Informasi Publik (KIP) & SOP Desa Jarak</span>
+          <span>Desa Jarak, Kecamatan Plosoklaten, Kabupaten Kediri</span>
         </div>
       </Card>
 
       {/* Quick Detail Dialog Modal */}
       {selectedDetailModal && (
         <Dialog open={Boolean(selectedDetailModal)} onOpenChange={(open) => !open && setSelectedDetailModal(null)}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg rounded-3xl p-6 sm:p-8">
             <DialogHeader>
               <div className="flex items-center justify-between pr-4">
-                <Badge variant="outline" className="text-[10px] font-mono font-bold border-border">
+                <span className="text-sm font-mono font-bold text-emerald-700">
                   #{selectedDetailModal.ticketNumber}
-                </Badge>
+                </span>
                 <StatusBadge status={selectedDetailModal.status} size="sm" />
               </div>
-              <DialogTitle className="text-base font-bold text-foreground pt-1">
+              <DialogTitle className="text-lg font-extrabold text-foreground pt-1">
                 Rincian Realisasi Bantuan
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
-                Kategori: <b>{selectedDetailModal.assistanceType}</b> • Dusun {selectedDetailModal.dusunName}
+                Kategori: <b>{selectedDetailModal.assistanceType === 'RTLH' ? 'Rehabilitasi RTLH' : 'Alat Disabilitas'}</b> • Dusun {selectedDetailModal.dusunName}
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-3.5 text-xs">
-              <div className="bg-muted/40 p-3 rounded-lg border border-border/60 space-y-1">
-                <span className="text-muted-foreground text-[10px] uppercase font-bold tracking-wider block">
-                  Identitas Penerima (Privasi Dilindungi):
+            <div className="space-y-4 text-xs sm:text-sm">
+              <div className="bg-muted/40 p-4 rounded-2xl border border-border space-y-1">
+                <span className="text-muted-foreground text-xs uppercase font-bold tracking-wider block">
+                  Penerima Bantuan:
                 </span>
-                <div className="font-bold text-foreground text-sm">{selectedDetailModal.beneficiaryMaskedName}</div>
-                <div className="text-muted-foreground text-[11px]">
-                  Alamat: Dusun {selectedDetailModal.dusunName}, RT {selectedDetailModal.rt} / RW {selectedDetailModal.rw} ({selectedDetailModal.address})
+                <div className="font-extrabold text-foreground text-base">{selectedDetailModal.beneficiaryMaskedName}</div>
+                <div className="text-muted-foreground text-xs">
+                  Dusun {selectedDetailModal.dusunName}, RT {selectedDetailModal.rt} / RW {selectedDetailModal.rw} ({selectedDetailModal.address})
                 </div>
               </div>
 
               <div className="space-y-1">
-                <span className="font-bold text-foreground text-[11px] block">Keterangan Kondisi:</span>
-                <p className="p-2.5 rounded-lg bg-muted/30 border border-border/50 text-foreground leading-relaxed">
+                <span className="font-bold text-foreground text-xs block">Keterangan Kondisi:</span>
+                <p className="p-3.5 rounded-xl bg-muted/30 border border-border text-foreground leading-relaxed text-xs sm:text-sm">
                   {selectedDetailModal.description}
                 </p>
               </div>
 
               {selectedDetailModal.funding && (
-                <div className="p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20 space-y-1">
-                  <span className="font-bold text-emerald-800 dark:text-emerald-300 text-[11px] block">Alokasi Anggaran & Sumber Dana:</span>
-                  <div className="flex justify-between font-mono font-bold text-foreground">
+                <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800 space-y-1">
+                  <span className="font-bold text-emerald-800 dark:text-emerald-300 text-xs block">Alokasi Anggaran & Sumber Dana:</span>
+                  <div className="flex justify-between font-mono font-bold text-foreground text-sm sm:text-base">
                     <span>{selectedDetailModal.funding.source}</span>
                     <span>Rp {selectedDetailModal.funding.budget.toLocaleString('id-ID')}</span>
                   </div>
@@ -408,20 +409,20 @@ export default function TransparencyView() {
               )}
             </div>
 
-            <DialogFooter className="gap-2 sm:gap-0">
+            <DialogFooter className="pt-4">
               <Button
                 variant="outline"
-                size="sm"
+                size="default"
                 onClick={() => {
                   const t = selectedDetailModal.ticketNumber;
                   setSelectedDetailModal(null);
                   setActiveTicketNumber(t);
                   setCurrentView('lacak');
                 }}
-                className="font-bold text-xs gap-1.5 border-border"
+                className="w-full h-11 font-bold text-sm gap-2 border-border rounded-xl"
               >
-                <span>Buka Riwayat Lengkap</span>
-                <ExternalLink size={12} />
+                <span>Buka Riwayat Penanganan Lengkap</span>
+                <ExternalLink size={14} />
               </Button>
             </DialogFooter>
           </DialogContent>

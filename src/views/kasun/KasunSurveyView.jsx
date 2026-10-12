@@ -258,29 +258,29 @@ export default function KasunSurveyView() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6 animate-in fade-in-0 duration-200 text-xs">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-6 animate-in fade-in-0 duration-200">
       
       {/* Action Header Card */}
-      <Card className="border-border/80 shadow-sm">
-        <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+      <Card className="border-border rounded-3xl shadow-md bg-card">
+        <CardContent className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
             <Button
               variant="outline"
               size="icon"
               onClick={() => setCurrentView('kasun_dashboard')}
-              className="h-8 w-8 border-border shadow-2xs"
+              className="h-10 w-10 border-border rounded-xl"
             >
-              <ArrowLeft size={15} />
+              <ArrowLeft size={18} />
             </Button>
             <div>
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="font-mono font-bold text-[11px] border-border bg-muted/40">
+                <Badge variant="outline" className="font-mono font-bold text-xs border-border bg-muted/40">
                   #{app.ticketNumber}
                 </Badge>
                 <StatusBadge status={app.status} size="sm" />
               </div>
-              <h1 className="text-sm sm:text-base font-bold text-foreground mt-0.5">
-                Workspace Survei Faktual Kasun — Dusun {app.dusunName}
+              <h1 className="text-base sm:text-lg font-black text-foreground mt-0.5">
+                Verifikasi Survei Faktual Kasun — Dusun {app.dusunName}
               </h1>
             </div>
           </div>
@@ -289,32 +289,32 @@ export default function KasunSurveyView() {
             <Button
               type="button"
               variant="outline"
-              size="sm"
+              size="default"
               onClick={() => setDocModalOpen(true)}
-              className="gap-1.5 font-bold border-border shadow-2xs text-xs"
+              className="h-10 px-3.5 gap-2 font-bold border-border text-xs sm:text-sm rounded-xl"
             >
-              <Printer size={13} />
-              <span>Cetak Rekomendasi (A4)</span>
+              <Printer size={15} />
+              <span>Cetak Berita Acara</span>
             </Button>
 
             <Button
               type="button"
               variant="outline"
-              size="sm"
+              size="default"
               onClick={() => setReturnNotesModal(true)}
-              className="gap-1.5 font-bold border-amber-500/30 text-amber-700 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 text-xs"
+              className="h-10 px-3.5 gap-2 font-bold border-amber-500/40 text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 text-xs sm:text-sm rounded-xl"
             >
-              <RotateCcw size={13} />
-              <span>Kembalikan dg Catatan</span>
+              <RotateCcw size={15} />
+              <span>Kembalikan / Revisi</span>
             </Button>
 
             <Button
               type="button"
-              size="sm"
+              size="default"
               onClick={handleForwardToDesa}
-              className="gap-1.5 font-bold shadow-xs text-xs"
+              className="h-10 px-4 gap-2 font-bold bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm rounded-xl shadow-xs"
             >
-              <Send size={13} />
+              <Send size={15} />
               <span>Rekomendasikan ke Desa</span>
             </Button>
           </div>
