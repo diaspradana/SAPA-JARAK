@@ -3,8 +3,6 @@ import { useApp } from '../../context/AppContext';
 import { useVoice } from '../../context/VoiceContext';
 import { Search, ArrowRight, ShieldCheck, Ticket, AlertCircle } from 'lucide-react';
 import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
-import { Card, CardContent } from '../ui/card';
 import { Input } from '../ui/input';
 
 export default function TrackingSection() {
@@ -17,7 +15,7 @@ export default function TrackingSection() {
     e.preventDefault();
     const cleanTicket = inputTicket.trim().toUpperCase().replace('#', '');
     if (!cleanTicket) {
-      setErrorMsg('Masukkan nomor tiket pengajuan.');
+      setErrorMsg('Silakan ketik nomor tiket pengajuan Anda');
       speak('Silakan masukkan nomor tiket pengajuan Anda.');
       return;
     }
@@ -34,7 +32,7 @@ export default function TrackingSection() {
       setCurrentView('lacak');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      setErrorMsg(`Nomor tiket #${cleanTicket} tidak ditemukan dalam basis data.`);
+      setErrorMsg(`Nomor tiket #${cleanTicket} tidak ditemukan dalam daftar.`);
       speak('Nomor tiket tidak ditemukan.');
     }
   };
@@ -47,68 +45,68 @@ export default function TrackingSection() {
   };
 
   return (
-    <section id="tracking-section" className="py-14 sm:py-20 bg-primary/95 text-primary-foreground border-b border-border/80 overflow-hidden relative">
+    <section id="tracking-section" className="py-16 sm:py-24 bg-gradient-to-br from-emerald-900 via-emerald-950 to-neutral-950 text-white border-b border-border overflow-hidden relative">
       
       {/* Background pattern */}
-      <div className="absolute inset-0 opacity-5 pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
+      <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:20px_20px]" />
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center space-y-6 relative z-10" data-aos="zoom-in-up" data-aos-duration="700">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center space-y-6 relative z-10">
         
-        <div className="space-y-2.5">
-          <Badge variant="outline" className="px-3 py-1 font-bold text-xs bg-primary-foreground/10 border-primary-foreground/20 text-emerald-300">
-            Layanan Pelacakan Terbuka
-          </Badge>
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight">
-            Lacak Status Permohonan Bantuan
+        <div className="space-y-3">
+          <span className="inline-block px-4 py-1 font-bold text-xs sm:text-sm rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+            🔍 Layanan Pelacakan Terbuka
+          </span>
+          <h2 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
+            Cek Status Pengajuan Bantuan Anda
           </h2>
-          <p className="text-xs sm:text-sm text-primary-foreground/80 max-w-xl mx-auto leading-relaxed">
-            Masukkan nomor tiket register untuk melihat riwayat survei kasun, validasi desa, dan dokumentasi penyelesaian.
+          <p className="text-sm sm:text-base text-emerald-100/90 max-w-xl mx-auto leading-relaxed">
+            Ketik nomor tiket pendaftaran untuk memantau apakah berkas Anda sedang disurvei oleh Kepala Dusun, menunggu penetapan, atau sudah siap diserahkan.
           </p>
         </div>
 
         {/* Search Input Box */}
-        <form onSubmit={handleSearch} className="max-w-xl mx-auto pt-2">
-          <div className="flex flex-col sm:flex-row items-stretch gap-2 bg-background/10 backdrop-blur-md p-2 rounded-xl border border-primary-foreground/20 shadow-xl">
+        <form onSubmit={handleSearch} className="max-w-2xl mx-auto pt-2">
+          <div className="flex flex-col sm:flex-row items-stretch gap-2.5 bg-white/10 backdrop-blur-md p-2.5 rounded-2xl border border-white/20 shadow-2xl">
             <div className="relative flex-1">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-foreground">
-                <Search size={16} />
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-emerald-300">
+                <Search size={20} />
               </div>
               <Input
                 type="text"
                 value={inputTicket}
                 onChange={(e) => { setInputTicket(e.target.value); setErrorMsg(''); }}
-                placeholder="Contoh: JRK-2026-001"
-                className="pl-10 pr-3 h-10 bg-background text-foreground placeholder:text-muted-foreground text-xs sm:text-sm font-mono uppercase border-0 focus-visible:ring-1 focus-visible:ring-primary"
+                placeholder="Ketik Nomor Tiket (Contoh: JRK-2026-001)"
+                className="pl-12 pr-4 h-12 bg-white text-neutral-900 placeholder:text-neutral-500 text-sm sm:text-base font-mono uppercase rounded-xl border-0 focus-visible:ring-2 focus-visible:ring-emerald-500 shadow-inner"
               />
             </div>
 
             <Button
               type="submit"
               size="default"
-              className="h-10 px-5 font-bold gap-2 bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shrink-0"
+              className="h-12 px-6 text-sm sm:text-base font-bold gap-2 bg-emerald-500 hover:bg-emerald-400 text-emerald-950 rounded-xl shadow-lg shrink-0 transition-transform active:scale-95"
             >
               <span>Lacak Berkas</span>
-              <ArrowRight size={14} />
+              <ArrowRight size={18} />
             </Button>
           </div>
 
           {errorMsg && (
-            <div className="mt-2.5 text-xs text-rose-200 bg-rose-950/80 border border-rose-800/80 px-3 py-1.5 rounded-lg inline-flex items-center gap-1.5 shadow-sm">
-              <AlertCircle size={14} className="text-rose-400" />
+            <div className="mt-3 text-sm text-rose-200 bg-rose-950/90 border border-rose-700/80 px-4 py-2 rounded-xl inline-flex items-center gap-2 shadow-sm animate-in fade-in-0">
+              <AlertCircle size={16} className="text-rose-400 shrink-0" />
               <span>{errorMsg}</span>
             </div>
           )}
         </form>
 
         {/* Quick Ticket Presets */}
-        <div className="pt-2 flex flex-wrap items-center justify-center gap-2 text-xs">
-          <span className="text-primary-foreground/70 text-[11px] font-medium">Sampel Tiket Aktif:</span>
+        <div className="pt-3 flex flex-wrap items-center justify-center gap-2 text-xs sm:text-sm">
+          <span className="text-emerald-200/80 font-semibold">Coba Tiket Contoh:</span>
           {applications.slice(0, 4).map((app) => (
             <button
               key={app.id}
               type="button"
               onClick={() => handleQuickSelect(app.ticketNumber)}
-              className="px-2.5 py-1 rounded-md bg-background/10 hover:bg-background/20 text-emerald-300 font-mono text-[11px] font-bold border border-primary-foreground/15 transition-colors"
+              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-emerald-200 font-mono text-xs font-bold border border-white/20 transition-all hover:scale-105"
             >
               #{app.ticketNumber} ({app.beneficiaryName})
             </button>

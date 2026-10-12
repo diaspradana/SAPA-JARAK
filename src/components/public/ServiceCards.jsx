@@ -1,11 +1,10 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { useVoice } from '../../context/VoiceContext';
-import { Accessibility, Home, ArrowRight, Check, Sparkles } from 'lucide-react';
+import { Accessibility, Home, ArrowRight, Check, Heart, ShieldCheck } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../ui/card';
-import { Separator } from '../ui/separator';
 
 export default function ServiceCards() {
   const { setCurrentView } = useApp();
@@ -18,118 +17,143 @@ export default function ServiceCards() {
   };
 
   return (
-    <section className="py-14 sm:py-20 bg-muted/30 border-b border-border/80">
+    <section className="py-16 sm:py-20 bg-muted/30 border-b border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         
         {/* Section Title */}
-        <div className="max-w-2xl mx-auto text-center space-y-2.5 mb-12" data-aos="fade-up">
-          <Badge variant="outline" className="px-3 py-1 font-bold text-xs bg-background border-border text-foreground shadow-2xs">
-            Nomenklatur Pelayanan Sosial
-          </Badge>
-          <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
-            Kategori Bantuan yang Dapat Diajukan
+        <div className="max-w-3xl mx-auto text-center space-y-3 mb-12">
+          <span className="inline-block bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-xs sm:text-sm px-3.5 py-1 rounded-full font-bold">
+            Pilihan Bantuan Sosial Desa
+          </span>
+          <h2 className="text-2xl sm:text-4xl font-extrabold text-foreground tracking-tight">
+            Apa Bantuan yang Ingin Anda Ajukan?
           </h2>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Masyarakat dapat mendaftarkan diri sendiri atau tetangga rentan untuk 2 skema bantuan terverifikasi berikut:
+          <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+            Anda dapat mengajukan permohonan untuk diri sendiri, keluarga, atau tetangga yang membutuhkan. Pendaftaran 100% gratis dan akan disurvei langsung oleh Kepala Dusun.
           </p>
         </div>
 
         {/* 2 Service Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
           
-          {/* Card 1: Disabilitas */}
-          <Card 
-            className="border-border/80 flex flex-col justify-between shadow-xs hover:shadow-md transition-shadow"
-            data-aos="fade-right"
-            data-aos-duration="700"
-          >
-            <CardHeader className="p-6 space-y-4">
+          {/* Card 1: RTLH */}
+          <Card className="border-border rounded-3xl shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden bg-card">
+            <CardHeader className="p-6 sm:p-8 space-y-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center border border-sky-500/20">
-                    <Accessibility size={22} />
-                  </div>
-                  <div>
-                    <Badge variant="info" className="text-[10px] px-1.5 py-0">Kategori 01</Badge>
-                    <CardTitle className="text-base sm:text-lg font-bold text-foreground mt-0.5">Alat Bantu Disabilitas</CardTitle>
-                  </div>
+                <div className="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold shadow-xs">
+                  <Home size={30} />
                 </div>
+                <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-xs px-3 py-1 rounded-full font-bold">
+                  Kategori 01
+                </span>
               </div>
 
-              <CardDescription className="text-xs text-muted-foreground leading-relaxed">
-                Penyediaan sarana mobilitas untuk warga penyandang disabilitas fisik, lansia berkebutuhan khusus, atau warga yang mengalami kelumpuhan pasca stroke.
-              </CardDescription>
+              <div>
+                <CardTitle className="text-xl sm:text-2xl font-extrabold text-foreground">
+                  Rehabilitasi Rumah (RTLH)
+                </CardTitle>
+                <CardDescription className="text-sm text-muted-foreground leading-relaxed mt-2">
+                  Bantuan perbaikan bagi warga yang rumahnya mengalami kerusakan atap bocor parah, dinding bambu/gedek rapuh, lantai tanah, atau belum memiliki jamban sehat (MCK).
+                </CardDescription>
+              </div>
 
-              <div className="space-y-2 pt-2 border-t border-border/60 text-xs">
-                <span className="font-bold text-foreground text-[11px] uppercase tracking-wide block">Jenis Alat Bantu Tersedia:</span>
-                <div className="grid grid-cols-2 gap-2 text-muted-foreground text-xs">
-                  <div className="flex items-center gap-1.5"><Check size={13} className="text-emerald-600 dark:text-emerald-400 shrink-0" /> Kursi Roda Standar / CP</div>
-                  <div className="flex items-center gap-1.5"><Check size={13} className="text-emerald-600 dark:text-emerald-400 shrink-0" /> Kruk Ketiak Aluminium</div>
-                  <div className="flex items-center gap-1.5"><Check size={13} className="text-emerald-600 dark:text-emerald-400 shrink-0" /> Walker 2-in-1 Roda</div>
-                  <div className="flex items-center gap-1.5"><Check size={13} className="text-emerald-600 dark:text-emerald-400 shrink-0" /> Alat Bantu Dengar / Tongkat</div>
+              <div className="space-y-2.5 pt-3 border-t border-border">
+                <span className="font-extrabold text-foreground text-xs uppercase tracking-wider block">
+                  Bantuan yang Diberikan:
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <Check size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>Kayu balok & seng/asbes</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Check size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>Semen & pasir pasang</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Check size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>Bata & kalsiboard dinding</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Check size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>Kloset jongkok & pipa sanitasi</span>
+                  </div>
                 </div>
               </div>
             </CardHeader>
 
-            <CardFooter className="p-6 pt-0 border-t border-border/60 flex items-center justify-between bg-muted/20 mt-0">
-              <span className="text-[11px] text-muted-foreground font-medium">Bisa diajukan keluarga / RT</span>
+            <CardFooter className="p-6 sm:p-8 pt-0 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3 bg-muted/20">
+              <span className="text-xs text-muted-foreground font-semibold">
+                Survei langsung & swakelola warga
+              </span>
               <Button
                 type="button"
-                onClick={() => handleApply('DISABILITAS')}
-                size="sm"
-                className="font-bold gap-1.5 shadow-2xs"
+                onClick={() => handleApply('RTLH')}
+                className="w-full sm:w-auto h-11 px-5 font-bold gap-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl shadow-xs"
               >
-                <span>Ajukan Permohonan</span>
-                <ArrowRight size={13} />
+                <span>Ajukan Bantuan RTLH</span>
+                <ArrowRight size={15} />
               </Button>
             </CardFooter>
           </Card>
 
-          {/* Card 2: RTLH */}
-          <Card 
-            className="border-border/80 flex flex-col justify-between shadow-xs hover:shadow-md transition-shadow"
-            data-aos="fade-left"
-            data-aos-duration="700"
-            data-aos-delay="100"
-          >
-            <CardHeader className="p-6 space-y-4">
+          {/* Card 2: Disabilitas */}
+          <Card className="border-border rounded-3xl shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden bg-card">
+            <CardHeader className="p-6 sm:p-8 space-y-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20">
-                    <Home size={22} />
-                  </div>
-                  <div>
-                    <Badge variant="success" className="text-[10px] px-1.5 py-0">Kategori 02</Badge>
-                    <CardTitle className="text-base sm:text-lg font-bold text-foreground mt-0.5">Rehabilitasi RTLH</CardTitle>
-                  </div>
+                <div className="w-14 h-14 rounded-2xl bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300 flex items-center justify-center font-bold shadow-xs">
+                  <Accessibility size={30} />
                 </div>
+                <span className="bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 text-xs px-3 py-1 rounded-full font-bold">
+                  Kategori 02
+                </span>
               </div>
 
-              <CardDescription className="text-xs text-muted-foreground leading-relaxed">
-                Stimulan material perbaikan Rumah Tidak Layak Huni bagi warga berpenghasilan rendah dengan kondisi kerusakan struktural mendesak (atap, dinding, lantai, sanitasi).
-              </CardDescription>
+              <div>
+                <CardTitle className="text-xl sm:text-2xl font-extrabold text-foreground">
+                  Alat Bantu Disabilitas & Lansia
+                </CardTitle>
+                <CardDescription className="text-sm text-muted-foreground leading-relaxed mt-2">
+                  Penyediaan alat mobilitas fisik untuk warga disabilitas, lansia yang sulit berjalan, atau warga yang mengalami kelumpuhan sementara/permanen akibat stroke.
+                </CardDescription>
+              </div>
 
-              <div className="space-y-2 pt-2 border-t border-border/60 text-xs">
-                <span className="font-bold text-foreground text-[11px] uppercase tracking-wide block">Komponen Bantuan Material:</span>
-                <div className="grid grid-cols-2 gap-2 text-muted-foreground text-xs">
-                  <div className="flex items-center gap-1.5"><Check size={13} className="text-emerald-600 dark:text-emerald-400 shrink-0" /> Kayu Balok & Seng Asbes</div>
-                  <div className="flex items-center gap-1.5"><Check size={13} className="text-emerald-600 dark:text-emerald-400 shrink-0" /> Semen & Pasir Bangunan</div>
-                  <div className="flex items-center gap-1.5"><Check size={13} className="text-emerald-600 dark:text-emerald-400 shrink-0" /> Bata Ringan / Hebel & Kalsiboard</div>
-                  <div className="flex items-center gap-1.5"><Check size={13} className="text-emerald-600 dark:text-emerald-400 shrink-0" /> Kloset Jongkok & Pipa Saluran</div>
+              <div className="space-y-2.5 pt-3 border-t border-border">
+                <span className="font-extrabold text-foreground text-xs uppercase tracking-wider block">
+                  Pilihan Alat yang Tersedia:
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <Check size={16} className="text-sky-600 dark:text-sky-400 shrink-0" />
+                    <span>Kursi Roda Standar & Khusus</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Check size={16} className="text-sky-600 dark:text-sky-400 shrink-0" />
+                    <span>Kruk Ketiak Aluminium</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Check size={16} className="text-sky-600 dark:text-sky-400 shrink-0" />
+                    <span>Walker 2-in-1 (Roda depan)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Check size={16} className="text-sky-600 dark:text-sky-400 shrink-0" />
+                    <span>Tongkat Jalan & Alat Dengar</span>
+                  </div>
                 </div>
               </div>
             </CardHeader>
 
-            <CardFooter className="p-6 pt-0 border-t border-border/60 flex items-center justify-between bg-muted/20 mt-0">
-              <span className="text-[11px] text-muted-foreground font-medium">Prioritas skor asesmen tertinggi</span>
+            <CardFooter className="p-6 sm:p-8 pt-0 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3 bg-muted/20">
+              <span className="text-xs text-muted-foreground font-semibold">
+                Bisa diajukan keluarga / kader RT
+              </span>
               <Button
                 type="button"
-                onClick={() => handleApply('RTLH')}
-                size="sm"
-                className="font-bold gap-1.5 shadow-2xs"
+                onClick={() => handleApply('DISABILITAS')}
+                className="w-full sm:w-auto h-11 px-5 font-bold gap-2 bg-sky-700 hover:bg-sky-800 text-white rounded-xl shadow-xs"
               >
-                <span>Ajukan Permohonan</span>
-                <ArrowRight size={13} />
+                <span>Ajukan Alat Disabilitas</span>
+                <ArrowRight size={15} />
               </Button>
             </CardFooter>
           </Card>

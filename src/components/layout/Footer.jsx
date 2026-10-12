@@ -3,143 +3,147 @@ import { Building2, MapPin, Phone, Mail, Clock, ShieldCheck, RotateCcw } from 'l
 import { DESA_CONFIG, DUSUN_LIST } from '../../data/desaConfig';
 import { useApp } from '../../context/AppContext';
 import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
 import { Separator } from '../ui/separator';
 
 export default function Footer() {
   const { setCurrentView, resetDatabase, showConfirm } = useApp();
 
   return (
-    <footer className="bg-card text-card-foreground border-t border-border pt-12 pb-8 text-xs transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 space-y-8">
+    <footer className="bg-card text-card-foreground border-t border-border pt-14 pb-10 text-xs sm:text-sm transition-colors">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 space-y-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           
           {/* Col 1: Government Identity */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold border border-primary/30 shadow-xs">
-                <Building2 size={16} className="text-emerald-300" />
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-bold shadow-xs">
+                <Building2 size={20} className="text-emerald-200" />
               </div>
               <div>
-                <span className="font-extrabold text-foreground block tracking-tight">PEMERINTAH DESA JARAK</span>
-                <span className="text-[11px] text-muted-foreground font-medium">Kec. Plosoklaten, Kab. Kediri</span>
+                <span className="font-extrabold text-foreground block tracking-tight text-sm sm:text-base">PEMDES JARAK</span>
+                <span className="text-xs text-muted-foreground font-medium">Kec. Plosoklaten, Kab. Kediri</span>
               </div>
             </div>
-            <p className="text-muted-foreground leading-relaxed text-[11px]">
-              SAPA-JARAK adalah platform sistem pelayanan aspirasi dan bantuan sosial berbasis verifikasi faktual berjenjang 3 tingkat (Warga ➔ Kasun ➔ Pemdes).
+            <p className="text-muted-foreground leading-relaxed text-xs sm:text-sm">
+              SAPA-JARAK adalah platform resmi pelayanan bantuan sosial RTLH dan alat bantu disabilitas yang transparan, mudah, dan terverifikasi langsung oleh Kepala Dusun.
             </p>
-            <div className="inline-flex items-center gap-1.5 text-[11px] text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20 font-semibold">
-              <ShieldCheck size={13} />
-              <span>Satu Data Desa & Perlindungan Privasi</span>
+            <div className="inline-flex items-center gap-2 text-xs text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950 px-3 py-1.5 rounded-lg font-bold">
+              <ShieldCheck size={16} />
+              <span>Satu Pintu Layanan Bantuan Sosial Desa</span>
             </div>
           </div>
 
           {/* Col 2: 5 Dusun */}
-          <div>
-            <h4 className="text-[11px] font-bold uppercase tracking-wider text-foreground mb-3">Wilayah Dusun Binaan</h4>
-            <ul className="space-y-1.5 text-[11px]">
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Wilayah Dusun Binaan</h4>
+            <ul className="space-y-2 text-xs sm:text-sm">
               {DUSUN_LIST.map((d) => (
-                <li key={d.id} className="flex justify-between py-1 border-b border-border/40 text-muted-foreground">
-                  <span className="text-foreground font-medium">Dusun {d.name}</span>
-                  <span>Kasun: {d.kasunName}</span>
+                <li key={d.id} className="flex justify-between py-1 border-b border-border text-muted-foreground">
+                  <span className="text-foreground font-semibold">Dusun {d.name}</span>
+                  <span>Kasun: <b>{d.kasunName}</b></span>
                 </li>
               ))}
             </ul>
           </div>
 
           {/* Col 3: Navigation */}
-          <div>
-            <h4 className="text-[11px] font-bold uppercase tracking-wider text-foreground mb-3">Layanan Aplikasi</h4>
-            <ul className="space-y-2 text-[11px]">
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Menu Layanan Cepat</h4>
+            <ul className="space-y-2 text-xs sm:text-sm">
               <li>
                 <button 
                   onClick={() => { setCurrentView('ajukan'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  className="text-muted-foreground hover:text-emerald-700 dark:hover:text-emerald-400 font-medium transition-colors"
                 >
-                  Formulir Pengajuan Bantuan Baru
+                  ✍️ Ajukan Permohonan Bantuan
                 </button>
               </li>
               <li>
                 <button 
                   onClick={() => { setCurrentView('lacak'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  className="text-muted-foreground hover:text-emerald-700 dark:hover:text-emerald-400 font-medium transition-colors"
                 >
-                  Pelacakan Status Register Tiket
+                  🔍 Lacak Status Nomor Tiket
                 </button>
               </li>
               <li>
                 <button 
                   onClick={() => { setCurrentView('transparansi'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  className="text-muted-foreground hover:text-emerald-700 dark:hover:text-emerald-400 font-medium transition-colors"
                 >
-                  Open Ledger & Transparansi Anggaran
+                  📊 Transparansi & Keterbukaan APBDes
                 </button>
               </li>
-              <li className="pt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={async () => {
-                    const result = await showConfirm({
-                      title: 'Reset Database Simulasi?',
-                      text: 'Seluruh riwayat tiket pengajuan, log notifikasi, dan data survei akan dikembalikan ke data awal demo.',
-                      confirmButtonText: 'Ya, Reset Data',
-                      confirmColorClass: 'bg-rose-700 hover:bg-rose-800',
-                      icon: 'warning'
-                    });
-                    if (result.isConfirmed) {
-                      resetDatabase();
-                    }
-                  }}
-                  className="h-7 text-[10px] font-semibold gap-1.5 border-border shadow-2xs"
+              <li>
+                <button 
+                  onClick={() => { setCurrentView('login'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                  className="text-emerald-700 dark:text-emerald-400 hover:underline font-bold transition-colors"
                 >
-                  <RotateCcw size={11} />
-                  <span>Reset Database Simulasi</span>
-                </Button>
+                  🔑 Masuk Petugas / Akun Warga
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => { setCurrentView('register'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                  className="text-muted-foreground hover:text-emerald-700 dark:hover:text-emerald-400 font-medium transition-colors"
+                >
+                  👤 Pendaftaran Akun Warga Baru
+                </button>
               </li>
             </ul>
           </div>
 
           {/* Col 4: Contact */}
-          <div>
-            <h4 className="text-[11px] font-bold uppercase tracking-wider text-foreground mb-3">Kantor Pelayanan Desa</h4>
-            <ul className="space-y-2 text-[11px] text-muted-foreground">
-              <li className="flex items-start gap-2">
-                <MapPin size={14} className="text-primary shrink-0 mt-0.5" />
-                <span>{DESA_CONFIG.address}</span>
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Kantor Pelayanan Desa</h4>
+            <ul className="space-y-2.5 text-xs sm:text-sm text-muted-foreground">
+              <li className="flex items-start gap-2.5">
+                <MapPin size={16} className="text-emerald-700 dark:text-emerald-400 shrink-0 mt-0.5" />
+                <span>{DESA_CONFIG.alamatKantor}</span>
               </li>
-              <li className="flex items-center gap-2">
-                <Phone size={14} className="text-primary shrink-0" />
-                <span>{DESA_CONFIG.hotlineWhatsapp}</span>
+              <li className="flex items-center gap-2.5">
+                <Phone size={16} className="text-emerald-700 dark:text-emerald-400 shrink-0" />
+                <span>WA: <b>{DESA_CONFIG.whatsappCenter}</b></span>
               </li>
-              <li className="flex items-center gap-2">
-                <Mail size={14} className="text-primary shrink-0" />
-                <span>{DESA_CONFIG.emailOfficial}</span>
+              <li className="flex items-center gap-2.5">
+                <Mail size={16} className="text-emerald-700 dark:text-emerald-400 shrink-0" />
+                <span>{DESA_CONFIG.emailDesa}</span>
               </li>
-              <li className="flex items-center gap-2">
-                <Clock size={14} className="text-primary shrink-0" />
-                <span>{DESA_CONFIG.operatingHours}</span>
+              <li className="flex items-center gap-2.5">
+                <Clock size={16} className="text-emerald-700 dark:text-emerald-400 shrink-0" />
+                <span>{DESA_CONFIG.jamLayanan}</span>
               </li>
             </ul>
           </div>
 
         </div>
 
-        <Separator className="border-border/60" />
+        <Separator className="border-border" />
 
         {/* Bottom Legal Notice */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-muted-foreground">
-          <div className="flex flex-wrap items-center gap-2">
-            <span>© {new Date().getFullYear()} Pemerintah Desa Jarak, Plosoklaten, Kediri.</span>
-            <span className="hidden sm:inline">•</span>
-            <span>Versi Produksi Standard 2.0 (Civic-Tech Engine)</span>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-2 text-center sm:text-left">
+            <span>© {new Date().getFullYear()} Pemerintah Desa Jarak, Kecamatan Plosoklaten, Kabupaten Kediri.</span>
           </div>
 
-          <div className="flex items-center gap-4 text-[10px]">
-            <span className="text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-ping"></span>
-              Sistem Aktif & Terhubung Server
-            </span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={async () => {
+                const result = await showConfirm({
+                  title: 'Kembalikan ke Data Awal Demo?',
+                  text: 'Seluruh riwayat tiket pengajuan dan survei akan dikembalikan ke kondisi awal demo.',
+                  confirmButtonText: 'Ya, Reset Data',
+                  confirmColorClass: 'bg-rose-600 hover:bg-rose-700',
+                  icon: 'warning'
+                });
+                if (result.isConfirmed) {
+                  resetDatabase();
+                }
+              }}
+              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 font-semibold"
+            >
+              <RotateCcw size={12} /> Reset Data Demo
+            </button>
           </div>
         </div>
 

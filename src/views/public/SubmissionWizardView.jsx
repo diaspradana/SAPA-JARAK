@@ -2,15 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useVoice } from '../../context/VoiceContext';
 import ImageUploader from '../../components/common/ImageUploader';
-import { DUSUN_LIST, ASSISTANCE_TYPES } from '../../data/desaConfig';
+import { DUSUN_LIST } from '../../data/desaConfig';
 import { Button } from '../../components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../components/ui/card';
+import { Card, CardContent } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
 import { Label } from '../../components/ui/label';
-import { Badge } from '../../components/ui/badge';
 import { Progress } from '../../components/ui/progress';
-import { Alert, AlertTitle, AlertDescription } from '../../components/ui/alert';
+import { Alert } from '../../components/ui/alert';
 import { 
   ArrowRight, 
   ArrowLeft, 
@@ -24,12 +23,16 @@ import {
   RotateCcw,
   Lock,
   Sparkles,
-  Info
+  Info,
+  PhoneCall,
+  UserCheck,
+  CheckCircle2,
+  FileText
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export default function SubmissionWizardView() {
-  const { submitApplication, setCurrentView, setActiveTicketNumber, showToast } = useApp();
+  const { submitApplication, setCurrentView, setActiveTicketNumber, showToast, currentUser } = useApp();
   const { speak } = useVoice();
 
   const [step, setStep] = useState(1);
@@ -38,69 +41,102 @@ export default function SubmissionWizardView() {
   // Form State
   const [formData, setFormData] = useState({
     assistanceType: 'RTLH',
-    dusunId: 'kalasan',
-    rt: '01',
-    rw: '01',
-    address: '',
+    dusunId: currentUser?.dusunId || 'kalasan',
+    rt: currentUser?.rt || '01',
+    rw: currentUser?.rw || '01',
+    address: currentUser?.address || '',
     
-    beneficiaryName: '',
-    nik: '',
-    kkNumber: '',
-    phone: '',
+    beneficiaryName: currentUser?.name || '',
+    nik: currentUser?.nik || '',
+    kkNumber: currentUser?.kkNumber || '',
+    phone: currentUser?.phone || '',
     isUnregistered: false,
     
     description: '',
     photos: [],
     
-    reporterName: '',
-    reporterPhone: '',
+    reporterName: currentUser?.name || '',
+    reporterPhone: currentUser?.phone || '',
     reporterRelation: 'Diri Sendiri',
     
-    otp: ['', '', '', '', '', '']
+    otp: ['1', '2', '3', '4', '5', '6']
   });
 
   const [errors, setErrors] = useState({});
-  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
-  const [otpCountdown, setOtpCountdown] = useState(60);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Speech helper on step change
   useEffect(() => {
-    if (step === 1) speak("Langkah 1: Silakan pilih kategori bantuan sosial.");
-    else if (step === 2) speak("Langkah 2: Tentukan wilayah dusun, RT, dan RW tempat tinggal.");
-    else if (step === 3) speak("Langkah 3: Masukkan identitas nama dan NIK calon penerima manfaat.");
-    else if (step === 4) speak("Langkah 4: Jelaskan kondisi faktual dan lampirkan foto kondisi lapangan.");
-    else if (step === 5) speak("Langkah 5: Masukkan data nama dan nomor WhatsApp pelapor.");
-    else if (step === 6) speak("Langkah 6: Masukkan 6 digit kode OTP verifikasi WhatsApp.");
+    if (step === 1) speak("Tahap 1: Pilih kategori bantuan sosial yang ingin Anda ajukan.");
+    else if (step === 2) speak("Tahap 2: Masukkan identitas nama, nomor KTP, dan lokasi dusun penerima.");
+    else if (step === 3) speak("Tahap 3: Lampirkan foto dan ceritakan kondisi yang membutuhkan bantuan.");
+    else if (step === 4) speak("Tahap 4: Masukkan nomor WhatsApp untuk menerima kabar status dan konfirmasi permohonan.");
   }, [step]);
 
-  useEffect(() => {
-    let timer;
-    if (step === 6 && otpCountdown > 0) {
-      timer = setInterval(() => setOtpCountdown(prev => prev - 1), 1000);
+  // Autofill helpers
+  const handleAutoFillUser = () => {
+    if (currentUser) {
+      setFormData(prev => ({
+        ...prev,
+        beneficiaryName: currentUser.name,
+        nik: currentUser.nik || '3506121405850001',
+        kkNumber: currentUser.kkNumber || '3506121008030002',
+        reporterName: currentUser.name,
+        reporterPhone: currentUser.phone || '081234567890',
+        dusunId: currentUser.dusunId || 'kalasan',
+        rt: currentUser.rt || '02',
+        rw: currentUser.rw || '01',
+        address: currentUser.address || 'Dekat Balai Dusun',
+      }));
+      showToast('Data akun Anda berhasil diisikan ke formulir!', 'success');
     }
-    return () => clearInterval(timer);
-  }, [step, otpCountdown]);
+  };
 
+  const handleFillDemo = () => {
+    setFormData({
+      assistanceType: 'RTLH',
+      dusunId: 'jaraklor',
+      rt: '03',
+      rw: '01',
+      address: 'Sebelah barat Masjid Nurul Huda, Dusun Jarak Lor',
+      beneficiaryName: 'Bpk. Danang Prasetyo',
+      nik: '3506121405850001',
+      kkNumber: '3506121008030002',
+      phone: '081234567890',
+      isUnregistered: false,
+      description: 'Atap dapur dan ruang tengah bocor parah saat musim hujan. Dinding samping anyaman bambu (gedek) sudah lapuk dan miring.',
+      photos: [
+        'https://images.unsplash.com/photo-1590381105924-c72589b9ef3f?auto=format&fit=crop&q=80&w=800'
+      ],
+      reporterName: 'Danang Prasetyo',
+      reporterPhone: '081234567890',
+      reporterRelation: 'Diri Sendiri',
+      otp: ['1', '2', '3', '4', '5', '6']
+    });
+    showToast('Contoh data pengajuan berhasil diisikan secara lengkap.', 'info');
+  };
+
+  // Validation
   const validateStep = (currentStep) => {
     const errs = {};
     if (currentStep === 1) {
-      if (!formData.assistanceType) errs.assistanceType = "Pilih kategori bantuan";
+      if (!formData.assistanceType) errs.assistanceType = "Pilih salah satu kategori bantuan";
     } else if (currentStep === 2) {
-      if (!formData.dusunId) errs.dusunId = "Pilih dusun";
+      if (!formData.beneficiaryName.trim()) errs.beneficiaryName = "Nama lengkap penerima wajib diisi";
+      if (!formData.isUnregistered && (!formData.nik || formData.nik.length < 16)) {
+        errs.nik = "Nomor Induk Kependudukan (NIK) harus 16 digit angka (atau centang opsi tanpa KTP)";
+      }
+      if (!formData.dusunId) errs.dusunId = "Pilih wilayah dusun";
       if (!formData.rt) errs.rt = "Nomor RT wajib diisi";
       if (!formData.rw) errs.rw = "Nomor RW wajib diisi";
     } else if (currentStep === 3) {
-      if (!formData.beneficiaryName.trim()) errs.beneficiaryName = "Nama penerima wajib diisi";
-      if (!formData.isUnregistered && formData.nik.length < 16) {
-        errs.nik = "NIK harus terdiri dari 16 digit angka (atau centang opsi tanpa berkas)";
+      if (!formData.description.trim() || formData.description.length < 10) {
+        errs.description = "Ceritakan kondisi rumah atau kebutuhan alat minimal 10 karakter agar kasun paham";
       }
     } else if (currentStep === 4) {
-      if (!formData.description.trim() || formData.description.length < 15) {
-        errs.description = "Uraikan kondisi faktual minimal 15 karakter untuk asesmen awal";
-      }
-    } else if (currentStep === 5) {
-      if (!formData.reporterName.trim()) errs.reporterName = "Nama pelapor wajib diisi";
+      if (!formData.reporterName.trim()) errs.reporterName = "Nama pelapor/pemohon wajib diisi";
       if (!formData.reporterPhone.trim() || formData.reporterPhone.length < 9) {
-        errs.reporterPhone = "Nomor WhatsApp aktif wajib diisi";
+        errs.reporterPhone = "Nomor WhatsApp aktif wajib diisi untuk kabar status";
       }
     }
     setErrors(errs);
@@ -110,148 +146,128 @@ export default function SubmissionWizardView() {
   const handleNext = () => {
     if (validateStep(step)) {
       setStep(prev => prev + 1);
-      window.scrollTo({ top: 60, behavior: 'smooth' });
+      window.scrollTo({ top: 40, behavior: 'smooth' });
     } else {
-      showToast("Lengkapi kolom yang bertanda merah", "error");
+      showToast("Lengkapi kolom bertanda merah terlebih dahulu.", "warning");
     }
   };
 
   const handleBack = () => {
     setStep(prev => Math.max(1, prev - 1));
-    window.scrollTo({ top: 60, behavior: 'smooth' });
-  };
-
-  const handleOtpChange = (index, val) => {
-    if (val.length > 1) val = val[0];
-    const newOtp = [...formData.otp];
-    newOtp[index] = val;
-    setFormData({ ...formData, otp: newOtp });
-
-    if (val && index < 5) {
-      const nextInput = document.getElementById(`otp-input-${index + 1}`);
-      if (nextInput) nextInput.focus();
-    }
-  };
-
-  const handleAutoFillOtp = () => {
-    setFormData({ ...formData, otp: ['1', '2', '3', '4', '5', '6'] });
-    showToast("Kode demo [123456] diisikan.", "info");
+    window.scrollTo({ top: 40, behavior: 'smooth' });
   };
 
   const handleFinalSubmit = (e) => {
     e.preventDefault();
-    const otpCode = formData.otp.join('');
-    if (otpCode.length < 6) {
-      setErrors({ otp: "Masukkan 6 digit kode OTP verifikasi." });
+    if (!validateStep(4)) {
+      showToast("Lengkapi data kontak Anda sebelum mengirim.", "warning");
       return;
     }
 
-    setIsVerifyingOtp(true);
+    setIsSubmitting(true);
     setTimeout(() => {
-      setIsVerifyingOtp(false);
+      setIsSubmitting(false);
       const app = submitApplication(formData);
       setCreatedTicket(app);
-      speak(`Pengajuan terdaftar dengan nomor tiket ${app.ticketNumber}`);
-    }, 900);
+      speak(`Selamat, pengajuan Anda berhasil terdaftar dengan nomor tiket ${app.ticketNumber}`);
+    }, 800);
   };
 
   const copyTicket = () => {
     if (createdTicket) {
       navigator.clipboard.writeText(createdTicket.ticketNumber);
-      showToast(`Nomor Tiket #${createdTicket.ticketNumber} disalin.`, "success");
+      showToast(`Nomor Tiket #${createdTicket.ticketNumber} berhasil disalin!`, "success");
     }
   };
 
   const stepsList = [
-    { num: 1, label: "Kategori Bantuan" },
-    { num: 2, label: "Lokasi Dusun" },
-    { num: 3, label: "Data Penerima" },
-    { num: 4, label: "Kondisi Faktual" },
-    { num: 5, label: "Kontak Pelapor" },
-    { num: 6, label: "Verifikasi OTP" }
+    { num: 1, title: "Pilih Bantuan", subtitle: "RTLH atau Alat Disabilitas" },
+    { num: 2, title: "Data Penerima & Dusun", subtitle: "Nama, NIK, dan Alamat" },
+    { num: 3, title: "Kondisi & Foto", subtitle: "Cerita kondisi & bukti foto" },
+    { num: 4, title: "Kontak WhatsApp", subtitle: "Nomor untuk kabar status" }
   ];
 
-  // SUCCESS VIEW
+  // ---------------- SUCCESS SCREEN ----------------
   if (createdTicket) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-12 text-center animate-in zoom-in-95 duration-300">
-        <Card className="border-border/80 p-6 sm:p-10 space-y-6 shadow-xl text-foreground">
+      <div className="max-w-2xl mx-auto px-4 py-12 sm:py-16 text-center animate-in zoom-in-95 duration-300">
+        <Card className="border-border rounded-3xl p-6 sm:p-10 space-y-6 shadow-2xl bg-card">
           
-          <div className="w-14 h-14 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center justify-center mx-auto">
-            <Check size={28} className="stroke-[3]" />
+          <div className="w-16 h-16 rounded-2xl bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 flex items-center justify-center mx-auto shadow-md">
+            <Check size={36} className="stroke-[3]" />
           </div>
 
-          <div className="space-y-1.5">
-            <Badge variant="success" className="text-[11px] px-3 py-0.5">
-              Pengajuan Berhasil Didaftarkan
-            </Badge>
-            <h2 className="text-xl sm:text-2xl font-black text-foreground">
-              Permohonan Terdaftar di Sistem Desa Jarak
+          <div className="space-y-2">
+            <span className="inline-block bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-xs sm:text-sm px-3.5 py-1 rounded-full font-bold">
+              ✓ Permohonan Berhasil Dikirim
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
+              Permohonan Anda Sudah Terdaftar!
             </h2>
-            <p className="text-xs text-muted-foreground max-w-md mx-auto">
-              Notifikasi telah diteruskan ke Kepala Dusun {createdTicket.dusunName} untuk jadwal verifikasi peninjauan lapangan.
+            <p className="text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
+              Kabar telah otomatis diteruskan kepada <b>Kepala Dusun {createdTicket.dusunName}</b> untuk peninjauan langsung ke rumah Anda.
             </p>
           </div>
 
-          {/* Ticket Display */}
-          <div className="bg-muted/40 border border-border/80 rounded-xl p-6 space-y-3">
-            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
-              Nomor Register Tiket
+          {/* Ticket Display Card */}
+          <div className="bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent border-2 border-emerald-500/30 rounded-2xl p-6 sm:p-8 space-y-4">
+            <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest block">
+              Nomor Tiket Anda
             </span>
-            <div className="text-3xl font-black font-mono text-primary dark:text-emerald-400 tracking-wider">
+            <div className="text-3xl sm:text-4xl font-black font-mono text-emerald-800 dark:text-emerald-300 tracking-wider">
               #{createdTicket.ticketNumber}
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              Gunakan nomor tiket ini untuk memantau proses verifikasi kasun dan validasi desa.
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              Simpan nomor tiket ini untuk mengecek sejauh mana proses survei kasun dan validasi desa berjalan.
             </p>
 
-            <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+            <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2">
               <Button
                 variant="outline"
-                size="sm"
+                size="default"
                 onClick={copyTicket}
-                className="gap-1.5 font-bold border-border shadow-2xs"
+                className="h-11 px-4 gap-2 font-bold border-border bg-card hover:bg-muted rounded-xl shadow-xs"
               >
-                <Copy size={13} />
+                <Copy size={16} />
                 <span>Salin Nomor Tiket</span>
               </Button>
 
               <Button
-                size="sm"
+                size="default"
                 onClick={() => {
-                  const text = `Permohonan bantuan SAPA-JARAK Desa Jarak terdaftar dengan Nomor Tiket #${createdTicket.ticketNumber}. Lacak status di: https://sapa-jarak.desa.id/lacak?ticket=${createdTicket.ticketNumber}`;
+                  const text = `Halo, permohonan bantuan sosial SAPA-JARAK Desa Jarak telah terdaftar dengan Nomor Tiket #${createdTicket.ticketNumber} untuk penerima ${createdTicket.beneficiaryName} di Dusun ${createdTicket.dusunName}.`;
                   window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
                 }}
-                className="gap-1.5 font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs"
+                className="h-11 px-4 gap-2 font-bold bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl shadow-xs"
               >
-                <Share2 size={13} />
+                <Share2 size={16} />
                 <span>Bagikan ke WhatsApp</span>
               </Button>
             </div>
           </div>
 
-          <div className="pt-2 flex flex-col sm:flex-row items-stretch justify-center gap-2.5">
+          <div className="pt-2 flex flex-col sm:flex-row items-stretch justify-center gap-3">
             <Button
-              size="default"
+              size="lg"
               onClick={() => {
                 setActiveTicketNumber(createdTicket.ticketNumber);
                 setCurrentView('lacak');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className="gap-2 font-bold shadow-md"
+              className="h-12 px-6 gap-2 text-sm sm:text-base font-bold bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl shadow-md"
             >
-              <Search size={14} />
-              <span>Buka Pelacakan Tiket Ini</span>
+              <Search size={18} />
+              <span>Lacak Status Permohonan Ini</span>
             </Button>
 
             <Button
               variant="outline"
-              size="default"
+              size="lg"
               onClick={() => {
                 setCurrentView('home');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className="border-border"
+              className="h-12 px-5 text-sm font-bold border-border rounded-xl"
             >
               Kembali ke Beranda
             </Button>
@@ -262,228 +278,213 @@ export default function SubmissionWizardView() {
     );
   }
 
-  // WIZARD FORM
+  // ---------------- FORM WIZARD ----------------
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 sm:py-12 space-y-6" data-aos="fade-up" data-aos-duration="650">
+    <div className="max-w-3xl mx-auto px-4 py-8 sm:py-12 space-y-6">
       
-      {/* Header */}
-      <div className="space-y-1.5">
-        <Badge variant="outline" className="px-2.5 py-0.5 text-xs font-bold border-border bg-muted/40 text-foreground">
-          Formulir Pelayanan Publik
-        </Badge>
-        <h1 className="text-xl sm:text-2xl font-black text-foreground">
-          Pendaftaran Pengajuan Bantuan Sosial
-        </h1>
-        <p className="text-xs text-muted-foreground">
-          Isi formulir secara berurutan. Data akan diverifikasi faktual di lapangan oleh Kasun wilayah.
-        </p>
+      {/* Header & Autofill Tool */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <span className="inline-block bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-xs px-3 py-1 rounded-full font-bold">
+            Formulir Pendaftaran Bantuan
+          </span>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
+            Pengajuan Bantuan Sosial Warga
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Layanan pengajuan resmi Desa Jarak. Gratis dan diproses berjenjang secara adil.
+          </p>
+        </div>
+
+        {/* Quick Fill Action */}
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          {currentUser ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAutoFillUser}
+              className="h-9 gap-1.5 text-xs font-bold border-emerald-600/40 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950 rounded-xl"
+            >
+              <UserCheck size={14} /> Gunakan Data Akun Saya
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleFillDemo}
+              className="h-9 gap-1.5 text-xs font-bold border-border bg-card hover:bg-muted text-muted-foreground rounded-xl"
+            >
+              <Sparkles size={14} className="text-amber-500" /> Isi Contoh Demo Cepat
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Stepper Card */}
-      <Card className="border-border/80 p-4 shadow-xs">
-        <div className="grid grid-cols-6 gap-1 text-center">
+      <Card className="border-border rounded-2xl p-4 sm:p-5 shadow-xs bg-card">
+        <div className="grid grid-cols-4 gap-2 text-center">
           {stepsList.map((s) => {
             const isDone = step > s.num;
             const isCurrent = step === s.num;
             return (
-              <div key={s.num} className="flex flex-col items-center space-y-1.5">
+              <div key={s.num} className="flex flex-col items-center space-y-2">
                 <div 
                   className={cn(
-                    "w-7 h-7 rounded-md flex items-center justify-center font-bold text-xs transition-colors",
+                    "w-9 h-9 rounded-xl flex items-center justify-center font-extrabold text-sm transition-all",
                     isDone 
-                      ? "bg-emerald-600 text-white" 
+                      ? "bg-emerald-700 text-white shadow-xs" 
                       : isCurrent 
-                      ? "bg-primary text-primary-foreground shadow-xs ring-2 ring-primary/30" 
+                      ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200 ring-2 ring-emerald-600 shadow-sm" 
                       : "bg-muted text-muted-foreground border border-border"
                   )}
                 >
-                  {isDone ? <Check size={13} className="stroke-[3]" /> : s.num}
+                  {isDone ? <Check size={18} className="stroke-[3]" /> : s.num}
                 </div>
-                <span className={cn("text-[10px] font-semibold hidden sm:block truncate max-w-[80px]", isCurrent ? "text-foreground font-bold" : "text-muted-foreground")}>
-                  {s.label}
-                </span>
+                <div className="hidden sm:block">
+                  <div className={cn("text-xs font-bold", isCurrent ? "text-foreground" : "text-muted-foreground")}>
+                    {s.title}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground truncate max-w-[120px]">
+                    {s.subtitle}
+                  </div>
+                </div>
               </div>
             );
           })}
         </div>
 
-        <div className="mt-3">
-          <Progress value={((step - 1) / 5) * 100} className="h-1.5 bg-muted" />
+        <div className="mt-4">
+          <Progress value={((step - 1) / 3) * 100} className="h-2 bg-muted" />
         </div>
       </Card>
 
-      {/* Step Form Box */}
-      <Card className="border-border/80 shadow-md">
+      {/* Main Step Form Card */}
+      <Card className="border-border rounded-3xl shadow-lg bg-card overflow-hidden">
         <CardContent className="p-6 sm:p-8 space-y-6">
           
-          {/* STEP 1 */}
+          {/* STEP 1: Pilih Kategori Bantuan */}
           {step === 1 && (
-            <div className="space-y-5 animate-in fade-in-0 duration-200">
-              <div className="border-b border-border/60 pb-3">
-                <h2 className="text-sm font-bold text-foreground">Langkah 1: Pilih Kategori Bantuan</h2>
-                <p className="text-xs text-muted-foreground">Tentukan jenis bantuan yang diajukan</p>
+            <div className="space-y-6 animate-in fade-in-0 duration-200">
+              <div className="border-b border-border pb-4">
+                <h2 className="text-lg font-bold text-foreground">Tahap 1: Pilih Jenis Bantuan</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Klik salah satu bantuan di bawah ini yang sesuai dengan kebutuhan Anda atau warga.
+                </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                
+                {/* Option RTLH */}
                 <div 
                   onClick={() => setFormData({ ...formData, assistanceType: 'RTLH' })}
                   className={cn(
-                    "p-5 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between space-y-3",
+                    "p-6 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between space-y-4",
                     formData.assistanceType === 'RTLH' 
-                      ? "border-primary bg-primary/5 shadow-xs" 
-                      : "border-border bg-card hover:border-border/80 hover:bg-muted/30"
+                      ? "border-emerald-600 bg-emerald-50/80 dark:bg-emerald-950/40 shadow-md ring-2 ring-emerald-600/30" 
+                      : "border-border bg-card hover:bg-muted/40"
                   )}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20">
-                      <Home size={19} />
+                  <div className="flex items-center justify-between">
+                    <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold">
+                      <Home size={26} />
                     </div>
-                    <div>
-                      <Badge variant="success" className="text-[9px] px-1.5 py-0">Kategori 01</Badge>
-                      <h3 className="text-sm font-bold text-foreground mt-0.5">Rehabilitasi RTLH</h3>
-                    </div>
+                    {formData.assistanceType === 'RTLH' && (
+                      <span className="w-6 h-6 rounded-full bg-emerald-700 text-white flex items-center justify-center">
+                        <Check size={14} className="stroke-[3]" />
+                      </span>
+                    )}
                   </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Perbaikan rumah dengan kerusakan dinding gedek, atap bocor parah, lantai tanah, dan sanitasi.
-                  </p>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-extrabold text-foreground">
+                      Rehabilitasi Rumah (RTLH)
+                    </h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed mt-1.5">
+                      Bantuan material semen, bata, genteng/asbes, kayu, dan sanitasi bagi rumah tidak layak huni dengan kerusakan atap, dinding bambu lapuk, atau lantai tanah.
+                    </p>
+                  </div>
                 </div>
 
+                {/* Option Disabilitas */}
                 <div 
                   onClick={() => setFormData({ ...formData, assistanceType: 'DISABILITAS' })}
                   className={cn(
-                    "p-5 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between space-y-3",
+                    "p-6 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between space-y-4",
                     formData.assistanceType === 'DISABILITAS' 
-                      ? "border-primary bg-primary/5 shadow-xs" 
-                      : "border-border bg-card hover:border-border/80 hover:bg-muted/30"
+                      ? "border-sky-600 bg-sky-50/80 dark:bg-sky-950/40 shadow-md ring-2 ring-sky-600/30" 
+                      : "border-border bg-card hover:bg-muted/40"
                   )}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center border border-sky-500/20">
-                      <Accessibility size={19} />
+                  <div className="flex items-center justify-between">
+                    <div className="w-12 h-12 rounded-xl bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300 flex items-center justify-center font-bold">
+                      <Accessibility size={26} />
                     </div>
-                    <div>
-                      <Badge variant="info" className="text-[9px] px-1.5 py-0">Kategori 02</Badge>
-                      <h3 className="text-sm font-bold text-foreground mt-0.5">Alat Bantu Disabilitas</h3>
-                    </div>
+                    {formData.assistanceType === 'DISABILITAS' && (
+                      <span className="w-6 h-6 rounded-full bg-sky-700 text-white flex items-center justify-center">
+                        <Check size={14} className="stroke-[3]" />
+                      </span>
+                    )}
                   </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Penyediaan alat mobilitas (Kursi Roda standar/CP, Kruk, Walker, Hearing Aid).
-                  </p>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-extrabold text-foreground">
+                      Alat Bantu Disabilitas & Lansia
+                    </h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed mt-1.5">
+                      Penyediaan alat mobilitas seperti kursi roda (standar/CP), kruk ketiak, walker roda, tongkat, atau alat bantu dengar bagi lansia dan disabilitas fisik.
+                    </p>
+                  </div>
                 </div>
+
               </div>
             </div>
           )}
 
-          {/* STEP 2 */}
+          {/* STEP 2: Data Penerima & Lokasi Dusun */}
           {step === 2 && (
-            <div className="space-y-4 animate-in fade-in-0 duration-200 text-xs">
-              <div className="border-b border-border/60 pb-3">
-                <h2 className="text-sm font-bold text-foreground">Langkah 2: Lokasi Domisili di Desa Jarak</h2>
-                <p className="text-xs text-muted-foreground">Pilih dusun dan alamat rumah pemohon</p>
+            <div className="space-y-6 animate-in fade-in-0 duration-200">
+              <div className="border-b border-border pb-4">
+                <h2 className="text-lg font-bold text-foreground">Tahap 2: Data Calon Penerima & Wilayah Dusun</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Isi data warga yang membutuhkan bantuan sosial dan tentukan lokasi tempat tinggalnya.
+                </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="sm:col-span-2 space-y-1.5">
-                  <Label htmlFor="dusunId">
-                    Dusun Wilayah Desa Jarak <span className="text-destructive">*</span>
-                  </Label>
-                  <select
-                    id="dusunId"
-                    value={formData.dusunId}
-                    onChange={(e) => setFormData({ ...formData, dusunId: e.target.value })}
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  >
-                    {DUSUN_LIST.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        Dusun {d.name} (Kasun: {d.kasunName})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="rt">Nomor RT <span className="text-destructive">*</span></Label>
-                  <Input
-                    id="rt"
-                    type="text"
-                    placeholder="Contoh: 03"
-                    value={formData.rt}
-                    onChange={(e) => setFormData({ ...formData, rt: e.target.value })}
-                  />
-                  {errors.rt && <p className="text-[11px] text-destructive font-medium">{errors.rt}</p>}
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="rw">Nomor RW <span className="text-destructive">*</span></Label>
-                  <Input
-                    id="rw"
-                    type="text"
-                    placeholder="Contoh: 01"
-                    value={formData.rw}
-                    onChange={(e) => setFormData({ ...formData, rw: e.target.value })}
-                  />
-                  {errors.rw && <p className="text-[11px] text-destructive font-medium">{errors.rw}</p>}
-                </div>
-
-                <div className="sm:col-span-2 space-y-1.5">
-                  <Label htmlFor="address">Patokan Alamat Rumah</Label>
-                  <Input
-                    id="address"
-                    type="text"
-                    placeholder="Contoh: Depan musholla / timur pos kamling"
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 3 */}
-          {step === 3 && (
-            <div className="space-y-4 animate-in fade-in-0 duration-200 text-xs">
-              <div className="border-b border-border/60 pb-3">
-                <h2 className="text-sm font-bold text-foreground">Langkah 3: Identitas Calon Penerima Manfaat</h2>
-                <p className="text-xs text-muted-foreground">Data warga yang membutuhkan bantuan sosial</p>
+              {/* Special notice for unregistered elders */}
+              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="unreg-check"
+                  checked={formData.isUnregistered}
+                  onChange={(e) => setFormData({ ...formData, isUnregistered: e.target.checked })}
+                  className="mt-1 w-5 h-5 rounded border-amber-400 text-amber-600 focus:ring-amber-500 cursor-pointer"
+                />
+                <label htmlFor="unreg-check" className="text-xs sm:text-sm text-amber-950 dark:text-amber-200 cursor-pointer">
+                  <span className="font-bold block">Penerima belum punya fisik KTP / Lansia sebatang kara?</span>
+                  Centang opsi ini jika warga belum memiliki berkas KTP/KK. Pengajuan tetap diproses dan Kasun akan mendampingi administrasi kependudukan saat survei.
+                </label>
               </div>
 
-              <Alert variant="warning" className="p-3.5">
-                <Info size={16} />
-                <div className="flex items-start gap-2.5 ml-2">
-                  <input
-                    type="checkbox"
-                    id="unreg-check"
-                    checked={formData.isUnregistered}
-                    onChange={(e) => setFormData({ ...formData, isUnregistered: e.target.checked })}
-                    className="mt-0.5 rounded border-border"
-                  />
-                  <label htmlFor="unreg-check" className="text-[11px] leading-relaxed cursor-pointer text-foreground">
-                    <span className="font-bold block">Warga Rentan / Terlantar Tanpa Berkas Kependudukan</span>
-                    Centang jika warga sebatang kara dan belum memiliki fisik KTP/KK. Kasun akan memverifikasi dan mendampingi administrasi kependudukan.
-                  </label>
-                </div>
-              </Alert>
-
-              <div className="space-y-3.5">
+              <div className="space-y-4">
+                
                 <div className="space-y-1.5">
-                  <Label htmlFor="beneficiaryName">
-                    Nama Lengkap Penerima <span className="text-destructive">*</span>
+                  <Label htmlFor="beneficiaryName" className="text-sm font-bold text-foreground">
+                    Nama Lengkap Penerima Manfaat <span className="text-rose-600">*</span>
                   </Label>
                   <Input
                     id="beneficiaryName"
                     type="text"
-                    placeholder="Nama sesuai KTP atau nama panggilan warga"
+                    placeholder="Contoh: Danang Prasetyo atau Mbah Sutinah"
                     value={formData.beneficiaryName}
                     onChange={(e) => setFormData({ ...formData, beneficiaryName: e.target.value })}
+                    className="h-12 text-sm sm:text-base rounded-xl"
                   />
-                  {errors.beneficiaryName && <p className="text-[11px] text-destructive font-medium">{errors.beneficiaryName}</p>}
+                  {errors.beneficiaryName && <p className="text-xs text-rose-600 font-bold">{errors.beneficiaryName}</p>}
                 </div>
 
                 {!formData.isUnregistered && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label htmlFor="nik">
-                        NIK (16 Digit) <span className="text-destructive">*</span>
+                      <Label htmlFor="nik" className="text-sm font-bold text-foreground">
+                        Nomor Induk Kependudukan (NIK 16 Digit) <span className="text-rose-600">*</span>
                       </Label>
                       <Input
                         id="nik"
@@ -492,13 +493,15 @@ export default function SubmissionWizardView() {
                         placeholder="350612xxxxxxxxxx"
                         value={formData.nik}
                         onChange={(e) => setFormData({ ...formData, nik: e.target.value.replace(/\D/g, '') })}
-                        className="font-mono"
+                        className="h-12 text-sm sm:text-base font-mono rounded-xl"
                       />
-                      {errors.nik && <p className="text-[11px] text-destructive font-medium">{errors.nik}</p>}
+                      {errors.nik && <p className="text-xs text-rose-600 font-bold">{errors.nik}</p>}
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label htmlFor="kkNumber">Nomor KK (16 Digit)</Label>
+                      <Label htmlFor="kkNumber" className="text-sm font-bold text-foreground">
+                        Nomor Kartu Keluarga (KK 16 Digit - Opsional)
+                      </Label>
                       <Input
                         id="kkNumber"
                         type="text"
@@ -506,178 +509,224 @@ export default function SubmissionWizardView() {
                         placeholder="350612xxxxxxxxxx"
                         value={formData.kkNumber}
                         onChange={(e) => setFormData({ ...formData, kkNumber: e.target.value.replace(/\D/g, '') })}
-                        className="font-mono"
+                        className="h-12 text-sm sm:text-base font-mono rounded-xl"
                       />
                     </div>
                   </div>
                 )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                  <div className="sm:col-span-1 space-y-1.5">
+                    <Label htmlFor="dusunId" className="text-sm font-bold text-foreground">
+                      Wilayah Dusun <span className="text-rose-600">*</span>
+                    </Label>
+                    <select
+                      id="dusunId"
+                      value={formData.dusunId}
+                      onChange={(e) => setFormData({ ...formData, dusunId: e.target.value })}
+                      className="h-12 w-full rounded-xl border border-input bg-background px-3 text-sm font-semibold text-foreground shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
+                    >
+                      {DUSUN_LIST.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          Dusun {d.name} (Kasun: {d.kasunName.split(' ')[0]})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="rt" className="text-sm font-bold text-foreground">
+                      Nomor RT <span className="text-rose-600">*</span>
+                    </Label>
+                    <Input
+                      id="rt"
+                      type="text"
+                      placeholder="Contoh: 02"
+                      value={formData.rt}
+                      onChange={(e) => setFormData({ ...formData, rt: e.target.value })}
+                      className="h-12 text-sm sm:text-base rounded-xl"
+                    />
+                    {errors.rt && <p className="text-xs text-rose-600 font-bold">{errors.rt}</p>}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="rw" className="text-sm font-bold text-foreground">
+                      Nomor RW <span className="text-rose-600">*</span>
+                    </Label>
+                    <Input
+                      id="rw"
+                      type="text"
+                      placeholder="Contoh: 01"
+                      value={formData.rw}
+                      onChange={(e) => setFormData({ ...formData, rw: e.target.value })}
+                      className="h-12 text-sm sm:text-base rounded-xl"
+                    />
+                    {errors.rw && <p className="text-xs text-rose-600 font-bold">{errors.rw}</p>}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="address" className="text-sm font-bold text-foreground">
+                    Patokan Alamat Rumah / Petunjuk Jalan
+                  </Label>
+                  <Input
+                    id="address"
+                    type="text"
+                    placeholder="Contoh: Depan musholla Al-Ikhlas, timur pos kamling RT 02"
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    className="h-12 text-sm sm:text-base rounded-xl"
+                  />
+                </div>
+
               </div>
             </div>
           )}
 
-          {/* STEP 4 */}
-          {step === 4 && (
-            <div className="space-y-4 animate-in fade-in-0 duration-200 text-xs">
-              <div className="border-b border-border/60 pb-3">
-                <h2 className="text-sm font-bold text-foreground">Langkah 4: Kondisi Faktual & Lampiran Foto</h2>
-                <p className="text-xs text-muted-foreground">Deskripsikan kondisi fisik rumah atau keterbatasan mobilitas</p>
+          {/* STEP 3: Kondisi Faktual & Lampiran Foto */}
+          {step === 3 && (
+            <div className="space-y-6 animate-in fade-in-0 duration-200">
+              <div className="border-b border-border pb-4">
+                <h2 className="text-lg font-bold text-foreground">Tahap 3: Cerita Kondisi & Lampiran Foto</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Jelaskan kondisi fisik rumah atau kebutuhan alat mobilitas agar Kepala Dusun dapat mempersiapkan peninjauan.
+                </p>
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="description">
-                  Uraian Kondisi Lapangan <span className="text-destructive">*</span>
+                <Label htmlFor="description" className="text-sm font-bold text-foreground">
+                  Uraian Kondisi Lapangan <span className="text-rose-600">*</span>
                 </Label>
                 <Textarea
                   id="description"
-                  rows={3}
-                  placeholder="Contoh: Dinding samping bambu rapuh termakan rayap, atap dapur bocor parah saat hujan..."
+                  rows={4}
+                  placeholder="Contoh: Atap rumah bagian dapur dan ruang tamu bocor parah saat hujan. Dinding bambu lapuk termakan rayap. Calon penerima seorang lansia dan membutuhkan bantuan perbaikan mendesak..."
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="text-sm sm:text-base rounded-2xl p-4 leading-relaxed"
                 />
-                {errors.description && <p className="text-[11px] text-destructive font-medium">{errors.description}</p>}
+                {errors.description && <p className="text-xs text-rose-600 font-bold">{errors.description}</p>}
               </div>
 
-              <ImageUploader
-                photos={formData.photos}
-                onChange={(newPhotos) => setFormData({ ...formData, photos: newPhotos })}
-              />
+              <div className="space-y-2 pt-2">
+                <Label className="text-sm font-bold text-foreground block">
+                  Unggah Foto Kondisi Rumah / Penerima (Opsional tetapi Dianjurkan)
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Foto memudahkan Kepala Dusun mengenali lokasi dan tingkat kerusakan sebelum datang ke rumah.
+                </p>
+                <ImageUploader
+                  photos={formData.photos}
+                  onChange={(newPhotos) => setFormData({ ...formData, photos: newPhotos })}
+                />
+              </div>
             </div>
           )}
 
-          {/* STEP 5 */}
-          {step === 5 && (
-            <div className="space-y-4 animate-in fade-in-0 duration-200 text-xs">
-              <div className="border-b border-border/60 pb-3">
-                <h2 className="text-sm font-bold text-foreground">Langkah 5: Identitas Pelapor</h2>
-                <p className="text-xs text-muted-foreground">Data pihak yang menyampaikan aspirasi/laporan</p>
+          {/* STEP 4: Kontak WhatsApp & Konfirmasi */}
+          {step === 4 && (
+            <form onSubmit={handleFinalSubmit} className="space-y-6 animate-in fade-in-0 duration-200">
+              <div className="border-b border-border pb-4">
+                <h2 className="text-lg font-bold text-foreground">Tahap 4: Kontak WhatsApp & Konfirmasi Pengajuan</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Nomor WhatsApp ini akan menerima pemberitahuan setiap ada pembaruan status dari desa.
+                </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                
                 <div className="space-y-1.5">
-                  <Label htmlFor="reporterName">Nama Pelapor <span className="text-destructive">*</span></Label>
+                  <Label htmlFor="reporterName" className="text-sm font-bold text-foreground">
+                    Nama Pemohon / Pelapor <span className="text-rose-600">*</span>
+                  </Label>
                   <Input
                     id="reporterName"
                     type="text"
                     placeholder="Nama Anda"
                     value={formData.reporterName}
                     onChange={(e) => setFormData({ ...formData, reporterName: e.target.value })}
+                    className="h-12 text-sm sm:text-base rounded-xl"
                   />
-                  {errors.reporterName && <p className="text-[11px] text-destructive font-medium">{errors.reporterName}</p>}
+                  {errors.reporterName && <p className="text-xs text-rose-600 font-bold">{errors.reporterName}</p>}
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="reporterRelation">Hubungan dengan Penerima</Label>
+                  <Label htmlFor="reporterRelation" className="text-sm font-bold text-foreground">
+                    Hubungan dengan Calon Penerima
+                  </Label>
                   <select
                     id="reporterRelation"
                     value={formData.reporterRelation}
                     onChange={(e) => setFormData({ ...formData, reporterRelation: e.target.value })}
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    className="h-12 w-full rounded-xl border border-input bg-background px-3 text-sm font-semibold text-foreground shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
                   >
-                    <option value="Diri Sendiri">Diri Sendiri (Pemohon)</option>
-                    <option value="Keluarga / Anak Kandung">Keluarga / Anak Kandung</option>
-                    <option value="Tetangga">Tetangga Sekitar</option>
+                    <option value="Diri Sendiri">Diri Sendiri (Penerima Langsung)</option>
+                    <option value="Keluarga / Anak">Keluarga / Anak Kandung</option>
+                    <option value="Tetangga Sekitar">Tetangga Dekat</option>
                     <option value="Pengurus RT / RW">Pengurus RT / RW</option>
-                    <option value="Relawan Desa">Relawan Desa</option>
+                    <option value="Relawan Sosial">Relawan Sosial Desa</option>
                   </select>
                 </div>
 
                 <div className="sm:col-span-2 space-y-1.5">
-                  <Label htmlFor="reporterPhone">
-                    Nomor WhatsApp Pelapor <span className="text-destructive">*</span>
+                  <Label htmlFor="reporterPhone" className="text-sm font-bold text-foreground">
+                    Nomor WhatsApp Aktif <span className="text-rose-600">*</span>
                   </Label>
                   <Input
                     id="reporterPhone"
                     type="tel"
-                    placeholder="081234567890"
+                    placeholder="Contoh: 081234567890"
                     value={formData.reporterPhone}
                     onChange={(e) => setFormData({ ...formData, reporterPhone: e.target.value })}
-                    className="font-mono"
+                    className="h-12 text-sm sm:text-base font-mono rounded-xl"
                   />
-                  <p className="text-[11px] text-muted-foreground">
-                    Kode verifikasi OTP dan notifikasi riwayat status akan dikirimkan ke nomor ini.
+                  <p className="text-xs text-muted-foreground">
+                    Nomor tiket dan kabar survei Kepala Dusun akan dikirimkan otomatis ke WhatsApp ini.
                   </p>
-                  {errors.reporterPhone && <p className="text-[11px] text-destructive font-medium">{errors.reporterPhone}</p>}
+                  {errors.reporterPhone && <p className="text-xs text-rose-600 font-bold">{errors.reporterPhone}</p>}
                 </div>
-              </div>
-            </div>
-          )}
 
-          {/* STEP 6: OTP */}
-          {step === 6 && (
-            <form onSubmit={handleFinalSubmit} className="space-y-4 animate-in fade-in-0 duration-200 text-center max-w-sm mx-auto py-2">
-              <div className="w-10 h-10 rounded-full bg-muted text-foreground flex items-center justify-center mx-auto border border-border">
-                <Lock size={18} />
               </div>
 
-              <div>
-                <h2 className="text-base font-bold text-foreground">Verifikasi Nomor WhatsApp</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Masukkan 6 digit kode OTP ke nomor: <b>{formData.reporterPhone}</b>
-                </p>
-              </div>
-
-              <div className="flex justify-center gap-2 pt-1">
-                {formData.otp.map((digit, idx) => (
-                  <input
-                    key={idx}
-                    id={`otp-input-${idx}`}
-                    type="text"
-                    maxLength={1}
-                    value={digit}
-                    onChange={(e) => handleOtpChange(idx, e.target.value)}
-                    className="w-10 h-11 text-center text-lg font-bold font-mono bg-background border border-input rounded-md focus:border-primary focus:ring-1 focus:ring-ring outline-none shadow-xs text-foreground"
-                  />
-                ))}
-              </div>
-
-              {errors.otp && <p className="text-xs text-destructive font-bold">{errors.otp}</p>}
-
-              <div className="p-2.5 bg-muted/60 rounded-lg border border-border/60 text-xs">
-                <button
-                  type="button"
-                  onClick={handleAutoFillOtp}
-                  className="text-primary hover:underline font-bold"
-                >
-                  Klik untuk Isi Kode Demo Otomatis [123456]
-                </button>
-              </div>
-
-              <div className="text-[11px] text-muted-foreground">
-                {otpCountdown > 0 ? (
-                  <span>Kirim ulang kode dalam {otpCountdown} detik</span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => { setOtpCountdown(60); showToast("Kode OTP dikirim ulang.", "info"); }}
-                    className="text-primary font-bold hover:underline inline-flex items-center gap-1"
-                  >
-                    <RotateCcw size={11} /> Kirim Ulang OTP
-                  </button>
-                )}
+              {/* Summary Review Card */}
+              <div className="p-5 rounded-2xl bg-muted/40 border border-border space-y-2.5 text-xs sm:text-sm">
+                <span className="font-extrabold text-foreground block">Ringkasan Data Permohonan:</span>
+                <div className="grid grid-cols-2 gap-2 text-muted-foreground">
+                  <div>Jenis Bantuan: <b className="text-foreground">{formData.assistanceType === 'RTLH' ? 'Rehabilitasi Rumah (RTLH)' : 'Alat Disabilitas'}</b></div>
+                  <div>Wilayah: <b className="text-foreground">Dusun {DUSUN_LIST.find(d => d.id === formData.dusunId)?.name || formData.dusunId}</b></div>
+                  <div>Penerima: <b className="text-foreground">{formData.beneficiaryName || '-'}</b></div>
+                  <div>Pelapor: <b className="text-foreground">{formData.reporterName || '-'} ({formData.reporterRelation})</b></div>
+                </div>
               </div>
 
               <Button
                 type="submit"
-                disabled={isVerifyingOtp}
-                className="w-full h-10 font-bold shadow-md"
+                disabled={isSubmitting}
+                className="w-full h-13 text-base font-bold bg-emerald-700 hover:bg-emerald-800 text-white rounded-2xl shadow-lg gap-2"
               >
-                {isVerifyingOtp ? "Memverifikasi..." : "Kirim & Dapatkan Nomor Tiket"}
+                {isSubmitting ? (
+                  <span>Mengirimkan Permohonan...</span>
+                ) : (
+                  <>
+                    <CheckCircle2 size={20} />
+                    <span>Kirim Permohonan & Dapatkan Nomor Tiket</span>
+                  </>
+                )}
               </Button>
             </form>
           )}
 
-          {/* Navigation Buttons (Steps 1-5) */}
-          {step < 6 && (
-            <div className="pt-4 border-t border-border/60 flex items-center justify-between">
+          {/* Stepper Navigation Buttons (Step 1-3) */}
+          {step < 4 && (
+            <div className="pt-6 border-t border-border flex items-center justify-between">
               {step > 1 ? (
                 <Button
                   type="button"
                   variant="outline"
                   onClick={handleBack}
-                  size="sm"
-                  className="gap-1.5 border-border"
+                  className="h-12 px-5 gap-2 text-sm font-bold border-border rounded-xl"
                 >
-                  <ArrowLeft size={13} />
+                  <ArrowLeft size={16} />
                   <span>Sebelumnya</span>
                 </Button>
               ) : <div />}
@@ -685,17 +734,17 @@ export default function SubmissionWizardView() {
               <Button
                 type="button"
                 onClick={handleNext}
-                size="sm"
-                className="gap-1.5 font-bold shadow-xs"
+                className="h-12 px-6 gap-2 text-sm sm:text-base font-bold bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl shadow-md"
               >
-                <span>Lanjut ke Langkah {step + 1}</span>
-                <ArrowRight size={13} />
+                <span>Lanjut ke Tahap {step + 1}</span>
+                <ArrowRight size={16} />
               </Button>
             </div>
           )}
 
         </CardContent>
       </Card>
+
     </div>
   );
 }

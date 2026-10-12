@@ -1,59 +1,58 @@
 import React from 'react';
-import { MapPin, Phone, Mail, Clock, MessageSquare } from 'lucide-react';
+import { MapPin, Phone, Clock, MessageSquare, HeartHandshake } from 'lucide-react';
 import { DESA_CONFIG } from '../../data/desaConfig';
-import { Card, CardContent } from '../ui/card';
-import { Badge } from '../ui/badge';
+import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 
 export default function VillageContact() {
   return (
-    <section className="py-14 sm:py-20 bg-background border-b border-border/80">
+    <section className="py-16 sm:py-20 bg-muted/30 border-b border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <Card className="bg-card border-border/80 shadow-lg text-card-foreground p-6 sm:p-10 relative overflow-hidden" data-aos="fade-up" data-aos-duration="700">
+        <Card className="bg-card border-border shadow-xl rounded-3xl p-6 sm:p-10 relative overflow-hidden">
           
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
             
-            <div className="lg:col-span-8 space-y-3.5" data-aos="fade-right" data-aos-delay="100">
-              <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
-                Layanan Pendampingan Warga
-              </Badge>
+            <div className="lg:col-span-8 space-y-4">
+              <span className="inline-block bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-xs sm:text-sm px-3.5 py-1 rounded-full font-bold">
+                🤝 Butuh Bantuan Mengisi Formulir?
+              </span>
 
-              <h2 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
-                Pusat Pelayanan & Konsultasi Bantuan Sosial Desa Jarak
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
+                Pusat Pendampingan & Konsultasi Warga Desa Jarak
               </h2>
 
-              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed max-w-2xl font-normal">
-                Bagi warga lanjut usia, penyandang disabilitas, atau masyarakat yang membutuhkan pendampingan teknis dalam pengisian data permohonan, silakan hubungi petugas Kasi Kesejahteraan atau Kepala Dusun setempat.
+              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-2xl font-normal">
+                Bagi warga lanjut usia, penyandang disabilitas, atau yang kesulitan mengisi data lewat HP, jangan ragu untuk menghubungi tim pendamping desa atau Kepala Dusun Anda. Kami siap membantu hingga permohonan selesai diajukan.
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs text-muted-foreground">
-                <div className="flex items-start gap-2">
-                  <MapPin size={15} className="text-primary shrink-0 mt-0.5" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2 text-xs sm:text-sm text-muted-foreground">
+                <div className="flex items-start gap-2.5">
+                  <MapPin size={18} className="text-emerald-700 dark:text-emerald-400 shrink-0 mt-0.5" />
                   <span>{DESA_CONFIG.alamatKantor}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Clock size={15} className="text-primary shrink-0" />
+                <div className="flex items-center gap-2.5">
+                  <Clock size={18} className="text-emerald-700 dark:text-emerald-400 shrink-0" />
                   <span>{DESA_CONFIG.jamLayanan}</span>
                 </div>
               </div>
             </div>
 
-            <div className="lg:col-span-4 flex flex-col gap-3" data-aos="fade-left" data-aos-delay="150">
+            <div className="lg:col-span-4 flex flex-col gap-3">
               <a
-                href={`https://wa.me/6281234567890?text=Halo%20Pemerintah%20Desa%20Jarak,%20saya%20ingin%20konsultasi%20pengajuan%20SAPA-JARAK`}
+                href={`https://wa.me/6281234567890?text=Halo%20Pemerintah%20Desa%20Jarak,%20saya%20ingin%20konsultasi%20pengajuan%20bantuan%20SAPA-JARAK`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full"
               >
-                <Button className="w-full h-11 gap-2 font-bold shadow-md">
-                  <MessageSquare size={16} />
-                  <span>Konsultasi via WhatsApp Desa</span>
+                <Button className="w-full h-12 gap-2 text-sm sm:text-base font-bold bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl shadow-md">
+                  <MessageSquare size={18} />
+                  <span>Konsultasi WhatsApp Desa</span>
                 </Button>
               </a>
 
-              <div className="p-3.5 rounded-lg bg-muted/50 border border-border/60 text-xs text-center space-y-1">
-                <span className="text-muted-foreground text-[11px] block">Telepon Kantor Pelayanan:</span>
-                <span className="font-mono text-xs font-bold text-foreground block">{DESA_CONFIG.teleponKantor}</span>
+              <div className="p-4 rounded-xl bg-muted/60 border border-border text-center space-y-1">
+                <span className="text-muted-foreground text-xs block">Nomor Telepon Kantor Desa:</span>
+                <span className="font-mono text-sm font-extrabold text-foreground block">{DESA_CONFIG.teleponKantor}</span>
               </div>
             </div>
 

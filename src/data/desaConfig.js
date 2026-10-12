@@ -18,11 +18,11 @@ export const DESA_CONFIG = {
 };
 
 export const DUSUN_LIST = [
-  { id: "kalasan", name: "Kalasan", code: "KLS", kasunName: "Bpk. Suwandi", kasunPhone: "0813-8822-1101", rtCount: 6, rwCount: 2, centerCoord: [-7.9012, 112.1854] },
-  { id: "sagi", name: "Sagi", code: "SGI", kasunName: "Bpk. Bambang Sutrisno", kasunPhone: "0812-7744-2202", rtCount: 8, rwCount: 2, centerCoord: [-7.9085, 112.1932] },
-  { id: "jaraklor", name: "Jarak Lor", code: "JRL", kasunName: "Bpk. Agus Prasetyo", kasunPhone: "0813-6611-3303", rtCount: 7, rwCount: 2, centerCoord: [-7.8965, 112.1821] },
-  { id: "jarakkidul", name: "Jarak Kidul", code: "JRK", kasunName: "Bpk. Joko Maryanto", kasunPhone: "0812-5599-4404", rtCount: 5, rwCount: 2, centerCoord: [-7.9124, 112.1876] },
-  { id: "simbar", name: "Simbar / Kalasan Barat", code: "SMB", kasunName: "Bpk. Eko Wahyudi", kasunPhone: "0813-4488-5505", rtCount: 4, rwCount: 1, centerCoord: [-7.8998, 112.1765] },
+  { id: "jaraklor", name: "Jarak Lor", code: "JRL", kasunName: "Putro Dwi S.", kasunPhone: "0812-3456-7801", rtCount: 7, rwCount: 2, centerCoord: [-7.8965, 112.1821] },
+  { id: "sagi", name: "Sagi", code: "SGI", kasunName: "Miftahudin", kasunPhone: "0812-3456-7804", rtCount: 8, rwCount: 2, centerCoord: [-7.9085, 112.1932] },
+  { id: "kalasan", name: "Kalasan Timur", code: "KLS", kasunName: "SeptianYoga P.", kasunPhone: "0812-3456-7803", rtCount: 6, rwCount: 2, centerCoord: [-7.9012, 112.1854] },
+  { id: "simbar", name: "Kalasan Barat", code: "SMB", kasunName: "Rindi Egawanto", kasunPhone: "0812-3456-7805", rtCount: 4, rwCount: 1, centerCoord: [-7.8998, 112.1765] },
+  { id: "jarakkidul", name: "Jarak Kidul", code: "JRK", kasunName: "Bpk. Budi Santoso", kasunPhone: "0812-3456-7802", rtCount: 5, rwCount: 2, centerCoord: [-7.9124, 112.1876] },
 ];
 
 export const ASSISTANCE_TYPES = {

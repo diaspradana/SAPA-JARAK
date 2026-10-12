@@ -29,6 +29,7 @@ Route::prefix('public')->group(function () {
 
 // Auth Routes (Login Resmi & Demo Switcher)
 Route::prefix('auth')->group(function () {
+    Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
     Route::get('/users', [AuthController::class, 'users']);
     Route::post('/switch-role', [AuthController::class, 'switchRole']);

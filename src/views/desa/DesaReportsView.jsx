@@ -68,25 +68,25 @@ export default function DesaReportsView({ onBack }) {
   };
 
   return (
-    <div className="space-y-5 animate-in fade-in-0 duration-200 text-xs">
+    <div className="space-y-6 animate-in fade-in-0 duration-200 text-sm">
       
       {/* Header */}
-      <Card className="border-border/80 shadow-sm">
-        <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+      <Card className="border-border/80 shadow-sm rounded-2xl">
+        <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3.5">
             <Button
               variant="outline"
               size="icon"
               onClick={onBack}
-              className="h-8 w-8 border-border shadow-2xs"
+              className="h-9 w-9 rounded-xl border-border shadow-xs hover:bg-muted"
             >
-              <ArrowLeft size={15} />
+              <ArrowLeft size={16} />
             </Button>
             <div>
-              <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider border-border bg-muted/40">
+              <Badge variant="outline" className="text-xs font-bold uppercase tracking-wider border-border bg-muted/40 px-2 py-0.5">
                 Pertanggungjawaban Administrasi Desa
               </Badge>
-              <h2 className="text-sm sm:text-base font-bold text-foreground mt-0.5">
+              <h2 className="text-base sm:text-lg font-bold text-foreground mt-0.5">
                 Rekapitulasi Pelaporan & Pertanggungjawaban (SPJ)
               </h2>
             </div>
@@ -97,19 +97,19 @@ export default function DesaReportsView({ onBack }) {
               variant="outline"
               size="sm"
               onClick={handleExportCSV}
-              className="gap-1.5 font-bold border-border shadow-2xs text-xs"
+              className="gap-2 font-bold border-border shadow-xs text-xs sm:text-sm h-9 rounded-xl px-3"
             >
-              <FileSpreadsheet size={13} className="text-emerald-600 dark:text-emerald-400" />
+              <FileSpreadsheet size={15} className="text-emerald-600 dark:text-emerald-400" />
               <span>Unduh Excel (CSV)</span>
             </Button>
 
             <Button
               size="sm"
               onClick={handlePrint}
-              className="gap-1.5 font-bold shadow-xs text-xs"
+              className="gap-2 font-bold shadow-xs text-xs sm:text-sm h-9 rounded-xl px-3 bg-emerald-600 hover:bg-emerald-700 text-white"
             >
-              <Printer size={13} />
-              <span>Cetak SPJ</span>
+              <Printer size={15} />
+              <span>Cetak Laporan</span>
             </Button>
           </div>
         </CardContent>

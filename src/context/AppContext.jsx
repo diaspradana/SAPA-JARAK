@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { INITIAL_APPLICATIONS, INITIAL_NOTIFICATIONS } from '../data/initialData';
+import { INITIAL_APPLICATIONS, INITIAL_NOTIFICATIONS, DEMO_ACCOUNTS, OFFICIAL_KASUN_ACCOUNTS } from '../data/initialData';
 import { DUSUN_LIST, STATUS_STAGES } from '../data/desaConfig';
 import { 
   showToast as swalToast, 
@@ -13,6 +13,8 @@ const AppContext = createContext();
 const STORAGE_KEY_APPS = 'sapa_jarak_apps_v1';
 const STORAGE_KEY_NOTIFS = 'sapa_jarak_notifs_v1';
 const STORAGE_KEY_ROLE = 'sapa_jarak_role_v1';
+const STORAGE_KEY_USER = 'sapa_jarak_user_v1';
+const STORAGE_KEY_REGISTERED_USERS = 'sapa_jarak_registered_users_v1';
 const STORAGE_KEY_LOWBW = 'sapa_jarak_lowbw_v1';
 const STORAGE_KEY_THEME = 'sapa_jarak_theme_v1';
 
@@ -45,8 +47,31 @@ export function AppProvider({ children }) {
     }
   });
 
+  const [registeredUsers, setRegisteredUsers] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_REGISTERED_USERS);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_USER);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
   const [activeRole, setActiveRole] = useState(() => {
     try {
+      const savedUser = localStorage.getItem(STORAGE_KEY_USER);
+      if (savedUser) {
+        const u = JSON.parse(savedUser);
+        if (u.role) return u.role;
+      }
       return localStorage.getItem(STORAGE_KEY_ROLE) || 'public';
     } catch {
       return 'public';
@@ -425,12 +450,230 @@ export function AppProvider({ children }) {
     showToast("BAST berhasil disahkan & Bantuan dipublikasikan ke Transparansi Terbuka!", "success");
   };
 
+  // Authentication: Login
+  const login = async (identifier, password) => {
+    const cleanId = (identifier || '').trim();
+    const cleanPw = (password || '').trim();
+
+    if (!cleanId || !cleanPw) {
+      showToast('Mohon masukkan email / no HP dan kata sandi.', 'warning');
+      return { success: false, message: 'Mohon isi semua bidang.' };
+    }
+
+    // Attempt Backend Sanctum API login if available
+    let apiSuccess = false;
+    let apiUser = null;
+    let apiToken = null;
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ login: cleanId, password: cleanPw })
+      });
+      if (response.ok) {
+        const resData = await response.json();
+        if (resData.success && resData.data) {
+          apiSuccess = true;
+          apiUser = resData.data.user;
+          apiToken = resData.data.access_token;
+        }
+      }
+    } catch (e) {
+      // Offline / standalone Vite mode fallback
+    }
+
+    let foundUser = null;
+
+    if (apiSuccess && apiUser) {
+      let mappedRole = apiUser.role;
+      if (apiUser.role === 'kasun') {
+        const hCode = (apiUser.hamlet?.code || '').toLowerCase();
+        const uName = (apiUser.name || '').toLowerCase();
+        if (hCode.includes('jl') || uName.includes('jarak lor') || uName.includes('putro')) mappedRole = 'kasun_jaraklor';
+        else if (hCode.includes('sg') || uName.includes('sagi') || uName.includes('miftahudin')) mappedRole = 'kasun_sagi';
+        else if (hCode.includes('kls') || uName.includes('kalasan timur') || uName.includes('septian')) mappedRole = 'kasun_kalasan';
+        else if (hCode.includes('sb') || uName.includes('kalasan barat') || uName.includes('simbar') || uName.includes('rindi')) mappedRole = 'kasun_simbar';
+        else if (hCode.includes('jk') || uName.includes('jarak kidul')) mappedRole = 'kasun_jarakkidul';
+        else mappedRole = 'kasun_kalasan';
+      } else if (apiUser.role === 'kasi_kesra' || apiUser.role === 'kades' || apiUser.role === 'sekdes' || apiUser.role === 'admin') {
+        mappedRole = 'desa';
+      } else {
+        mappedRole = 'public';
+      }
+
+      foundUser = {
+        id: `user-${apiUser.id}`,
+        name: apiUser.name,
+        email: apiUser.email,
+        phone: apiUser.phone,
+        role: mappedRole,
+        roleLabel: mappedRole === 'desa' ? 'Pemerintah Desa Jarak' : (mappedRole.startsWith('kasun') ? `Kepala Dusun (${apiUser.hamlet?.name || 'Dusun'})` : 'Warga Masyarakat'),
+        dusunName: apiUser.hamlet?.name || null,
+        token: apiToken,
+        avatarInitials: apiUser.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase(),
+      };
+    } else {
+      // Local Database matching against DEMO_ACCOUNTS and registeredUsers
+      const allUsers = [...DEMO_ACCOUNTS, ...registeredUsers];
+      foundUser = allUsers.find(u => {
+        const idMatch = (u.email && u.email.toLowerCase() === cleanId.toLowerCase()) ||
+                        (u.phone && u.phone.replace(/\D/g, '') === cleanId.replace(/\D/g, '')) ||
+                        (u.nik && u.nik === cleanId);
+        const pwMatch = u.password === cleanPw;
+        return idMatch && pwMatch;
+      });
+    }
+
+    if (!foundUser) {
+      showToast('Kombinasi email/no HP dan kata sandi salah.', 'error');
+      return { success: false, message: 'Kombinasi email/no HP dan kata sandi salah.' };
+    }
+
+    setCurrentUser(foundUser);
+    setActiveRole(foundUser.role);
+    localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(foundUser));
+    localStorage.setItem(STORAGE_KEY_ROLE, foundUser.role);
+
+    // Redirect to relevant view
+    if (foundUser.role.startsWith('kasun')) {
+      setCurrentView('kasun_dashboard');
+    } else if (foundUser.role === 'desa' || foundUser.role === 'admin') {
+      setCurrentView('desa_dashboard');
+    } else {
+      setCurrentView('home');
+    }
+
+    showToast(`Berhasil masuk! Selamat datang, ${foundUser.name}.`, 'success');
+    return { success: true, user: foundUser };
+  };
+
+  // Authentication: Register Citizen
+  const register = async (formData) => {
+    if (!formData.name || !formData.phone || !formData.password) {
+      showToast('Mohon lengkapi data wajib (Nama, No HP, Kata Sandi).', 'warning');
+      return { success: false, message: 'Data tidak lengkap.' };
+    }
+
+    const cleanPhone = formData.phone.trim();
+    const cleanEmail = formData.email ? formData.email.trim() : `warga.${cleanPhone.replace(/\D/g, '')}@jarak-kediri.desa.id`;
+
+    // Duplicate check
+    const allUsers = [...DEMO_ACCOUNTS, ...registeredUsers];
+    const exists = allUsers.some(u => 
+      (u.email && u.email.toLowerCase() === cleanEmail.toLowerCase()) ||
+      (u.phone && u.phone.replace(/\D/g, '') === cleanPhone.replace(/\D/g, ''))
+    );
+
+    if (exists) {
+      showToast('Nomor HP atau Email ini sudah terdaftar.', 'warning');
+      return { success: false, message: 'Nomor HP atau Email sudah terdaftar.' };
+    }
+
+    const dusunObj = DUSUN_LIST.find(d => d.id === formData.dusunId) || DUSUN_LIST[0];
+    const initials = formData.name.split(' ').filter(Boolean).map(n => n[0]).slice(0, 2).join('').toUpperCase() || 'WG';
+
+    const newUser = {
+      id: `user-${Date.now()}`,
+      name: formData.name,
+      email: cleanEmail,
+      phone: cleanPhone,
+      password: formData.password,
+      role: 'public',
+      roleLabel: 'Warga / Pelapor Terdaftar',
+      badgeVariant: 'neutral',
+      nik: formData.nik || '',
+      kkNumber: formData.kkNumber || '',
+      dusunId: dusunObj.id,
+      dusunName: dusunObj.name,
+      rt: formData.rt || '01',
+      rw: formData.rw || '01',
+      address: `RT ${formData.rt || '01'} / RW ${formData.rw || '01'}, Dusun ${dusunObj.name}, Desa Jarak`,
+      avatarInitials: initials,
+      subtitle: `Warga Dusun ${dusunObj.name} (RT ${formData.rt || '01'}/RW ${formData.rw || '01'})`,
+      createdAt: new Date().toISOString()
+    };
+
+    // Try backend registration
+    try {
+      const resp = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          phone: cleanPhone,
+          email: cleanEmail,
+          password: formData.password,
+          nik: formData.nik,
+          kk_number: formData.kkNumber,
+          rt: formData.rt,
+          rw: formData.rw
+        })
+      });
+      if (resp.ok) {
+        const rJson = await resp.json();
+        if (rJson.data?.access_token) {
+          newUser.token = rJson.data.access_token;
+        }
+      }
+    } catch (e) {
+      // offline fallback
+    }
+
+    const updated = [newUser, ...registeredUsers];
+    setRegisteredUsers(updated);
+    localStorage.setItem(STORAGE_KEY_REGISTERED_USERS, JSON.stringify(updated));
+
+    // Auto login
+    setCurrentUser(newUser);
+    setActiveRole('public');
+    localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(newUser));
+    localStorage.setItem(STORAGE_KEY_ROLE, 'public');
+
+    triggerWhatsAppAlert(
+      cleanPhone,
+      'REG-WARGA',
+      `Selamat Bpk/Ibu ${formData.name}! Akun SAPA-JARAK Anda telah aktif dengan NIK ${formData.nik || '-'}. Anda kini dapat mengajukan bantuan sosial dan memantau status secara langsung.`,
+      'Pendaftaran Akun Warga Berhasil'
+    );
+
+    showToast(`Pendaftaran berhasil! Selamat datang, ${formData.name}.`, 'success');
+    setCurrentView('home');
+    return { success: true, user: newUser };
+  };
+
+  // Authentication: Logout
+  const logout = async () => {
+    try {
+      if (currentUser?.token) {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${currentUser.token}`,
+            'Accept': 'application/json'
+          }
+        });
+      }
+    } catch (e) {
+      // ignore offline
+    }
+    setCurrentUser(null);
+    setActiveRole('public');
+    localStorage.removeItem(STORAGE_KEY_USER);
+    localStorage.setItem(STORAGE_KEY_ROLE, 'public');
+    setCurrentView('home');
+    showToast('Anda telah keluar dari akun.', 'info');
+  };
+
   // Reset database to initial seed
   const resetDatabase = () => {
     setApplications(INITIAL_APPLICATIONS);
     setNotifications(INITIAL_NOTIFICATIONS);
+    setCurrentUser(null);
+    setRegisteredUsers([]);
     localStorage.removeItem(STORAGE_KEY_APPS);
     localStorage.removeItem(STORAGE_KEY_NOTIFS);
+    localStorage.removeItem(STORAGE_KEY_USER);
+    localStorage.removeItem(STORAGE_KEY_REGISTERED_USERS);
     showToast("Data simulasi SAPA-JARAK berhasil di-reset ke data awal.", "info");
   };
 
@@ -464,7 +707,15 @@ export function AppProvider({ children }) {
         updateProcurementProgress,
         completeHandoverBAST,
         resetDatabase,
-        triggerWhatsAppAlert
+        triggerWhatsAppAlert,
+        currentUser,
+        setCurrentUser,
+        registeredUsers,
+        demoAccounts: DEMO_ACCOUNTS,
+        officialKasunAccounts: OFFICIAL_KASUN_ACCOUNTS,
+        login,
+        register,
+        logout
       }}
     >
       {children}
