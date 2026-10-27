@@ -21,7 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui
 import { Input } from '../ui/input';
 
 export default function HeroSection() {
-  const { setCurrentView, setActiveTicketNumber, applications, showToast } = useApp();
+  const { setCurrentView, setActiveTicketNumber, applications, showToast, currentUser, openLogin } = useApp();
   const [quickTicketInput, setQuickTicketInput] = useState('');
 
   const handleQuickTrack = (e) => {
@@ -83,7 +83,15 @@ export default function HeroSection() {
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
               <Button
                 size="lg"
-                onClick={() => { setCurrentView('ajukan'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                onClick={() => {
+                  if (!currentUser) {
+                    showToast('Silakan masuk sebagai Warga / Pelapor untuk mengajukan permohonan bantuan.', 'info');
+                    openLogin('warga');
+                  } else {
+                    setCurrentView('ajukan');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }}
                 className="h-12 px-6 gap-2 text-sm sm:text-base font-bold bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl shadow-md"
               >
                 <FileEdit size={18} />

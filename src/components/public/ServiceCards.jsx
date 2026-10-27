@@ -7,10 +7,15 @@ import { Badge } from '../ui/badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../ui/card';
 
 export default function ServiceCards() {
-  const { setCurrentView } = useApp();
+  const { setCurrentView, currentUser, showToast, openLogin } = useApp();
   const { speak } = useVoice();
 
   const handleApply = (type) => {
+    if (!currentUser) {
+      showToast('Silakan masuk sebagai Warga / Pelapor untuk mengajukan bantuan sosial.', 'info');
+      openLogin('warga');
+      return;
+    }
     speak(`Membuka formulir pengajuan bantuan ${type === 'RTLH' ? 'Rehabilitasi Rumah Tidak Layak Huni' : 'Alat Bantu Disabilitas'}`);
     setCurrentView('ajukan');
     window.scrollTo({ top: 0, behavior: 'smooth' });

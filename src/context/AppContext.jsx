@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { INITIAL_APPLICATIONS, INITIAL_NOTIFICATIONS, DEMO_ACCOUNTS, OFFICIAL_KASUN_ACCOUNTS } from '../data/initialData';
+import { INITIAL_APPLICATIONS, INITIAL_NOTIFICATIONS, DEMO_ACCOUNTS, OFFICIAL_KASUN_ACCOUNTS, OFFICIAL_DESA_ACCOUNTS } from '../data/initialData';
 import { DUSUN_LIST, STATUS_STAGES } from '../data/desaConfig';
 import { 
   showToast as swalToast, 
@@ -87,10 +87,30 @@ export function AppProvider({ children }) {
   });
 
   const [currentView, setCurrentView] = useState('home');
+  const [loginRole, setLoginRole] = useState('warga'); // 'warga' | 'kasun' | 'desa'
   const [activeTicketNumber, setActiveTicketNumber] = useState(null);
   const [activeWhatsAppModal, setActiveWhatsAppModal] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
   const [isNotifDrawerOpen, setIsNotifDrawerOpen] = useState(false);
+
+  const openLogin = (role = 'warga') => {
+    setLoginRole(role);
+    setCurrentView('login');
+    try {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch {
+      // ignore
+    }
+  };
+
+  const openRegisterPetugas = () => {
+    setCurrentView('register');
+    try {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch {
+      // ignore
+    }
+  };
 
   // Sync theme to <html> tag and LocalStorage
   useEffect(() => {
@@ -516,9 +536,12 @@ export function AppProvider({ children }) {
       // Local Database matching against DEMO_ACCOUNTS and registeredUsers
       const allUsers = [...DEMO_ACCOUNTS, ...registeredUsers];
       foundUser = allUsers.find(u => {
+        const cleanPhoneInput = cleanId.replace(/\D/g, '');
+        const uPhoneClean = (u.phone || '').replace(/\D/g, '');
         const idMatch = (u.email && u.email.toLowerCase() === cleanId.toLowerCase()) ||
-                        (u.phone && u.phone.replace(/\D/g, '') === cleanId.replace(/\D/g, '')) ||
-                        (u.nik && u.nik === cleanId);
+                        (uPhoneClean && cleanPhoneInput && uPhoneClean === cleanPhoneInput) ||
+                        (u.nik && u.nik === cleanId) ||
+                        (u.nip && u.nip.replace(/\s/g, '') === cleanId.replace(/\s/g, ''));
         const pwMatch = u.password === cleanPw;
         return idMatch && pwMatch;
       });
@@ -537,7 +560,7 @@ export function AppProvider({ children }) {
     // Redirect to relevant view
     if (foundUser.role.startsWith('kasun')) {
       setCurrentView('kasun_dashboard');
-    } else if (foundUser.role === 'desa' || foundUser.role === 'admin') {
+    } else if (foundUser.role === 'desa' || foundUser.role === 'admin' || foundUser.role === 'kasi_kesra' || foundUser.role === 'sekdes' || foundUser.role === 'kades') {
       setCurrentView('desa_dashboard');
     } else {
       setCurrentView('home');
@@ -547,15 +570,20 @@ export function AppProvider({ children }) {
     return { success: true, user: foundUser };
   };
 
-  // Authentication: Register Citizen
+  // Authentication: Register (Warga Masyarakat atau Petugas Desa)
   const register = async (formData) => {
     if (!formData.name || !formData.phone || !formData.password) {
       showToast('Mohon lengkapi data wajib (Nama, No HP, Kata Sandi).', 'warning');
       return { success: false, message: 'Data tidak lengkap.' };
     }
 
+    const isOfficer = formData.accountType === 'petugas_desa';
     const cleanPhone = formData.phone.trim();
-    const cleanEmail = formData.email ? formData.email.trim() : `warga.${cleanPhone.replace(/\D/g, '')}@jarak-kediri.desa.id`;
+    const cleanEmail = formData.email ? formData.email.trim() : (
+      isOfficer 
+        ? `petugas.${cleanPhone.replace(/\D/g, '')}@jarak-kediri.desa.id`
+        : `warga.${cleanPhone.replace(/\D/g, '')}@jarak-kediri.desa.id`
+    );
 
     // Duplicate check
     const allUsers = [...DEMO_ACCOUNTS, ...registeredUsers];
@@ -570,7 +598,12 @@ export function AppProvider({ children }) {
     }
 
     const dusunObj = DUSUN_LIST.find(d => d.id === formData.dusunId) || DUSUN_LIST[0];
-    const initials = formData.name.split(' ').filter(Boolean).map(n => n[0]).slice(0, 2).join('').toUpperCase() || 'WG';
+    const initials = formData.name.split(' ').filter(Boolean).map(n => n[0]).slice(0, 2).join('').toUpperCase() || (isOfficer ? 'PD' : 'WG');
+
+    const role = isOfficer ? 'desa' : 'public';
+    const positionLabel = formData.positionLabel || formData.position || 'Aparatur Balai Desa';
+    const roleLabel = isOfficer ? `Petugas Desa (${positionLabel})` : 'Warga / Pelapor Terdaftar';
+    const badgeVariant = isOfficer ? 'success' : 'neutral';
 
     const newUser = {
       id: `user-${Date.now()}`,
@@ -578,18 +611,20 @@ export function AppProvider({ children }) {
       email: cleanEmail,
       phone: cleanPhone,
       password: formData.password,
-      role: 'public',
-      roleLabel: 'Warga / Pelapor Terdaftar',
-      badgeVariant: 'neutral',
+      role: role,
+      roleLabel: roleLabel,
+      position: isOfficer ? positionLabel : null,
+      nip: formData.nip || null,
+      badgeVariant: badgeVariant,
       nik: formData.nik || '',
       kkNumber: formData.kkNumber || '',
-      dusunId: dusunObj.id,
-      dusunName: dusunObj.name,
-      rt: formData.rt || '01',
-      rw: formData.rw || '01',
-      address: `RT ${formData.rt || '01'} / RW ${formData.rw || '01'}, Dusun ${dusunObj.name}, Desa Jarak`,
+      dusunId: isOfficer ? null : dusunObj.id,
+      dusunName: isOfficer ? 'Kantor Balai Desa' : dusunObj.name,
+      rt: formData.rt || (isOfficer ? '00' : '01'),
+      rw: formData.rw || (isOfficer ? '00' : '01'),
+      address: isOfficer ? 'Kantor Balai Desa Jarak' : `RT ${formData.rt || '01'} / RW ${formData.rw || '01'}, Dusun ${dusunObj.name}, Desa Jarak`,
       avatarInitials: initials,
-      subtitle: `Warga Dusun ${dusunObj.name} (RT ${formData.rt || '01'}/RW ${formData.rw || '01'})`,
+      subtitle: isOfficer ? `Aparatur Desa - ${positionLabel}` : `Warga Dusun ${dusunObj.name} (RT ${formData.rt || '01'}/RW ${formData.rw || '01'})`,
       createdAt: new Date().toISOString()
     };
 
@@ -603,6 +638,11 @@ export function AppProvider({ children }) {
           phone: cleanPhone,
           email: cleanEmail,
           password: formData.password,
+          account_type: isOfficer ? 'petugas_desa' : 'warga',
+          role: isOfficer ? 'desa' : 'public',
+          position: isOfficer ? positionLabel : null,
+          nip: formData.nip,
+          auth_code: formData.authCode,
           nik: formData.nik,
           kk_number: formData.kkNumber,
           rt: formData.rt,
@@ -625,19 +665,30 @@ export function AppProvider({ children }) {
 
     // Auto login
     setCurrentUser(newUser);
-    setActiveRole('public');
+    setActiveRole(role);
     localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(newUser));
-    localStorage.setItem(STORAGE_KEY_ROLE, 'public');
+    localStorage.setItem(STORAGE_KEY_ROLE, role);
 
-    triggerWhatsAppAlert(
-      cleanPhone,
-      'REG-WARGA',
-      `Selamat Bpk/Ibu ${formData.name}! Akun SAPA-JARAK Anda telah aktif dengan NIK ${formData.nik || '-'}. Anda kini dapat mengajukan bantuan sosial dan memantau status secara langsung.`,
-      'Pendaftaran Akun Warga Berhasil'
-    );
+    if (isOfficer) {
+      triggerWhatsAppAlert(
+        cleanPhone,
+        'REG-PETUGAS',
+        `Selamat Bpk/Ibu ${formData.name}! Akun Petugas Desa (${positionLabel}) SAPA-JARAK telah aktif. Anda kini memiliki hak akses penuh untuk verifikasi bantuan, validasi APBDes, dan pengesahan serah terima BAST.`,
+        'Pendaftaran Petugas Desa Berhasil'
+      );
+      showToast(`Pendaftaran Petugas Desa berhasil! Selamat datang, ${formData.name}.`, 'success');
+      setCurrentView('desa_dashboard');
+    } else {
+      triggerWhatsAppAlert(
+        cleanPhone,
+        'REG-WARGA',
+        `Selamat Bpk/Ibu ${formData.name}! Akun SAPA-JARAK Anda telah aktif dengan NIK ${formData.nik || '-'}. Anda kini dapat mengajukan bantuan sosial dan memantau status secara langsung.`,
+        'Pendaftaran Akun Warga Berhasil'
+      );
+      showToast(`Pendaftaran berhasil! Selamat datang, ${formData.name}.`, 'success');
+      setCurrentView('home');
+    }
 
-    showToast(`Pendaftaran berhasil! Selamat datang, ${formData.name}.`, 'success');
-    setCurrentView('home');
     return { success: true, user: newUser };
   };
 
@@ -713,6 +764,11 @@ export function AppProvider({ children }) {
         registeredUsers,
         demoAccounts: DEMO_ACCOUNTS,
         officialKasunAccounts: OFFICIAL_KASUN_ACCOUNTS,
+        officialDesaAccounts: OFFICIAL_DESA_ACCOUNTS,
+        loginRole,
+        setLoginRole,
+        openLogin,
+        openRegisterPetugas,
         login,
         register,
         logout

@@ -521,6 +521,97 @@ export const OFFICIAL_KASUN_ACCOUNTS = [
   }
 ];
 
+export const OFFICIAL_DESA_ACCOUNTS = [
+  {
+    id: "desa-kesra",
+    name: "Bpk. Ahmad Fauzi",
+    email: "kesra@jarak-kediri.desa.id",
+    phone: "081234567001",
+    password: "password",
+    role: "desa",
+    roleLabel: "Kasi Kesejahteraan (Kesra)",
+    position: "Kasi Kesejahteraan",
+    nip: "19800512 200801 1 012",
+    badgeVariant: "success",
+    nik: "3506121010800002",
+    kkNumber: "3506122005080002",
+    dusunId: null,
+    dusunName: "Kantor Balai Desa",
+    rt: "00",
+    rw: "00",
+    address: "Kantor Balai Desa Jarak",
+    avatarInitials: "AF",
+    subtitle: "Kasi Kesra & Pengelola Anggaran APBDes",
+    description: "Verifikasi kelayakan DTKS, penganggaran APBDes, dan pemantauan pengadaan RTLH."
+  },
+  {
+    id: "desa-sekdes",
+    name: "Bpk. Hendro Siswanto",
+    email: "sekdes@jarak-kediri.desa.id",
+    phone: "081234567002",
+    password: "password",
+    role: "desa",
+    roleLabel: "Sekretaris Desa (Sekdes)",
+    position: "Sekretaris Desa",
+    nip: "19780820 200604 1 008",
+    badgeVariant: "success",
+    nik: "3506122008780001",
+    kkNumber: "3506122005080003",
+    dusunId: null,
+    dusunName: "Kantor Balai Desa",
+    rt: "00",
+    rw: "00",
+    address: "Kantor Balai Desa Jarak",
+    avatarInitials: "HS",
+    subtitle: "Sekretaris Desa & Verifikator Administrasi",
+    description: "Verifikasi kelengkapan berkas administrasi dan sinkronisasi data kependudukan."
+  },
+  {
+    id: "desa-kades",
+    name: "Bpk. Drs. H. Supriyadi",
+    email: "kades@jarak-kediri.desa.id",
+    phone: "081234567003",
+    password: "password",
+    role: "desa",
+    roleLabel: "Kepala Desa Jarak",
+    position: "Kepala Desa",
+    nip: "19681105 199403 1 004",
+    badgeVariant: "success",
+    nik: "3506120511680001",
+    kkNumber: "3506122005080001",
+    dusunId: null,
+    dusunName: "Kantor Balai Desa",
+    rt: "00",
+    rw: "00",
+    address: "Kantor Balai Desa Jarak",
+    avatarInitials: "SP",
+    subtitle: "Kepala Desa & Kuasa Pengguna Anggaran",
+    description: "Persetujuan akhir bantuan sosial, pengesahan alokasi APBDes, dan penandatanganan BAST."
+  },
+  {
+    id: "desa-admin",
+    name: "Administrator SAPA-JARAK",
+    email: "admin@jarak-kediri.desa.id",
+    phone: "081234567000",
+    password: "password",
+    role: "desa",
+    roleLabel: "Admin SIMDes SAPA-JARAK",
+    position: "Administrator Sistem",
+    nip: "19920315 201802 1 003",
+    badgeVariant: "info",
+    nik: "3506121503920001",
+    kkNumber: "3506122005080005",
+    dusunId: null,
+    dusunName: "Kantor Balai Desa",
+    rt: "00",
+    rw: "00",
+    address: "Kantor Balai Desa Jarak",
+    avatarInitials: "AD",
+    subtitle: "Pengelola Sistem & Konfigurasi SAPA-JARAK",
+    description: "Manajemen hak akses aparatur, konfigurasi skor kelayakan, dan audit log."
+  }
+];
+
 export const DEMO_ACCOUNTS = [
   {
     id: "demo-warga",
@@ -543,25 +634,6 @@ export const DEMO_ACCOUNTS = [
     description: "Akun simulasi warga masyarakat untuk mengajukan bantuan RTLH/Disabilitas dan memantau tiket secara mandiri."
   },
   ...OFFICIAL_KASUN_ACCOUNTS,
-  {
-    id: "demo-desa",
-    name: "Bpk. Ahmad Fauzi",
-    email: "kesra@jarak-kediri.desa.id",
-    phone: "081234567001",
-    password: "password",
-    role: "desa",
-    roleLabel: "Pemerintah Desa (Kasi Kesra)",
-    badgeVariant: "success",
-    nik: "3506121010800002",
-    kkNumber: "3506122005080002",
-    dusunId: null,
-    dusunName: "Kantor Balai Desa",
-    rt: "00",
-    rw: "00",
-    address: "Kantor Balai Desa Jarak",
-    avatarInitials: "AF",
-    subtitle: "Kasi Kesra & Pengelola Anggaran APBDes",
-    description: "Akun aparatur desa untuk verifikasi DTKS, alokasi APBDes, monitoring pengerjaan, dan pengesahan BAST."
-  }
+  ...OFFICIAL_DESA_ACCOUNTS
 ];
 
