@@ -15,6 +15,7 @@ import TrackingDetailView from './views/public/TrackingDetailView';
 import TransparencyView from './views/public/TransparencyView';
 import KasunDashboardView from './views/kasun/KasunDashboardView';
 import KasunSurveyView from './views/kasun/KasunSurveyView';
+import KasunSurveyResultView from './views/kasun/KasunSurveyResultView';
 import DesaDashboardView from './views/desa/DesaDashboardView';
 import LoginView from './views/auth/LoginView';
 import RegisterView from './views/auth/RegisterView';
@@ -57,6 +58,8 @@ function MainRouter() {
         return <KasunDashboardView />;
       case 'kasun_verifikasi':
         return <KasunSurveyView />;
+      case 'kasun_hasil':
+        return <KasunSurveyResultView />;
       case 'desa_dashboard':
       case 'desa_validasi':
       case 'desa_pengadaan':

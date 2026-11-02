@@ -3,15 +3,9 @@ import { useApp } from '../../context/AppContext';
 import { 
   FileEdit, 
   Search, 
-  ShieldCheck, 
   ArrowRight, 
-  FileSpreadsheet, 
-  CheckCircle2, 
-  Clock,
-  Send,
 } from 'lucide-react';
 import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Input } from '../ui/input';
 
@@ -55,7 +49,7 @@ export default function HeroSection() {
   };
 
   return (
-    <section className="relative overflow-hidden pt-8 pb-16 border-b border-border bg-gradient-to-b from-emerald-500/10 via-emerald-500/5 to-background transition-colors">
+    <section className="relative overflow-hidden py-10 sm:py-14 border-b border-border bg-gradient-to-b from-emerald-500/10 via-emerald-500/5 to-background transition-colors">
       
       {/* Background Decorative Accents */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-3xl -z-10 pointer-events-none" />
@@ -64,33 +58,29 @@ export default function HeroSection() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         
         {/* Notice Bar Pill */}
-        <div className="flex items-center justify-center sm:justify-start mb-6">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-bold bg-background border border-emerald-600/30 text-emerald-900 dark:text-emerald-300 shadow-xs">
-            <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Portal Resmi Pelayanan Bantuan Sosial Desa Jarak</span>
-            <span className="text-muted-foreground hidden sm:inline">•</span>
-            <span className="text-muted-foreground hidden sm:inline font-normal">Kecamatan Plosoklaten</span>
+        <div className="mb-5">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-background border border-emerald-600/30 text-emerald-900 dark:text-emerald-300">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            <span>Layanan Bantuan Sosial Desa Jarak</span>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
           
           {/* Left Hero Content */}
-          <div className="lg:col-span-7 space-y-6">
+          <div className="lg:col-span-7 space-y-5">
             
             <div className="space-y-4">
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-foreground leading-[1.2]">
-                Bantuan Sosial Rumah & Disabilitas <br className="hidden sm:inline" />
-                <span className="text-emerald-700 dark:text-emerald-400">Mudah, Adil & Transparan</span>
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-foreground leading-tight">
+                Bantuan sosial yang <span className="text-emerald-700 dark:text-emerald-400">mudah diakses</span>
               </h1>
               
-              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-xl font-normal">
-                Warga Desa Jarak kini dapat mengajukan bantuan perbaikan rumah tidak layak huni (RTLH) dan alat mobilitas disabilitas secara mandiri atau dibantu tetangga. Survei dilakukan langsung oleh Kepala Dusun ke rumah Anda.
+              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-xl">
+                Ajukan bantuan perbaikan rumah atau alat bantu disabilitas. Pengajuan gratis dan dapat dibantu keluarga maupun tetangga.
               </p>
             </div>
 
-            {/* Direct Action Buttons */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               <Button
                 size="lg"
                 onClick={() => {
@@ -102,61 +92,20 @@ export default function HeroSection() {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }
                 }}
-                className="h-12 px-6 gap-2 text-sm sm:text-base font-bold bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl shadow-md"
+                className="h-12 px-6 gap-2 text-sm sm:text-base font-semibold bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl"
               >
                 <FileEdit size={18} />
-                <span>Ajukan Bantuan Sekarang</span>
+                <span>Ajukan bantuan</span>
                 <ArrowRight size={16} />
               </Button>
-
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => { setCurrentView('transparansi'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                className="h-12 px-5 gap-2 text-sm font-bold border-border bg-card hover:bg-muted rounded-xl shadow-xs text-foreground"
-              >
-                <FileSpreadsheet size={18} className="text-emerald-600 dark:text-emerald-400" />
-                <span>Lihat Transparansi Dana Desa</span>
-              </Button>
             </div>
 
-            {/* Quick Auth Portal Link */}
-            <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground pt-1">
-              <span>Perangkat desa atau kasun ingin masuk?</span>
-              <button
-                type="button"
-                onClick={() => { setCurrentView('login'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                className="font-bold text-emerald-700 dark:text-emerald-400 hover:underline"
-              >
-                Halaman Masuk (Login) →
-              </button>
-            </div>
-
-            {/* 3 Core Principles Badges */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-4 border-t border-border">
-              <div className="p-3 rounded-xl bg-card border border-border shadow-2xs space-y-1">
-                <div className="flex items-center gap-2 text-xs font-bold text-foreground">
-                  <ShieldCheck size={16} className="text-emerald-600 dark:text-emerald-400" />
-                  <span>Survei ke Rumah</span>
-                </div>
-                <p className="text-xs text-muted-foreground">Kasun datang langsung mengecek kondisi fisik rumah.</p>
-              </div>
-
-              <div className="p-3 rounded-xl bg-card border border-border shadow-2xs space-y-1">
-                <div className="flex items-center gap-2 text-xs font-bold text-foreground">
-                  <Send size={16} className="text-emerald-600 dark:text-emerald-400" />
-                  <span>Kabar via WhatsApp</span>
-                </div>
-                <p className="text-xs text-muted-foreground">Setiap perkembangan langsung dikirim ke HP Anda.</p>
-              </div>
-
-              <div className="p-3 rounded-xl bg-card border border-border shadow-2xs space-y-1">
-                <div className="flex items-center gap-2 text-xs font-bold text-foreground">
-                  <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400" />
-                  <span>Terbuka & Bebas Biaya</span>
-                </div>
-                <p className="text-xs text-muted-foreground">100% Gratis. Semua data penyaluran dapat diaudit publik.</p>
-              </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              <span>Gratis</span>
+              <span>•</span>
+              <span>Survei langsung ke rumah</span>
+              <span>•</span>
+              <span>Status dapat dipantau</span>
             </div>
 
           </div>

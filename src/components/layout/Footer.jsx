@@ -6,7 +6,55 @@ import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
 
 export default function Footer() {
-  const { setCurrentView, refreshServerData, showConfirm } = useApp();
+  const { currentUser, setCurrentView, refreshServerData, showConfirm } = useApp();
+
+  const isDesaStaff = currentUser?.role === 'desa' || currentUser?.role === 'admin';
+  const handleRefresh = async () => {
+    const result = await showConfirm({
+      title: 'Muat ulang data server?',
+      text: 'Data akan diambil ulang dari database server tanpa mengubah atau menghapusnya.',
+      confirmButtonText: 'Muat Ulang',
+      confirmColorClass: 'bg-emerald-700 hover:bg-emerald-800',
+      icon: 'question'
+    });
+    if (result.isConfirmed) refreshServerData();
+  };
+
+  if (isDesaStaff) {
+    return (
+      <footer className="mt-auto border-t border-border bg-card text-card-foreground">
+        <div className="mx-auto flex max-w-[1500px] flex-col gap-4 px-4 py-4 text-xs sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+              <Building2 size={17} />
+            </div>
+            <div>
+              <p className="font-bold text-foreground">Ruang Kerja Pemerintah Desa Jarak</p>
+              <p className="mt-0.5 text-muted-foreground">
+                {currentUser?.position || currentUser?.roleLabel || 'Petugas Desa'} · Gunakan data sesuai kewenangan dan jaga kerahasiaan informasi warga.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2 sm:items-end">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
+              <a href={`mailto:${DESA_CONFIG.emailDesa}`} className="hover:text-emerald-700 dark:hover:text-emerald-300">
+                Bantuan: {DESA_CONFIG.emailDesa}
+              </a>
+              <span className="hidden sm:inline">·</span>
+              <span>© {new Date().getFullYear()} Pemdes Jarak</span>
+            </div>
+            <button
+              onClick={handleRefresh}
+              className="inline-flex items-center gap-1 self-start font-semibold text-emerald-800 hover:underline dark:text-emerald-300 sm:self-end"
+            >
+              <RotateCcw size={12} /> Muat ulang data
+            </button>
+          </div>
+        </div>
+      </footer>
+    );
+  }
 
   return (
     <footer className="bg-card text-card-foreground border-t border-border pt-14 pb-10 text-xs sm:text-sm transition-colors">
@@ -128,18 +176,7 @@ export default function Footer() {
 
           <div className="flex items-center gap-3">
             <button
-              onClick={async () => {
-                const result = await showConfirm({
-                  title: 'Muat ulang data server?',
-                  text: 'Data akan diambil ulang dari database server tanpa mengubah atau menghapusnya.',
-                  confirmButtonText: 'Muat Ulang',
-                  confirmColorClass: 'bg-emerald-700 hover:bg-emerald-800',
-                  icon: 'question'
-                });
-                if (result.isConfirmed) {
-                  refreshServerData();
-                }
-              }}
+              onClick={handleRefresh}
               className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 font-semibold"
             >
               <RotateCcw size={12} /> Muat Ulang Data Server

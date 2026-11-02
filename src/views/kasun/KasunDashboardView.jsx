@@ -17,10 +17,12 @@ import {
   FileSearch,
   Home,
   LogOut,
+  Menu,
   MapPin,
   RotateCcw,
   ShieldCheck,
   UserCheck,
+  X,
 } from 'lucide-react';
 
 const sections = [
@@ -34,7 +36,7 @@ const sections = [
   { id: 'map', label: 'Peta Wilayah', icon: MapPin },
   { id: 'history', label: 'Riwayat Verifikasi', icon: FileClock },
   { id: 'report', label: 'Laporan Dusun', icon: CheckCircle2 },
-  { id: 'profile', label: 'Profil & Keluar', icon: UserCheck },
+  { id: 'profile', label: 'Profil', icon: UserCheck },
 ];
 
 const waitingStatuses = ['SUBMITTED', 'WAITING_KASUN'];
@@ -103,7 +105,9 @@ function KasunApplicationList({ applications, onInspect, emptyMessage }) {
               className="gap-1.5 rounded-lg bg-emerald-800 font-bold text-white hover:bg-emerald-700"
             >
               <FileSearch size={14} />
-              {application.survey ? 'Lihat hasil' : 'Periksa data'}
+              {application.survey
+                ? application.status === 'RETURNED' ? 'Tinjau revisi' : 'Lihat hasil'
+                : 'Periksa data'}
             </Button>
           </div>
         </div>
@@ -124,6 +128,7 @@ export default function KasunDashboardView() {
   } = useApp();
   const [activeSection, setActiveSection] = useState('dashboard');
   const [search, setSearch] = useState('');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const dusunId = getKasunDusunId(currentUser);
   const currentDusun = DUSUN_LIST.find(dusun => dusun.id === dusunId);
@@ -172,9 +177,17 @@ export default function KasunDashboardView() {
   }, [activeSection, kasunApps, revisionApps, search, surveyedApps]);
 
   const handleInspect = ticketNumber => {
+    const application = kasunApps.find(item => item.ticketNumber === ticketNumber);
     setActiveTicketNumber(ticketNumber);
-    setCurrentView('kasun_verifikasi');
+    setCurrentView(application?.survey && application.status !== 'RETURNED' ? 'kasun_hasil' : 'kasun_verifikasi');
+    setSidebarOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSectionChange = sectionId => {
+    setActiveSection(sectionId);
+    setSearch('');
+    setSidebarOpen(false);
   };
 
   if (!currentDusun) {
@@ -198,16 +211,16 @@ export default function KasunDashboardView() {
     : section.label;
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-9">
+    <div className="mx-auto max-w-[1440px] space-y-5 px-4 py-5 sm:px-6 sm:py-7">
       <Card className="overflow-hidden rounded-3xl border-emerald-900/10 shadow-sm">
-        <CardContent className="flex flex-col justify-between gap-5 bg-gradient-to-br from-emerald-950 to-emerald-800 p-6 text-white sm:flex-row sm:items-center sm:p-8">
+        <CardContent className="flex flex-col justify-between gap-4 bg-gradient-to-br from-emerald-950 to-emerald-800 p-5 text-white sm:flex-row sm:items-center sm:p-6">
           <div className="flex items-start gap-4">
             <div className="rounded-2xl bg-white/10 p-3 text-emerald-100">
               <UserCheck size={26} />
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-emerald-200">Ruang kerja Kepala Dusun</p>
-              <h1 className="mt-1 text-xl font-black sm:text-2xl">{currentUser?.name || currentDusun.kasunName}</h1>
+              <p className="text-xs font-bold uppercase tracking-wider text-emerald-200">Ruang kerja Kasun</p>
+              <h1 className="mt-1 text-lg font-bold sm:text-xl">{currentUser?.name || currentDusun.kasunName}</h1>
               <p className="mt-1 text-sm text-emerald-100">
                 Dusun {currentDusun.name} · RT 01–{String(currentDusun.rtCount).padStart(2, '0')} · Kode {currentDusun.code}
               </p>
@@ -222,28 +235,76 @@ export default function KasunDashboardView() {
 
       <SyncStatusBanner />
 
-      <nav aria-label="Menu Kasun" className="flex gap-2 overflow-x-auto rounded-2xl border border-border bg-card p-2">
-        {sections.map(item => {
-          const Icon = item.icon;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => { setActiveSection(item.id); setSearch(''); }}
-              aria-current={activeSection === item.id ? 'page' : undefined}
-              className={cn(
-                'flex shrink-0 items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold transition-colors',
-                activeSection === item.id
-                  ? 'bg-emerald-800 text-white'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              )}
+      <button
+        type="button"
+        onClick={() => setSidebarOpen(open => !open)}
+        aria-expanded={sidebarOpen}
+        aria-controls="kasun-sidebar-menu"
+        className="flex h-11 w-full items-center justify-between rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground lg:hidden"
+      >
+        <span className="flex items-center gap-2">
+          <Menu size={17} />
+          {section.label}
+        </span>
+        {sidebarOpen ? <X size={17} /> : <span className="text-xs text-muted-foreground">Buka menu</span>}
+      </button>
+
+      <div className="grid gap-5 lg:grid-cols-[250px_minmax(0,1fr)] lg:items-start">
+        <aside
+          id="kasun-sidebar-menu"
+          className={cn(
+            'h-fit overflow-hidden rounded-2xl border border-border bg-card shadow-sm lg:sticky lg:top-24',
+            sidebarOpen ? 'block' : 'hidden lg:block'
+          )}
+        >
+          <div className="border-b border-border p-4">
+            <p className="text-xs font-semibold text-muted-foreground">Menu Kasun</p>
+            <p className="mt-1 truncate text-sm font-bold text-foreground">Dusun {currentDusun.name}</p>
+          </div>
+          <nav aria-label="Menu Kasun" className="space-y-1 p-2">
+            {sections.map(item => {
+              const Icon = item.icon;
+              const badgeCount = item.id === 'incoming' ? waitingApps.length : item.id === 'revisions' ? revisionApps.length : null;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => handleSectionChange(item.id)}
+                  aria-current={activeSection === item.id ? 'page' : undefined}
+                  className={cn(
+                    'flex min-h-10 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors',
+                    activeSection === item.id
+                      ? 'bg-emerald-800 text-white'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  )}
+                >
+                  <Icon size={17} className="shrink-0" />
+                  <span className="flex-1">{item.label}</span>
+                  {badgeCount > 0 && (
+                    <span className={cn(
+                      'min-w-6 rounded-full px-1.5 py-0.5 text-center text-[11px] font-bold',
+                      activeSection === item.id ? 'bg-white/20 text-white' : 'bg-muted text-foreground'
+                    )}>
+                      {badgeCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+          <div className="border-t border-border p-2">
+            <Button
+              onClick={logout}
+              variant="ghost"
+              className="w-full justify-start gap-3 rounded-lg px-3 text-sm font-medium text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:text-rose-300 dark:hover:bg-rose-950/40"
             >
-              <Icon size={15} />
-              {item.label}
-            </button>
-          );
-        })}
-      </nav>
+              <LogOut size={17} />
+              Keluar
+            </Button>
+          </div>
+        </aside>
+
+        <main className="min-w-0 space-y-5">
 
       {activeSection === 'profile' ? (
         <Card className="rounded-3xl">
@@ -255,9 +316,6 @@ export default function KasunDashboardView() {
               <div className="rounded-xl bg-muted/50 p-4"><p className="text-xs text-muted-foreground">Nama</p><p className="mt-1 font-bold">{currentUser?.name || currentDusun.kasunName}</p></div>
               <div className="rounded-xl bg-muted/50 p-4"><p className="text-xs text-muted-foreground">Wilayah tanggung jawab</p><p className="mt-1 font-bold">Dusun {currentDusun.name}</p></div>
             </div>
-            <Button onClick={logout} variant="outline" className="gap-2 border-rose-300 text-rose-700 hover:bg-rose-50">
-              <LogOut size={15} /> Keluar
-            </Button>
           </CardContent>
         </Card>
       ) : (
@@ -469,6 +527,8 @@ export default function KasunDashboardView() {
           )}
         </>
       )}
+        </main>
+      </div>
     </div>
   );
 }

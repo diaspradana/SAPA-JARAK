@@ -19,10 +19,6 @@ import {
   LogIn,
   LogOut,
   ChevronDown,
-  PhoneCall,
-  User,
-  Users,
-  UserCheck
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -53,6 +49,8 @@ export default function Navbar() {
 
   const { voiceEnabled, toggleVoice } = useVoice();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const isDesaStaff = currentUser?.role === 'desa' || currentUser?.role === 'admin';
+  const homeView = isDesaStaff ? 'desa_dashboard' : 'home';
 
   // Dynamic Navigation Items:
   // Sebelum Login: Beranda Pelayanan, Pengecekan Tiket, Transparansi APBDes
@@ -68,20 +66,12 @@ export default function Navbar() {
 
     if (currentUser.role.startsWith('kasun')) {
       return [
-        { id: 'home', label: 'Beranda Pelayanan' },
-        { id: 'kasun_dashboard', label: 'Dashboard Kasun' },
-        { id: 'lacak', label: 'Pengecekan Tiket' },
-        { id: 'transparansi', label: 'Transparansi APBDes' },
+        { id: 'kasun_dashboard', label: 'Ruang Kerja Kasun' },
       ];
     }
 
-    if (currentUser.role === 'desa' || currentUser.role === 'admin') {
-      return [
-        { id: 'home', label: 'Beranda Pelayanan' },
-        { id: 'desa_dashboard', label: 'Dashboard Desa' },
-        { id: 'lacak', label: 'Pengecekan Tiket' },
-        { id: 'transparansi', label: 'Transparansi APBDes' },
-      ];
+    if (isDesaStaff) {
+      return [{ id: 'desa_dashboard', label: 'Dashboard Petugas Desa' }];
     }
 
     // Role Warga / Pelapor yang telah login → they use their own sidebar dashboard
@@ -120,7 +110,9 @@ export default function Navbar() {
       <div className="bg-emerald-950 text-emerald-100 text-[11px] font-medium py-1.5 px-4 sm:px-6 border-b border-emerald-900/60">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="font-extrabold tracking-wide text-white">PEMERINTAH KABUPATEN KEDIRI</span>
+            <span className="font-extrabold tracking-wide text-white">
+              {isDesaStaff ? 'AREA KERJA INTERNAL' : 'PEMERINTAH KABUPATEN KEDIRI'}
+            </span>
             <span className="opacity-40">•</span>
             <span className="opacity-90">Kecamatan Plosoklaten</span>
             <span className="opacity-40">•</span>
@@ -128,7 +120,7 @@ export default function Navbar() {
           </div>
 
           <div className="hidden sm:flex items-center gap-3 text-[10px] text-emerald-200/80 font-mono">
-            <span>Standar Pelayanan Publik Trans-Desa</span>
+            <span>{isDesaStaff ? 'Pengelolaan Bantuan Desa' : 'Standar Pelayanan Publik Trans-Desa'}</span>
             <span className="opacity-40">•</span>
             <span>Kode: 35.06.12.2005</span>
           </div>
@@ -141,7 +133,7 @@ export default function Navbar() {
         {/* Brand / Emblem */}
         <div 
           className="flex items-center gap-3 cursor-pointer select-none group" 
-          onClick={() => handleNavClick('home')}
+          onClick={() => handleNavClick(homeView)}
         >
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-700 to-emerald-900 text-white flex items-center justify-center font-black shadow-md group-hover:scale-105 transition-transform">
             <Building2 size={20} className="text-emerald-200" />
@@ -150,11 +142,11 @@ export default function Navbar() {
             <div className="flex items-center gap-2">
               <span className="font-black text-lg sm:text-xl text-foreground tracking-tight">SAPA-JARAK</span>
               <span className="bg-muted text-muted-foreground text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider border border-border">
-                Verifikasi 3 Tingkat
+                {isDesaStaff ? 'Panel Petugas' : 'Verifikasi 3 Tingkat'}
               </span>
             </div>
             <p className="text-[11px] text-muted-foreground font-medium hidden sm:block">
-              Sistem Aspirasi & Bantuan Sosial RTLH & Disabilitas
+              {isDesaStaff ? 'Ruang kerja pengelolaan bantuan sosial' : 'Sistem Aspirasi & Bantuan Sosial RTLH & Disabilitas'}
             </p>
           </div>
         </div>
@@ -204,12 +196,13 @@ export default function Navbar() {
             size="sm"
             onClick={toggleVoice}
             className={`h-9 gap-1.5 px-3 text-xs font-bold rounded-lg border-border hidden md:flex ${
+              isDesaStaff ? 'w-9 px-0 justify-center' : ''} ${
               voiceEnabled ? 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950 dark:text-amber-200' : ''
             }`}
             title="Bantuan Suara (Text-to-Speech untuk lansia dan disabilitas)"
           >
             {voiceEnabled ? <Volume2 size={16} className="text-amber-600" /> : <VolumeX size={16} className="text-muted-foreground" />}
-            <span className="hidden xl:inline">{voiceEnabled ? 'Suara Aktif' : 'Panduan Suara'}</span>
+            {!isDesaStaff && <span className="hidden xl:inline">{voiceEnabled ? 'Suara Aktif' : 'Panduan Suara'}</span>}
           </Button>
 
           {/* Low Bandwidth Mode Toggle */}
@@ -218,12 +211,13 @@ export default function Navbar() {
             size="sm"
             onClick={() => setLowBandwidthMode(!lowBandwidthMode)}
             className={`h-9 gap-1.5 px-3 text-xs font-bold rounded-lg border-border hidden xl:flex ${
+              isDesaStaff ? 'w-9 px-0 justify-center' : ''} ${
               lowBandwidthMode ? 'bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-200' : ''
             }`}
             title="Mode Hemat Kuota (Offline First)"
           >
             {lowBandwidthMode ? <WifiOff size={15} className="text-emerald-600" /> : <Wifi size={15} className="text-muted-foreground" />}
-            <span>Hemat Kuota</span>
+            {!isDesaStaff && <span>Hemat Kuota</span>}
           </Button>
 
           {/* WhatsApp Notification Bell */}
@@ -300,70 +294,16 @@ export default function Navbar() {
               </DropdownMenu>
             ) : (
               <div className="flex items-center gap-2">
-                
-                {/* 1. Dropdown Masuk (Login Warga / Kasun / Pemdes) */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-9 px-3 text-xs font-bold rounded-lg border-border bg-background hover:bg-muted/60 text-foreground gap-1.5 shadow-xs"
-                    >
-                      <LogIn size={15} className="text-emerald-700 dark:text-emerald-400" />
-                      <span>Masuk</span>
-                      <ChevronDown size={13} className="text-muted-foreground" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-64 p-2 rounded-2xl shadow-xl border-border">
-                    <DropdownMenuLabel className="px-2 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                      Pilihan Akses Masuk:
-                    </DropdownMenuLabel>
-                    
-                    {/* Login Warga / Pelapor */}
-                    <DropdownMenuItem
-                      onClick={() => openLogin('warga')}
-                      className="p-2.5 text-xs font-semibold cursor-pointer rounded-xl flex items-center gap-2.5 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold shrink-0">
-                        <Users size={16} />
-                      </div>
-                      <div>
-                        <div className="font-extrabold text-foreground">Login Warga / Pelapor</div>
-                        <div className="text-[10px] text-muted-foreground">Layanan Mandiri & Lacak Bantuan</div>
-                      </div>
-                    </DropdownMenuItem>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openLogin('warga')}
+                  className="h-9 px-3 text-xs font-bold rounded-lg border-border bg-background hover:bg-muted/60 text-foreground gap-1.5 shadow-xs"
+                >
+                  <LogIn size={15} className="text-emerald-700 dark:text-emerald-400" />
+                  <span>Masuk</span>
+                </Button>
 
-                    {/* Login Kasun */}
-                    <DropdownMenuItem
-                      onClick={() => openLogin('kasun')}
-                      className="p-2.5 text-xs font-semibold cursor-pointer rounded-xl flex items-center gap-2.5 hover:bg-blue-50 dark:hover:bg-blue-950/40"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold shrink-0">
-                        <UserCheck size={16} />
-                      </div>
-                      <div>
-                        <div className="font-extrabold text-foreground">Login Kepala Dusun (Kasun)</div>
-                        <div className="text-[10px] text-muted-foreground">Verifikasi Lapangan 4 Dusun</div>
-                      </div>
-                    </DropdownMenuItem>
-
-                    {/* Login Petugas Desa */}
-                    <DropdownMenuItem
-                      onClick={() => openLogin('desa')}
-                      className="p-2.5 text-xs font-semibold cursor-pointer rounded-xl flex items-center gap-2.5 hover:bg-amber-50 dark:hover:bg-amber-950/40"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 flex items-center justify-center font-bold shrink-0">
-                        <Building2 size={16} />
-                      </div>
-                      <div>
-                        <div className="font-extrabold text-foreground">Login Petugas Desa</div>
-                        <div className="text-[10px] text-muted-foreground">Kasi Kesra, Sekdes, Kades & Admin</div>
-                      </div>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                {/* 2. Tombol Khusus: Register Petugas Desa */}
                 <Button
                   size="sm"
                   onClick={openRegisterPetugas}
@@ -421,43 +361,19 @@ export default function Navbar() {
             ) : (
               <div className="space-y-2">
                 <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-1">
-                  Akses Masuk & Registrasi:
+                  Akses akun:
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      openLogin('warga');
-                      setMobileMenuOpen(false);
-                    }}
-                    className="w-full text-xs font-bold h-10 gap-2 justify-start px-3"
-                  >
-                    <Users size={15} className="text-emerald-700" />
-                    <span>Login Warga / Pelapor</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      openLogin('kasun');
-                      setMobileMenuOpen(false);
-                    }}
-                    className="w-full text-xs font-bold h-10 gap-2 justify-start px-3"
-                  >
-                    <UserCheck size={15} className="text-blue-600" />
-                    <span>Login Kasun</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      openLogin('desa');
-                      setMobileMenuOpen(false);
-                    }}
-                    className="w-full text-xs font-bold h-10 gap-2 justify-start px-3"
-                  >
-                    <Building2 size={15} className="text-amber-600" />
-                    <span>Login Petugas Desa</span>
-                  </Button>
-                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    openLogin('warga');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full text-xs font-bold h-10 gap-2 justify-start px-3"
+                >
+                  <LogIn size={15} className="text-emerald-700" />
+                  <span>Masuk ke akun</span>
+                </Button>
 
                 <Button
                   onClick={() => {
@@ -492,7 +408,7 @@ export default function Navbar() {
           </div>
 
           <div className="pt-3 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
-            <span>Kantor Balai Desa Jarak</span>
+            <span>{isDesaStaff ? 'Ruang kerja internal Pemerintah Desa Jarak' : 'Kantor Balai Desa Jarak'}</span>
             <button
               onClick={handleReset}
               className="text-emerald-700 dark:text-emerald-400 hover:underline font-bold flex items-center gap-1"
