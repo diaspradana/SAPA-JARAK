@@ -43,7 +43,7 @@ export default function Navbar() {
     setIsNotifDrawerOpen,
     lowBandwidthMode,
     setLowBandwidthMode,
-    resetDatabase,
+    refreshServerData,
     showConfirm,
     currentUser,
     logout,
@@ -84,10 +84,9 @@ export default function Navbar() {
       ];
     }
 
-    // Role Warga / Pelapor yang telah login
+    // Role Warga / Pelapor yang telah login → they use their own sidebar dashboard
     return [
-      { id: 'home', label: 'Beranda Pelayanan' },
-      { id: 'ajukan', label: 'Pengajuan Bantuan' },
+      { id: 'warga_dashboard', label: 'Dashboard Saya' },
       { id: 'lacak', label: 'Pengecekan Tiket' },
       { id: 'transparansi', label: 'Transparansi APBDes' },
     ];
@@ -103,14 +102,14 @@ export default function Navbar() {
 
   const handleReset = async () => {
     const result = await showConfirm({
-      title: 'Kembalikan ke Data Awal Demo?',
-      text: 'Semua formulir pengajuan dan berkas survei akan direset ke kondisi awal demo.',
-      confirmButtonText: 'Ya, Reset Data',
-      confirmColorClass: 'bg-rose-600 hover:bg-rose-700',
-      icon: 'warning'
+      title: 'Muat ulang data server?',
+      text: 'Data akan diambil ulang dari database server tanpa mengubah atau menghapusnya.',
+      confirmButtonText: 'Muat Ulang',
+      confirmColorClass: 'bg-emerald-700 hover:bg-emerald-800',
+      icon: 'question'
     });
     if (result.isConfirmed) {
-      resetDatabase();
+      refreshServerData();
     }
   };
 
@@ -281,6 +280,9 @@ export default function Navbar() {
                   )}
                   {currentUser.role === 'public' && (
                     <>
+                      <DropdownMenuItem onClick={() => handleNavClick('warga_dashboard')} className="p-2 text-xs font-semibold cursor-pointer rounded-lg">
+                        🏠 Buka Dashboard Warga Saya
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleNavClick('ajukan')} className="p-2 text-xs font-semibold cursor-pointer rounded-lg">
                         ✍️ Ajukan Permohonan Bantuan
                       </DropdownMenuItem>
@@ -495,7 +497,7 @@ export default function Navbar() {
               onClick={handleReset}
               className="text-emerald-700 dark:text-emerald-400 hover:underline font-bold flex items-center gap-1"
             >
-              <RotateCcw size={12} /> Reset Data Demo
+              <RotateCcw size={12} /> Muat Ulang Data Server
             </button>
           </div>
         </div>

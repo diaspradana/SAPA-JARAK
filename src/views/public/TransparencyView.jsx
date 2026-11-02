@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import StatusBadge from '../../components/common/StatusBadge';
-import OfficialDocumentModal from '../../components/common/OfficialDocumentModal';
-import { DUSUN_LIST, FUNDING_SOURCES } from '../../data/desaConfig';
+import { DUSUN_LIST } from '../../data/desaConfig';
 import { Button } from '../../components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
@@ -28,25 +27,87 @@ import {
   ShieldCheck, 
   ExternalLink, 
   Eye, 
-  Printer, 
   FileSpreadsheet,
-  Coins,
-  Users,
-  Home,
-  Accessibility
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export default function TransparencyView() {
-  const { applications, setCurrentView, setActiveTicketNumber, showToast } = useApp();
+  const { setCurrentView, setActiveTicketNumber, showToast } = useApp();
   
+  const [applications, setApplications] = useState([]);
+  const [metrics, setMetrics] = useState(null);
+  const [ledgerTotal, setLedgerTotal] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterDusun, setFilterDusun] = useState('ALL');
   const [filterType, setFilterType] = useState('ALL');
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [selectedDetailModal, setSelectedDetailModal] = useState(null);
-  const [docModalOpen, setDocModalOpen] = useState(false);
-  const [docModalApp, setDocModalApp] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    const loadTransparencyData = async () => {
+      setIsLoading(true);
+      setLoadError('');
+      try {
+        const [metricsResponse, ledgerResponse] = await Promise.all([
+          fetch('/api/public/transparency/metrics', { headers: { Accept: 'application/json' } }),
+          fetch('/api/public/transparency/ledger?per_page=100', { headers: { Accept: 'application/json' } })
+        ]);
+        const [metricsPayload, ledgerPayload] = await Promise.all([
+          metricsResponse.json(),
+          ledgerResponse.json()
+        ]);
+        if (!metricsResponse.ok || metricsPayload.success === false) {
+          throw new Error(metricsPayload.message || 'Statistik transparansi gagal dimuat dari server.');
+        }
+        if (!ledgerResponse.ok || ledgerPayload.success === false || !Array.isArray(ledgerPayload.data)) {
+          throw new Error(ledgerPayload.message || 'Buku register transparansi gagal dimuat dari server.');
+        }
+        if (!active) return;
+
+        const statusMap = {
+          APPROVED: 'FUNDING_APPROVED',
+          FUNDING_ALLOCATED: 'FUNDING_APPROVED',
+          PROCUREMENT_IN_PROGRESS: 'PROCUREMENT',
+          READY_FOR_HANDOVER: 'HANDOVER'
+        };
+        setMetrics(metricsPayload.data);
+        setLedgerTotal(Number(ledgerPayload.pagination?.total || ledgerPayload.data.length));
+        setApplications(ledgerPayload.data.map((entry) => ({
+          id: entry.id,
+          ticketNumber: String(entry.ticket_number || '').replace(/^#/, ''),
+          assistanceType: entry.assistance_type,
+          beneficiaryMaskedName: entry.masked_beneficiary || 'Warga Jarak',
+          dusunName: String(entry.hamlet_name || '').replace(/^Dusun\\s+/i, ''),
+          rt: entry.rt || '-',
+          rw: '-',
+          status: statusMap[entry.status] || entry.status,
+          funding: {
+            source: entry.funding_source,
+            budget: Number(entry.allocated_budget || 0)
+          },
+          progress: Number(entry.progress || 0),
+          address: `Dusun ${String(entry.hamlet_name || '').replace(/^Dusun\\s+/i, '')}, RT ${entry.rt || '-'}`
+        })));
+      } catch (error) {
+        if (active) {
+          setApplications([]);
+          setMetrics(null);
+          setLedgerTotal(0);
+          setLoadError(error.message || 'Data transparansi tidak dapat dimuat dari server.');
+        }
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    };
+
+    loadTransparencyData();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const filteredApps = applications.filter((app) => {
     const matchSearch = 
@@ -54,7 +115,8 @@ export default function TransparencyView() {
       app.beneficiaryMaskedName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       app.dusunName.toLowerCase().includes(searchQuery.toLowerCase());
     
-    const matchDusun = filterDusun === 'ALL' || app.dusunId === filterDusun;
+    const selectedDusun = DUSUN_LIST.find((dusun) => dusun.id === filterDusun);
+    const matchDusun = filterDusun === 'ALL' || app.dusunName.toLowerCase().includes(selectedDusun?.name.toLowerCase() || '');
     const matchType = filterType === 'ALL' || app.assistanceType === filterType;
     const matchStatus = filterStatus === 'ALL' || (
       filterStatus === 'COMPLETED' ? app.status === 'COMPLETED' :
@@ -65,10 +127,7 @@ export default function TransparencyView() {
     return matchSearch && matchDusun && matchType && matchStatus;
   });
 
-  const totalAllocatedBudget = applications.reduce((acc, curr) => {
-    if (curr.funding?.budget) return acc + curr.funding.budget;
-    return acc;
-  }, 48500000);
+  const totalAllocatedBudget = Number(metrics?.total_allocated_budget || 0);
 
   const handleExportCSV = () => {
     const headers = ["No. Tiket", "Kategori", "Penerima (Anonim)", "Dusun", "RT/RW", "Status", "Alokasi Anggaran (Rp)", "Sumber Dana"];
@@ -94,11 +153,6 @@ export default function TransparencyView() {
     link.click();
     document.body.removeChild(link);
     showToast("Berkas Rekap CSV berhasil diunduh.", "success");
-  };
-
-  const handleOpenDocModal = (app) => {
-    setDocModalApp(app);
-    setDocModalOpen(true);
   };
 
   return (
@@ -144,33 +198,33 @@ export default function TransparencyView() {
             <div className="bg-muted/40 p-4 rounded-2xl border border-border space-y-1">
               <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Total Anggaran Tersalurkan</span>
               <div className="text-2xl font-black text-foreground font-mono">
-                Rp {(totalAllocatedBudget / 1000000).toFixed(0)} Juta
+                Rp {(totalAllocatedBudget / 1000000).toLocaleString('id-ID', { maximumFractionDigits: 1 })} Juta
               </div>
-              <span className="text-xs text-muted-foreground">Tahun Anggaran 2026</span>
+              <span className="text-xs text-muted-foreground">Total alokasi yang tercatat di server</span>
             </div>
 
             <div className="bg-muted/40 p-4 rounded-2xl border border-border space-y-1">
               <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Penerima Manfaat</span>
               <div className="text-2xl font-black text-foreground font-mono">
-                {applications.length + 31} Warga
+                {Number(metrics?.total_completed || 0)} Warga
               </div>
-              <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">Terdata Faktual</span>
+              <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">Bantuan selesai</span>
             </div>
 
             <div className="bg-muted/40 p-4 rounded-2xl border border-border space-y-1">
               <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Rehabilitasi RTLH</span>
               <div className="text-2xl font-black text-foreground font-mono">
-                {applications.filter(a => a.assistanceType === 'RTLH').length + 14} Unit
+                {Number(metrics?.total_rtlh || 0)} Pengajuan
               </div>
-              <span className="text-xs text-muted-foreground">Swakelola Desa</span>
+              <span className="text-xs text-muted-foreground">Data dari database server</span>
             </div>
 
             <div className="bg-muted/40 p-4 rounded-2xl border border-border space-y-1">
               <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Alat Disabilitas</span>
               <div className="text-2xl font-black text-foreground font-mono">
-                {applications.filter(a => a.assistanceType === 'DISABILITAS').length + 17} Unit
+                {Number(metrics?.total_disability || 0)} Pengajuan
               </div>
-              <span className="text-xs text-muted-foreground">Diserahkan Resmi</span>
+              <span className="text-xs text-muted-foreground">Data dari database server</span>
             </div>
           </div>
         </CardContent>
@@ -225,7 +279,6 @@ export default function TransparencyView() {
               <option value="ALL">Semua Status</option>
               <option value="COMPLETED">Selesai (BAST)</option>
               <option value="IN_PROGRESS">Sedang Dikerjakan</option>
-              <option value="WAITING_KASUN">Menunggu Survei</option>
             </select>
 
             {(searchQuery || filterDusun !== 'ALL' || filterType !== 'ALL' || filterStatus !== 'ALL') && (
@@ -266,7 +319,19 @@ export default function TransparencyView() {
             </TableHeader>
 
             <TableBody>
-              {filteredApps.length === 0 ? (
+              {loadError ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-16 text-rose-700 dark:text-rose-300 text-sm">
+                    {loadError}
+                  </TableCell>
+                </TableRow>
+              ) : isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-16 text-muted-foreground text-sm">
+                    Memuat buku register dari server...
+                  </TableCell>
+                </TableRow>
+              ) : filteredApps.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-16 text-muted-foreground text-sm">
                     Tidak ada data permohonan yang sesuai dengan filter pencarian.
@@ -301,7 +366,6 @@ export default function TransparencyView() {
 
                     <TableCell>
                       <div className="font-bold text-foreground text-sm">{app.beneficiaryMaskedName}</div>
-                      <span className="text-xs text-muted-foreground">Pelapor: {app.reporterName}</span>
                     </TableCell>
 
                     <TableCell>
@@ -336,15 +400,6 @@ export default function TransparencyView() {
                           <span>Rincian</span>
                         </Button>
 
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenDocModal(app)}
-                          className="h-8 w-8 text-emerald-700 hover:text-emerald-800 rounded-lg p-0"
-                          title="Cetak Surat Resmi"
-                        >
-                          <Printer size={15} />
-                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -356,7 +411,7 @@ export default function TransparencyView() {
 
         {/* Footer info strip */}
         <div className="p-4 bg-muted/30 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
-          <span>Menampilkan <b>{filteredApps.length}</b> dari total <b>{applications.length}</b> permohonan bantuan</span>
+          <span>Menampilkan <b>{filteredApps.length}</b> dari <b>{ledgerTotal}</b> data penyaluran server (maks. 100 data dimuat)</span>
           <span>Desa Jarak, Kecamatan Plosoklaten, Kabupaten Kediri</span>
         </div>
       </Card>
@@ -387,14 +442,14 @@ export default function TransparencyView() {
                 </span>
                 <div className="font-extrabold text-foreground text-base">{selectedDetailModal.beneficiaryMaskedName}</div>
                 <div className="text-muted-foreground text-xs">
-                  Dusun {selectedDetailModal.dusunName}, RT {selectedDetailModal.rt} / RW {selectedDetailModal.rw} ({selectedDetailModal.address})
+                  Dusun {selectedDetailModal.dusunName}, RT {selectedDetailModal.rt}
                 </div>
               </div>
 
               <div className="space-y-1">
                 <span className="font-bold text-foreground text-xs block">Keterangan Kondisi:</span>
                 <p className="p-3.5 rounded-xl bg-muted/30 border border-border text-foreground leading-relaxed text-xs sm:text-sm">
-                  {selectedDetailModal.description}
+                  Ringkasan penyaluran bantuan yang tercatat di buku register publik.
                 </p>
               </div>
 
@@ -428,14 +483,6 @@ export default function TransparencyView() {
           </DialogContent>
         </Dialog>
       )}
-
-      {/* Official Government Printable Document Modal */}
-      <OfficialDocumentModal
-        isOpen={docModalOpen}
-        onClose={() => { setDocModalOpen(false); setDocModalApp(null); }}
-        app={docModalApp}
-        documentType={docModalApp?.status === 'COMPLETED' ? 'BAST' : 'TANDA_TERIMA'}
-      />
 
     </div>
   );

@@ -60,14 +60,16 @@ export default function DesaHandoverView({ onBack }) {
 
     if (!result.isConfirmed) return;
 
-    completeHandoverBAST(app.ticketNumber, {
-      bastNumber,
-      handoverDate,
-      recipientSignature
-    });
-
-    setIsCompleted(true);
-    showToast(`BAST #${bastNumber} berhasil disahkan!`, 'success');
+    try {
+      await completeHandoverBAST(app.ticketNumber, {
+        bastNumber,
+        handoverDate,
+        recipientSignature
+      });
+      setIsCompleted(true);
+    } catch (error) {
+      showToast(error.message || 'Penerbitan BAST gagal disimpan ke server.', 'error');
+    }
   };
 
   if (!app) {

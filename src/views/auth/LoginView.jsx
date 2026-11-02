@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { OFFICIAL_KASUN_ACCOUNTS, OFFICIAL_DESA_ACCOUNTS } from '../../data/initialData';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -25,14 +24,14 @@ import {
 } from 'lucide-react';
 
 export default function LoginView() {
-  const { login, setCurrentView, showToast, showAlert, loginRole, openRegisterPetugas } = useApp();
+  const { login, setCurrentView, showToast, showAlert, loginRole, openRegisterPetugas, demoAccounts, demoAccountsError } = useApp();
   
   // Selected role tab: 'warga' | 'kasun' | 'desa'
   const [selectedRole, setSelectedRole] = useState(loginRole || 'warga');
   
   // Active credentials
-  const [identifier, setIdentifier] = useState('warga@jarak-kediri.desa.id');
-  const [password, setPassword] = useState('password');
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -43,8 +42,11 @@ export default function LoginView() {
   // Selected Petugas Desa card index (default: Ahmad Fauzi - Kasi Kesra)
   const [selectedDesaIndex, setSelectedDesaIndex] = useState(0);
 
-  const currentKasun = OFFICIAL_KASUN_ACCOUNTS[selectedKasunIndex] || OFFICIAL_KASUN_ACCOUNTS[0];
-  const currentDesa = OFFICIAL_DESA_ACCOUNTS[selectedDesaIndex] || OFFICIAL_DESA_ACCOUNTS[0];
+  const kasunAccounts = demoAccounts.filter((account) => account.role === 'kasun');
+  const desaAccounts = demoAccounts.filter((account) => ['kades', 'kasi_kesra', 'sekdes', 'admin'].includes(account.role));
+  const wargaAccount = demoAccounts.find((account) => account.role === 'public');
+  const currentKasun = kasunAccounts[selectedKasunIndex] || kasunAccounts[0];
+  const currentDesa = desaAccounts[selectedDesaIndex] || desaAccounts[0];
 
   // Sync if loginRole changes from navbar
   useEffect(() => {
@@ -57,16 +59,16 @@ export default function LoginView() {
   const handleRoleChange = (role) => {
     setSelectedRole(role);
     if (role === 'kasun') {
-      const k = OFFICIAL_KASUN_ACCOUNTS[selectedKasunIndex] || OFFICIAL_KASUN_ACCOUNTS[0];
-      setIdentifier(k.email);
-      setPassword('123456');
+      const kasun = kasunAccounts[selectedKasunIndex] || kasunAccounts[0];
+      setIdentifier(kasun?.email || '');
+      setPassword(kasun ? '123456' : '');
     } else if (role === 'warga') {
-      setIdentifier('warga@jarak-kediri.desa.id');
-      setPassword('password');
+      setIdentifier(wargaAccount?.email || '');
+      setPassword(wargaAccount ? 'password' : '');
     } else if (role === 'desa') {
-      const d = OFFICIAL_DESA_ACCOUNTS[selectedDesaIndex] || OFFICIAL_DESA_ACCOUNTS[0];
-      setIdentifier(d.email);
-      setPassword('password');
+      const officer = desaAccounts[selectedDesaIndex] || desaAccounts[0];
+      setIdentifier(officer?.email || '');
+      setPassword(officer ? 'password' : '');
     }
   };
 
@@ -75,7 +77,7 @@ export default function LoginView() {
     setSelectedKasunIndex(index);
     setIdentifier(kasun.email);
     setPassword('123456');
-    showToast(`Dipilih: ${kasun.name} (${kasun.roleLabel})`, 'info');
+    showToast(`Dipilih: ${kasun.name} (${kasun.role_label})`, 'info');
   };
 
   // Handle Petugas Desa specific card selection
@@ -83,8 +85,12 @@ export default function LoginView() {
     setSelectedDesaIndex(index);
     setIdentifier(officer.email);
     setPassword('password');
-    showToast(`Dipilih: ${officer.name} (${officer.roleLabel})`, 'info');
+    showToast(`Dipilih: ${officer.name} (${officer.position})`, 'info');
   };
+
+  useEffect(() => {
+    if (demoAccounts.length && !identifier) handleRoleChange(selectedRole);
+  }, [demoAccounts]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -124,15 +130,15 @@ export default function LoginView() {
         <div class="text-left space-y-3 text-sm text-neutral-700 dark:text-neutral-300">
           <div>
             <p class="font-bold text-emerald-700 dark:text-emerald-400">1. Warga / Publik:</p>
-            <p class="text-xs">Gunakan Nomor WhatsApp, NIK KTP (16 digit), atau Email. Akun demo warga: <code class="bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded font-mono font-bold">warga@jarak-kediri.desa.id</code> (Sandi: <code class="bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded font-mono font-bold">password</code>).</p>
+            <p class="text-xs">Gunakan Nomor WhatsApp, NIK KTP (16 digit), atau email yang terdaftar di server.</p>
           </div>
           <div>
             <p class="font-bold text-blue-700 dark:text-blue-400">2. Kepala Dusun (Kasun):</p>
-            <p class="text-xs">Kata sandi resmi seluruh Kepala Dusun adalah <code class="bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded font-mono font-bold text-blue-700 dark:text-blue-300">123456</code>.</p>
+            <p class="text-xs">Gunakan kata sandi akun Kasun yang terdaftar di server.</p>
           </div>
           <div>
             <p class="font-bold text-amber-700 dark:text-amber-400">3. Petugas Desa:</p>
-            <p class="text-xs">Gunakan email dinas atau nomor WhatsApp terdaftar. Sandi akun dinas bawaan: <code class="bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded font-mono font-bold text-amber-700 dark:text-amber-300">password</code>.</p>
+            <p class="text-xs">Gunakan email dinas atau nomor WhatsApp dan kata sandi akun yang terdaftar di server.</p>
           </div>
           <div class="pt-2 border-t border-neutral-200 dark:border-neutral-700 text-xs text-neutral-500">
             Hotline Balai Desa Jarak: <b>0812-3456-7890</b> / (0354) 7482910
@@ -190,17 +196,17 @@ export default function LoginView() {
                 </div>
               </div>
 
-              {selectedRole === 'kasun' && (
+              {selectedRole === 'kasun' && currentKasun && (
                 <div className="bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900 rounded-xl px-4 py-2.5 flex items-center gap-2.5 text-xs text-blue-900 dark:text-blue-200 self-start sm:self-auto">
                   <KeyRound size={16} className="text-blue-600 shrink-0" />
                   <div>
-                    <span className="font-bold block">Kata Sandi Seluruh Kasun:</span>
+                    <span className="font-bold block">Akun demo dari server</span>
                     <span className="font-mono text-sm font-black text-blue-700 dark:text-blue-300">123456</span>
                   </div>
                 </div>
               )}
 
-              {selectedRole === 'desa' && (
+              {selectedRole === 'desa' && currentDesa && (
                 <div className="bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-900 rounded-xl px-4 py-2.5 flex items-center gap-2.5 text-xs text-amber-900 dark:text-amber-200 self-start sm:self-auto">
                   <ShieldCheck size={16} className="text-amber-600 shrink-0" />
                   <div>
@@ -338,15 +344,16 @@ export default function LoginView() {
                     </p>
                   </div>
 
+                  {wargaAccount && (
                   <div className="flex items-center gap-2 shrink-0">
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        setIdentifier('warga@jarak-kediri.desa.id');
+                        setIdentifier(wargaAccount.email);
                         setPassword('password');
-                        showToast('Kredensial warga contoh diisi (Danang Prasetyo).', 'info');
+                        showToast('Kredensial akun demo warga dari server telah diisi.', 'info');
                       }}
                       className="h-8 text-xs font-bold border-emerald-300 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100/50"
                     >
@@ -357,14 +364,18 @@ export default function LoginView() {
                       type="button"
                       size="sm"
                       disabled={isLoading}
-                      onClick={() => handleQuickLogin('warga@jarak-kediri.desa.id', 'password')}
+                      onClick={() => handleQuickLogin(wargaAccount.email, 'password')}
                       className="h-8 text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white"
                     >
                       <LogIn size={13} className="mr-1.5" />
                       Masuk Cepat
                     </Button>
                   </div>
+                  )}
                 </div>
+                {demoAccountsError && !demoAccounts.length && (
+                  <p className="text-xs text-rose-700 dark:text-rose-300">{demoAccountsError}</p>
+                )}
               </div>
             )}
 
@@ -383,13 +394,13 @@ export default function LoginView() {
                   </div>
 
                   <Badge variant="outline" className="text-xs bg-background text-blue-700 dark:text-blue-300 border-blue-300 font-mono font-bold">
-                    4 Wilayah Dusun
+                    {kasunAccounts.length} Akun Kasun
                   </Badge>
                 </div>
 
                 {/* 4 Kasun Cards Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {OFFICIAL_KASUN_ACCOUNTS.map((kasun, idx) => {
+                  {kasunAccounts.map((kasun, idx) => {
                     const isSelected = identifier === kasun.email;
 
                     return (
@@ -406,14 +417,14 @@ export default function LoginView() {
                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 ${
                             isSelected ? 'bg-white/20 text-white' : 'bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300'
                           }`}>
-                            {kasun.avatarInitials}
+                            {kasun.avatar_initials}
                           </div>
                           <div className="min-w-0">
                             <div className="font-extrabold text-sm truncate">
                               {kasun.name}
                             </div>
                             <div className={`text-xs truncate ${isSelected ? 'text-blue-100' : 'text-muted-foreground'}`}>
-                              {kasun.roleLabel} • RT 01-{kasun.dusunId === 'sagi' ? '08' : kasun.dusunId === 'jaraklor' ? '07' : kasun.dusunId === 'simbar' ? '04' : '06'}
+                              {kasun.role_label} • {kasun.hamlet_name || 'Wilayah belum ditetapkan'}
                             </div>
                           </div>
                         </div>
@@ -435,22 +446,23 @@ export default function LoginView() {
                 </div>
 
                 {/* Quick 1-Click Login Button for Kasun */}
-                <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white/60 dark:bg-neutral-900/60 p-3.5 rounded-xl border border-blue-200/60 dark:border-blue-900/40">
-                  <div className="text-xs text-muted-foreground flex items-center gap-2">
-                    <Info size={15} className="text-blue-600 shrink-0" />
-                    <span>Terpilih: <b>{currentKasun.name}</b> ({currentKasun.roleLabel}) • Sandi: <b>123456</b></span>
+                {currentKasun ? (
+                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white/60 dark:bg-neutral-900/60 p-3.5 rounded-xl border border-blue-200/60 dark:border-blue-900/40">
+                    <div className="text-xs text-muted-foreground flex items-center gap-2">
+                      <Info size={15} className="text-blue-600 shrink-0" />
+                      <span>Terpilih: <b>{currentKasun.name}</b> ({currentKasun.role_label}) • Sandi: <b>123456</b></span>
+                    </div>
+                    <Button
+                      type="button"
+                      disabled={isLoading}
+                      onClick={() => handleQuickLogin(currentKasun.email, '123456')}
+                      className="w-full sm:w-auto h-9 px-4 text-xs font-bold bg-blue-700 hover:bg-blue-800 text-white gap-2 shrink-0 shadow-xs"
+                    >
+                      <LogIn size={14} />
+                      <span>Masuk Langsung sebagai {currentKasun.name.split(' ')[0]} →</span>
+                    </Button>
                   </div>
-
-                  <Button
-                    type="button"
-                    disabled={isLoading}
-                    onClick={() => handleQuickLogin(currentKasun.email, '123456')}
-                    className="w-full sm:w-auto h-9 px-4 text-xs font-bold bg-blue-700 hover:bg-blue-800 text-white gap-2 shrink-0 shadow-xs"
-                  >
-                    <LogIn size={14} />
-                    <span>Masuk Langsung sebagai {currentKasun.name.split(' ')[0]} →</span>
-                  </Button>
-                </div>
+                ) : <p className="text-xs text-muted-foreground">Akun demo Kasun belum tersedia dari database server. Masukkan kredensial akun resmi.</p>}
               </div>
             )}
 
@@ -475,7 +487,7 @@ export default function LoginView() {
 
                 {/* 4 Official Desa Cards Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {OFFICIAL_DESA_ACCOUNTS.map((officer, idx) => {
+                  {desaAccounts.map((officer, idx) => {
                     const isSelected = identifier === officer.email;
 
                     return (
@@ -492,7 +504,7 @@ export default function LoginView() {
                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 ${
                             isSelected ? 'bg-white/20 text-white' : 'bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300'
                           }`}>
-                            {officer.avatarInitials}
+                            {officer.avatar_initials}
                           </div>
                           <div className="min-w-0">
                             <div className="font-extrabold text-sm truncate">
@@ -521,24 +533,25 @@ export default function LoginView() {
                 </div>
 
                 {/* Quick 1-Click Login Button for Petugas Desa */}
-                <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white/60 dark:bg-neutral-900/60 p-3.5 rounded-xl border border-amber-200/60 dark:border-amber-900/40">
-                  <div className="text-xs text-muted-foreground flex items-center gap-2">
-                    <Info size={15} className="text-amber-600 shrink-0" />
-                    <span>Terpilih: <b>{currentDesa.name}</b> ({currentDesa.position}) • Sandi: <b>password</b></span>
+                {currentDesa ? (
+                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white/60 dark:bg-neutral-900/60 p-3.5 rounded-xl border border-amber-200/60 dark:border-amber-900/40">
+                    <div className="text-xs text-muted-foreground flex items-center gap-2">
+                      <Info size={15} className="text-amber-600 shrink-0" />
+                      <span>Terpilih: <b>{currentDesa.name}</b> ({currentDesa.position}) • Sandi: <b>password</b></span>
+                    </div>
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <Button
+                        type="button"
+                        disabled={isLoading}
+                        onClick={() => handleQuickLogin(currentDesa.email, 'password')}
+                        className="w-full sm:w-auto h-9 px-4 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white gap-2 shrink-0 shadow-xs"
+                      >
+                        <LogIn size={14} />
+                        <span>Masuk Langsung sebagai {currentDesa.name.split(' ')[0]} →</span>
+                      </Button>
+                    </div>
                   </div>
-
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <Button
-                      type="button"
-                      disabled={isLoading}
-                      onClick={() => handleQuickLogin(currentDesa.email, 'password')}
-                      className="w-full sm:w-auto h-9 px-4 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white gap-2 shrink-0 shadow-xs"
-                    >
-                      <LogIn size={14} />
-                      <span>Masuk Langsung sebagai {currentDesa.name.split(' ')[0]} →</span>
-                    </Button>
-                  </div>
-                </div>
+                ) : <p className="text-xs text-muted-foreground">Akun demo petugas desa belum tersedia dari database server. Masukkan kredensial akun resmi.</p>}
               </div>
             )}
 
@@ -583,7 +596,7 @@ export default function LoginView() {
                 <div>
                   <div className="flex items-center justify-between">
                     <Label htmlFor="login-password" className="text-xs font-bold text-foreground">
-                      Kata Sandi {selectedRole === 'kasun' ? <span className="font-mono text-blue-600 font-bold">(123456)</span> : <span className="font-mono text-muted-foreground font-normal">(demo: password)</span>}
+                      Kata Sandi
                     </Label>
                     <button
                       type="button"
@@ -650,9 +663,9 @@ export default function LoginView() {
                   <>
                     <LogIn size={18} />
                     <span>
-                      {selectedRole === 'kasun' && `Masuk sebagai Kasun (${currentKasun.name})`}
+                      {selectedRole === 'kasun' && `Masuk sebagai Kasun${currentKasun ? ` (${currentKasun.name})` : ''}`}
                       {selectedRole === 'warga' && 'Masuk ke Layanan Warga'}
-                      {selectedRole === 'desa' && `Masuk ke Panel Petugas Desa (${currentDesa.position})`}
+                      {selectedRole === 'desa' && `Masuk ke Panel Petugas Desa${currentDesa ? ` (${currentDesa.position})` : ''}`}
                     </span>
                     <ArrowRight size={16} className="ml-1" />
                   </>

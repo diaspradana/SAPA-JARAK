@@ -19,10 +19,25 @@ import DesaDashboardView from './views/desa/DesaDashboardView';
 import LoginView from './views/auth/LoginView';
 import RegisterView from './views/auth/RegisterView';
 
+// Warga Dashboard (Citizen Portal)
+import WargaDashboardLayout from './views/warga/WargaDashboardLayout';
+
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
 
 function MainRouter() {
-  const { currentView, toastMessage } = useApp();
+  const { currentView, currentUser } = useApp();
+
+  // Logged-in warga (role === 'public') → always render full-screen citizen portal
+  // (warga views like 'ajukan', 'lacak' are handled internally by WargaDashboardLayout)
+  if (currentUser?.role === 'public') {
+    return (
+      <>
+        <WargaDashboardLayout />
+        <NotificationDrawer />
+        <WhatsAppPreviewModal />
+      </>
+    );
+  }
 
   const renderView = () => {
     switch (currentView) {

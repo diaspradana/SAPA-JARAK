@@ -108,6 +108,7 @@ class UserSeeder extends Seeder
         ];
 
         foreach ($users as $u) {
+            $u['status'] = 'active';
             User::updateOrCreate(['phone' => $u['phone']], $u);
         }
     }

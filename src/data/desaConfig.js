@@ -25,6 +25,24 @@ export const DUSUN_LIST = [
   { id: "jarakkidul", name: "Jarak Kidul", code: "JRK", kasunName: "Bpk. Budi Santoso", kasunPhone: "0812-3456-7802", rtCount: 5, rwCount: 2, centerCoord: [-7.9124, 112.1876] },
 ];
 
+export function getKasunDusunId(user) {
+  if (user?.dusunId && DUSUN_LIST.some(dusun => dusun.id === user.dusunId)) {
+    return user.dusunId;
+  }
+
+  const roleDusunIds = {
+    kasun_jaraklor: "jaraklor",
+    kasun_sagi: "sagi",
+    kasun_kalasantimur: "kalasan",
+    kasun_kalasan: "kalasan",
+    kasun_kalasanbarat: "simbar",
+    kasun_simbar: "simbar",
+    kasun_jarakkidul: "jarakkidul",
+  };
+
+  return roleDusunIds[user?.role] || null;
+}
+
 export const ASSISTANCE_TYPES = {
   RTLH: {
     id: "RTLH",

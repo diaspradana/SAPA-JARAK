@@ -15,6 +15,14 @@ use App\Http\Controllers\Api\AdminController;
 |--------------------------------------------------------------------------
 */
 
+// Warga (Citizen) Authenticated Routes - Portal Mandiri Warga Masyarakat
+Route::prefix('warga')->middleware('auth:sanctum')->group(function () {
+    Route::get('/applications', [PublicApplicationController::class, 'myApplications']);
+    Route::get('/notifications', [PublicApplicationController::class, 'myNotifications']);
+    Route::post('/pengaduan', [PublicApplicationController::class, 'submitPengaduan']);
+    Route::put('/profile', [PublicApplicationController::class, 'updateProfile']);
+});
+
 // Public Routes (Masyarakat / Pelapor) - Bebas Akses Tanpa Autentikasi
 Route::prefix('public')->group(function () {
     Route::get('/hamlets', [PublicApplicationController::class, 'hamlets']);
@@ -31,12 +39,12 @@ Route::prefix('public')->group(function () {
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
-    Route::get('/users', [AuthController::class, 'users']);
-    Route::post('/switch-role', [AuthController::class, 'switchRole']);
+    Route::get('/demo-accounts', [AuthController::class, 'demoAccounts']);
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
         Route::post('/logout', [AuthController::class, 'logout']);
+        Route::put('/password', [AuthController::class, 'updatePassword']);
     });
 });
 
@@ -44,6 +52,7 @@ Route::prefix('auth')->group(function () {
 Route::prefix('kasun')->middleware(['auth:sanctum', 'role:kasun,admin'])->group(function () {
     Route::get('/queue', [KasunController::class, 'queue']);
     Route::get('/reports/export', [KasunController::class, 'export']);
+    Route::put('/applications/{id}/schedule', [KasunController::class, 'updateSchedule']);
     Route::post('/applications/{id}/survey', [KasunController::class, 'submitSurvey']);
     Route::post('/ai-recommendation', [KasunController::class, 'getAiRecommendation']);
 });
@@ -101,6 +110,3 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin,kades'])->group(
     Route::get('/audit-logs', [AdminController::class, 'auditLogs']);
     Route::get('/audit-logs/{id}', [AdminController::class, 'showAuditLog']);
 });
-
-
-

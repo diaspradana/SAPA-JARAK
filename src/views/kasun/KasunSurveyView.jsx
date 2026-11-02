@@ -7,6 +7,7 @@ import ImageUploader from '../../components/common/ImageUploader';
 import StatusBadge from '../../components/common/StatusBadge';
 import OfficialDocumentModal from '../../components/common/OfficialDocumentModal';
 import { calculateRtlhScore, calculateDisabilityScore } from '../../data/scoringEngine';
+import { getKasunDusunId } from '../../data/desaConfig';
 import { Button } from '../../components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
@@ -39,6 +40,8 @@ export default function KasunSurveyView() {
   const { 
     applications, 
     activeTicketNumber, 
+    currentUser,
+    activeRole,
     setCurrentView, 
     submitKasunSurvey, 
     showToast,
@@ -47,7 +50,13 @@ export default function KasunSurveyView() {
 
   const { speak } = useVoice();
 
-  const app = applications.find(a => a.ticketNumber === activeTicketNumber) || applications[0];
+  const authorizedDusunId = getKasunDusunId(currentUser || { role: activeRole });
+  const authorizedApplications = applications.filter(application => application.dusunId === authorizedDusunId);
+  const app = activeTicketNumber
+    ? authorizedApplications.find(application => application.ticketNumber === activeTicketNumber)
+    : authorizedApplications[0];
+  const isDisabilityApplication = app?.assistanceType === 'DISABILITAS';
+  const maskIdentifier = value => value ? `${'*'.repeat(Math.max(0, value.length - 4))}${value.slice(-4)}` : '-';
 
   const [rtlhParams, setRtlhParams] = useState({
     wallCondition: app?.survey?.scoringParams?.wallCondition || 'gedek_bambu',
@@ -73,6 +82,9 @@ export default function KasunSurveyView() {
       "https://images.unsplash.com/photo-1541888946425-d0fbb18f15f6?auto=format&fit=crop&w=600&q=80"
     ]
   );
+  const [surveyFiles, setSurveyFiles] = useState(() => (app?.photos?.survey || [
+    "https://images.unsplash.com/photo-1541888946425-d0fbb18f15f6?auto=format&fit=crop&w=600&q=80"
+  ]).map(() => null));
 
   const [returnNotesModal, setReturnNotesModal] = useState(false);
   const [returnNotesText, setReturnNotesText] = useState("");
@@ -91,6 +103,11 @@ export default function KasunSurveyView() {
   useEffect(() => {
     let isMounted = true;
     const fetchAiRecommendation = async () => {
+      if (!app) {
+        setAiLoading(false);
+        return;
+      }
+
       setAiLoading(true);
       try {
         const payload = {
@@ -164,7 +181,7 @@ export default function KasunSurveyView() {
 
     fetchAiRecommendation();
     return () => { isMounted = false; };
-  }, [rtlhParams, disabilityParams, app.assistanceType]);
+  }, [rtlhParams, disabilityParams, app?.assistanceType]);
 
   const handleForwardToDesa = async () => {
     const result = await showConfirm({
@@ -193,13 +210,17 @@ export default function KasunSurveyView() {
       score: scoreResult.totalScore,
       recommendation: scoreResult.recommendation,
       surveyPhotos,
+      surveyFiles,
       isReturned: false
     };
 
-    submitKasunSurvey(app.ticketNumber, surveyData);
-    showToast("Hasil survei berhasil disimpan dan diteruskan ke Pemdes!", "success");
-    setCurrentView('kasun_dashboard');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    try {
+      await submitKasunSurvey(app.ticketNumber, surveyData);
+      setCurrentView('kasun_dashboard');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (error) {
+      showToast(error.message || "Hasil survei gagal disimpan ke server.", "error");
+    }
   };
 
   const handleReturnWithNotes = async () => {
@@ -233,15 +254,20 @@ export default function KasunSurveyView() {
       score: scoreResult.totalScore,
       recommendation: "Dikembalikan untuk Perbaikan Berkas",
       surveyPhotos,
+      surveyFiles,
       isReturned: true,
       returnNotes: returnNotesText
     };
 
-    submitKasunSurvey(app.ticketNumber, surveyData);
-    setReturnNotesModal(false);
-    showToast("Pengajuan dikembalikan ke warga dengan catatan revisi.", "info");
-    setCurrentView('kasun_dashboard');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    try {
+      await submitKasunSurvey(app.ticketNumber, surveyData);
+      setReturnNotesModal(false);
+      setCurrentView('kasun_dashboard');
+      showToast("Pengajuan dikembalikan ke warga dengan catatan revisi.", "info");
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (error) {
+      showToast(error.message || "Pengembalian berkas gagal disimpan ke server.", "error");
+    }
   };
 
   if (!app) {
@@ -335,9 +361,11 @@ export default function KasunSurveyView() {
             <CardContent className="p-4 space-y-3">
               <div className="p-3 bg-muted/40 rounded-lg border border-border/60 space-y-0.5">
                 <span className="text-muted-foreground text-[10px]">Nama Calon Penerima:</span>
-                <div className="font-bold text-foreground text-xs">{app.beneficiaryName}</div>
+                <div className="font-bold text-foreground text-xs">
+                  {isDisabilityApplication ? (app.beneficiaryMaskedName || 'Warga (identitas terbatas)') : app.beneficiaryName}
+                </div>
                 <div className="font-mono text-muted-foreground text-[10px]">
-                  NIK: {app.nik} | No. KK: {app.kkNumber}
+                  NIK: {maskIdentifier(app.nik)} | No. KK: {maskIdentifier(app.kkNumber)}
                 </div>
               </div>
 
@@ -349,11 +377,17 @@ export default function KasunSurveyView() {
                 <p className="text-muted-foreground text-[10px]">{app.address}</p>
               </div>
 
-              <div className="p-3 bg-muted/40 rounded-lg border border-border/60 space-y-0.5">
-                <span className="text-muted-foreground text-[10px]">Pelapor:</span>
-                <div className="font-bold text-foreground">{app.reporterName} ({app.reporterRelation})</div>
-                <p className="font-mono text-muted-foreground text-[10px]">WA: {app.reporterPhone}</p>
-              </div>
+              {isDisabilityApplication ? (
+                <div className="p-3 bg-sky-50 dark:bg-sky-950/30 rounded-lg border border-sky-200 dark:border-sky-900 text-[10px] leading-relaxed text-sky-900 dark:text-sky-200">
+                  Data kontak pelapor disembunyikan pada pemeriksaan kebutuhan disabilitas. Tinjau hanya informasi dukungan yang relevan.
+                </div>
+              ) : (
+                <div className="p-3 bg-muted/40 rounded-lg border border-border/60 space-y-0.5">
+                  <span className="text-muted-foreground text-[10px]">Pelapor:</span>
+                  <div className="font-bold text-foreground">{app.reporterName} ({app.reporterRelation})</div>
+                  <p className="font-mono text-muted-foreground text-[10px]">WA: {app.reporterPhone}</p>
+                </div>
+              )}
 
               <div className="p-3 bg-muted/40 rounded-lg border border-border/60 space-y-0.5">
                 <span className="text-muted-foreground text-[10px]">Uraian Kondisi Awal:</span>
@@ -570,6 +604,8 @@ export default function KasunSurveyView() {
                 <ImageUploader
                   photos={surveyPhotos}
                   onChange={setSurveyPhotos}
+                  photoFiles={surveyFiles}
+                  onPhotoFilesChange={setSurveyFiles}
                   label="Unggah Foto Survei Kasun di Lokasi"
                   helperText="Lampirkan foto peninjauan kasun bersama warga."
                 />

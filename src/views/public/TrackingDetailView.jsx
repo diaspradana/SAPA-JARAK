@@ -34,6 +34,7 @@ export default function TrackingDetailView() {
     activeTicketNumber, 
     setActiveTicketNumber, 
     setCurrentView,
+    trackApplication,
     notifications, 
     showToast 
   } = useApp();
@@ -42,35 +43,75 @@ export default function TrackingDetailView() {
 
   const [searchInput, setSearchInput] = useState(activeTicketNumber || '');
   const [selectedApp, setSelectedApp] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [searchError, setSearchError] = useState('');
+  const [lookupVersion, setLookupVersion] = useState(0);
   const [docModalOpen, setDocModalOpen] = useState(false);
   const [docType, setDocType] = useState('TANDA_TERIMA');
 
   useEffect(() => {
-    if (activeTicketNumber) {
-      setSearchInput(activeTicketNumber);
-      const found = applications.find(a => a.ticketNumber.toUpperCase() === activeTicketNumber.toUpperCase());
-      setSelectedApp(found || null);
-      if (found) {
-        speak(`Menampilkan berkas tiket nomor ${found.ticketNumber}`);
-      }
-    } else if (applications.length > 0) {
+    let active = true;
+    if (!activeTicketNumber && applications.length > 0) {
       setSelectedApp(applications[0]);
       setSearchInput(applications[0].ticketNumber);
+      return () => {
+        active = false;
+      };
     }
-  }, [activeTicketNumber, applications]);
+    if (!activeTicketNumber) {
+      setSelectedApp(null);
+      setSearchInput('');
+      setSearchError('');
+      return () => {
+        active = false;
+      };
+    }
+
+    setSearchInput(activeTicketNumber);
+    const found = applications.find((application) => (
+      application.ticketNumber.toUpperCase() === activeTicketNumber.toUpperCase()
+    ));
+    if (found) {
+      setSelectedApp(found);
+      setSearchError('');
+      speak(`Menampilkan berkas tiket nomor ${found.ticketNumber}`);
+      return () => {
+        active = false;
+      };
+    }
+
+    setSelectedApp(null);
+    setIsLoading(true);
+    setSearchError('');
+    trackApplication(activeTicketNumber)
+      .then((application) => {
+        if (active) {
+          setSelectedApp(application);
+          speak(`Menampilkan berkas tiket nomor ${application.ticketNumber}`);
+        }
+      })
+      .catch((error) => {
+        if (active) setSearchError(error.message || 'Berkas tidak dapat dimuat dari server.');
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [activeTicketNumber, applications, lookupVersion]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     const clean = searchInput.trim().toUpperCase().replace('#', '');
-    const found = applications.find(a => a.ticketNumber.toUpperCase() === clean);
-    if (found) {
-      setSelectedApp(found);
-      setActiveTicketNumber(found.ticketNumber);
-      speak(`Berkas nomor ${clean} ditemukan`);
-    } else {
-      setSelectedApp(null);
-      showToast(`Nomor tiket #${clean} tidak ditemukan dalam daftar.`, "error");
+    if (!clean) {
+      setSearchError('Masukkan nomor tiket untuk melacak pengajuan.');
+      return;
     }
+    setSearchError('');
+    setActiveTicketNumber(clean);
+    setLookupVersion((version) => version + 1);
   };
 
   const copyTicket = () => {
@@ -170,9 +211,9 @@ export default function TrackingDetailView() {
             </Button>
           </form>
 
-          {/* Presets */}
+          {/* Server-synced tickets for the signed-in user */}
           <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-muted-foreground">
-            <span className="font-semibold">Pilih contoh tiket aktif:</span>
+            <span className="font-semibold">Pengajuan akun Anda:</span>
             {applications.slice(0, 5).map((app) => (
               <button
                 key={app.id}
@@ -193,6 +234,8 @@ export default function TrackingDetailView() {
               </button>
             ))}
           </div>
+          {isLoading && <p className="text-xs text-muted-foreground">Memuat detail tiket dari server...</p>}
+          {searchError && <p role="alert" className="text-xs font-semibold text-rose-700 dark:text-rose-300">{searchError}</p>}
         </CardContent>
       </Card>
 
@@ -459,6 +502,10 @@ export default function TrackingDetailView() {
                         <p className="text-foreground leading-relaxed">{n.message}</p>
                       </div>
                     ))
+                  ) : isLoading ? (
+                    <Card className="border-border rounded-3xl shadow-sm bg-card p-10 text-center text-sm text-muted-foreground">
+                      Memuat status pengajuan dari server...
+                    </Card>
                   ) : (
                     <p className="text-xs text-muted-foreground text-center py-4">Belum ada pesan tercatat untuk nomor tiket ini.</p>
                   )}

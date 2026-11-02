@@ -26,10 +26,11 @@ class AuthController extends Controller
             'nip' => 'nullable|string|max:50',
             'auth_code' => 'nullable|string|max:50',
             'hamlet_id' => 'nullable|exists:hamlets,id',
-            'nik' => 'nullable|string|max:20',
+            'nik' => 'nullable|string|max:20|unique:users,nik',
             'kk_number' => 'nullable|string|max:20',
             'rt' => 'nullable|string|max:5',
             'rw' => 'nullable|string|max:5',
+            'address' => 'nullable|string|max:255',
         ]);
 
         $accountType = $validated['account_type'] ?? 'warga';
@@ -77,6 +78,11 @@ class AuthController extends Controller
             'role' => $role,
             'hamlet_id' => $validated['hamlet_id'] ?? null,
             'status' => 'active',
+            'nik' => $validated['nik'] ?? null,
+            'kk_number' => $validated['kk_number'] ?? null,
+            'rt' => $validated['rt'] ?? null,
+            'rw' => $validated['rw'] ?? null,
+            'address' => $validated['address'] ?? null,
         ]);
 
         $deviceName = $request->input('device_name', $accountType === 'petugas_desa' ? 'sapa-jarak-officer' : 'sapa-jarak-citizen');
@@ -172,39 +178,83 @@ class AuthController extends Controller
         ]);
     }
 
-    /**
-     * Get list of demo users for interactive role switching.
-     */
-    public function users()
+    public function updatePassword(Request $request)
     {
+        $validated = $request->validate([
+            'current_password' => 'required|string',
+            'new_password' => 'required|string|min:6|confirmed',
+        ]);
+
+        $user = $request->user();
+        if (!Hash::check($validated['current_password'], $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => ['Kata sandi lama tidak sesuai.'],
+            ]);
+        }
+
+        $user->password = Hash::make($validated['new_password']);
+        $user->save();
+
         return response()->json([
             'success' => true,
-            'data' => User::with('hamlet')->get(),
+            'message' => 'Kata sandi berhasil diperbarui di server.',
         ]);
     }
 
-    /**
-     * Switch current user session/role (with Sanctum token issuance for demo).
-     */
-    public function switchRole(Request $request)
+    public function demoAccounts()
     {
-        $role = $request->input('role');
-        $user = User::where('role', $role)->first();
-
-        if (!$user) {
-            $user = User::first();
+        if (!app()->environment(['local', 'testing'])) {
+            return response()->json(['success' => true, 'data' => []]);
         }
-
-        $token = $user->createToken('demo-switch-token', ["role:{$user->role}", "*"])->plainTextToken;
 
         return response()->json([
             'success' => true,
-            'message' => "Beralih ke peran {$user->name} ({$user->role})",
-            'data' => [
-                'token_type' => 'Bearer',
-                'access_token' => $token,
-                'user' => $user->load('hamlet'),
-            ],
+            'data' => User::with('hamlet')
+                ->whereIn('phone', [
+                    '081234567000',
+                    '081234567001',
+                    '081234567002',
+                    '081234567003',
+                    '081234567801',
+                    '081234567802',
+                    '081234567803',
+                    '081234567804',
+                    '081234567805',
+                    '081399881234',
+                ])
+                ->where('status', 'active')
+                ->orderBy('role')
+                ->get()
+                ->map(fn (User $user) => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'phone' => $user->phone,
+                    'role' => $user->role,
+                    'position' => [
+                        'kades' => 'Kepala Desa',
+                        'sekdes' => 'Sekretaris Desa',
+                        'kasi_kesra' => 'Petugas Verifikasi',
+                        'admin' => 'Administrator Sistem',
+                        'kasun' => 'Kepala Dusun',
+                        'public' => 'Warga / Pelapor',
+                    ][$user->role] ?? 'Petugas Desa',
+                    'role_label' => $user->role === 'kasun'
+                        ? "Kasun {$user->hamlet?->name}"
+                        : ([
+                            'kades' => 'Kepala Desa',
+                            'sekdes' => 'Sekretaris Desa',
+                            'kasi_kesra' => 'Petugas Verifikasi',
+                            'admin' => 'Administrator Sistem',
+                            'public' => 'Warga / Pelapor',
+                        ][$user->role] ?? 'Petugas Desa'),
+                    'hamlet_name' => $user->hamlet?->name,
+                    'avatar_initials' => collect(explode(' ', $user->name))
+                        ->filter()
+                        ->take(2)
+                        ->map(fn (string $part) => mb_strtoupper(mb_substr($part, 0, 1)))
+                        ->implode(''),
+                ]),
         ]);
     }
 }

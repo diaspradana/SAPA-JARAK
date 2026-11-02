@@ -102,7 +102,7 @@ Fleksibilitas penentuan sumber pembiayaan bantuan:
 ### Backend
 - **Framework**: Laravel 11.x
 - **Bahasa**: PHP 8.2+
-- **Database**: Relational SQL (SQLite default, MySQL / PostgreSQL ready)
+- **Database**: MySQL 8.0 (SQLite/PostgreSQL are available only when explicitly configured)
 - **ORM**: Eloquent ORM dengan 12 Migrations, Seeders, & Foreign Key constraints
 - **Auth & Security**: Laravel Sanctum, Role-based Middleware, Rate Limiting
 
@@ -180,47 +180,92 @@ c:\Rickthor7\SAPA-JARAK
 
 ### 1. Prasyarat Sistem
 Pastikan komputer telah terinstal:
-- **PHP** `>= 8.2` (ekstensi `pdo_sqlite`, `pdo_mysql`, `mbstring`, `curl` aktif)
+- **PHP** `>= 8.4.1` (ekstensi `pdo_mysql`, `mbstring`, `curl` aktif; `pdo_sqlite` dibutuhkan untuk menjalankan tes)
 - **Composer** `>= 2.x`
 - **Node.js** `>= 18.x` dan **NPM**
+- **MySQL** (untuk instalasi XAMPP, aktifkan dari XAMPP Control Panel)
 
-### 2. Kloning & Pengaturan Lingkungan
-```bash
-# Salin file konfigurasi lingkungan
-cp .env.example .env
+### 2. Setup Pertama Kali di Windows/XAMPP
+Buka Command Prompt di folder proyek. Jalankan `sapa.bat` untuk membuka terminal
+dengan PHP 8.4 di PATH, lalu pastikan `php -v` menunjukkan versi `8.4.1` atau lebih baru.
+Jika menggunakan PowerShell, buka Command Prompt terlebih dahulu untuk menjalankan file
+`.bat`.
 
-# Generate Application Key
+Jalankan perintah berikut di terminal tersebut. Perintah pertama tidak akan menimpa
+`.env` yang sudah ada:
+
+```bat
+cd /d "C:\Users\Dias Pradana\Documents\SAPA-JARAK"
+if not exist .env copy .env.example .env
+composer install
+```
+
+Jika `.env` baru saja dibuat dari `.env.example`, buat application key satu kali:
+
+```bat
 php artisan key:generate
 ```
 
-### 3. Instalasi Dependensi Backend & Database SQL
-```bash
-# Instal dependensi PHP via Composer
-composer install
+Di XAMPP Control Panel, nyalakan **MySQL**, lalu buat database kosong bernama
+`sapa_jarak` melalui phpMyAdmin (`http://localhost/phpmyadmin`). Konfigurasi `.env`
+standar memakai host `127.0.0.1`, port `3306`, user `root`, dan password kosong.
+Jika MySQL Anda memakai pengaturan berbeda, sesuaikan nilai `DB_*` di `.env`.
+Jangan bagikan file `.env`.
 
-# Jalankan migrasi seluruh 12 tabel dan isi data awal (seeders)
-php artisan migrate:fresh --seed
+Jalankan migrasi dan isi data demo dari database:
+
+```bat
+php artisan config:clear
+php artisan migrate --seed
 ```
 
-### 4. Instalasi Dependensi Frontend
-```bash
-# Instal dependensi JavaScript
+Jangan menjalankan `migrate:fresh` pada database yang berisi data karena perintah
+tersebut menghapus tabel. Seed data dapat dijalankan ulang tanpa membuat tiket demo
+ganda. Kredensial contoh hanya tersedia di environment `local`: akun warga/petugas
+desa memakai `password`, sedangkan akun Kasun memakai `123456`.
+
+Pasang dependensi frontend satu kali:
+
+```bat
 npm install
+```
 
-# Jalankan server frontend development (port 3000)
+### 3. Menjalankan Aplikasi
+Aplikasi membutuhkan dua server. Jalankan masing-masing pada terminal tersendiri.
+Pastikan MySQL tetap aktif di XAMPP.
+
+**Terminal 1 — backend Laravel** (gunakan terminal yang dibuka melalui `sapa.bat`):
+
+```bat
+cd /d "C:\Users\Dias Pradana\Documents\SAPA-JARAK"
+php artisan serve --host=127.0.0.1 --port=8000
+```
+
+**Terminal 2 — frontend Vite:**
+
+```bat
+cd /d "C:\Users\Dias Pradana\Documents\SAPA-JARAK"
 npm run dev
+```
 
-# Atau kompilasi bundle produksi
+Buka aplikasi di **http://localhost:3000**. Frontend meneruskan permintaan API ke
+backend Laravel di **http://127.0.0.1:8000**. Jangan tutup kedua terminal selama
+aplikasi digunakan.
+
+Untuk pemakaian berikutnya, cukup nyalakan MySQL, buka terminal backend dengan
+`sapa.bat`, jalankan `php artisan serve --host=127.0.0.1 --port=8000`, lalu buka
+terminal frontend dan jalankan `npm run dev`. Tidak perlu mengulang `composer install`,
+`npm install`, `key:generate`, atau `migrate --seed` kecuali dependensi, konfigurasi,
+atau skema database memang berubah.
+
+### 4. Build Frontend
+Untuk membuat bundle frontend produksi:
+
+```bat
 npm run build
 ```
 
-### 5. Menjalankan Server Backend Laravel
-```bash
-php artisan serve --port=8000
-```
-Aplikasi backend siap menerima permintaan di `http://localhost:8000`.
-
-### 6. Menjalankan Menggunakan Docker Compose (Hosting / Produksi)
+### 5. Menjalankan Menggunakan Docker Compose (Hosting / Produksi)
 Proyek ini telah dilengkapi dengan kontainerisasi Docker & Docker Compose siap produksi (PHP 8.4-FPM + Nginx + MySQL 8.0 + Vite Frontend Build + **FastAPI AI Assistant Decision Support** + phpMyAdmin):
 
 ```bash

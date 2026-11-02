@@ -32,7 +32,7 @@ import {
 import { cn } from '../../lib/utils';
 
 export default function SubmissionWizardView() {
-  const { submitApplication, setCurrentView, setActiveTicketNumber, showToast, currentUser } = useApp();
+  const { requestApplicationOtp, submitApplication, setCurrentView, setActiveTicketNumber, showToast, currentUser } = useApp();
   const { speak } = useVoice();
 
   const [step, setStep] = useState(1);
@@ -59,11 +59,14 @@ export default function SubmissionWizardView() {
     reporterPhone: currentUser?.phone || '',
     reporterRelation: 'Diri Sendiri',
     
-    otp: ['1', '2', '3', '4', '5', '6']
+    otp: ''
   });
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRequestingOtp, setIsRequestingOtp] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [photoFiles, setPhotoFiles] = useState([]);
 
   // Speech helper on step change
   useEffect(() => {
@@ -93,6 +96,8 @@ export default function SubmissionWizardView() {
   };
 
   const handleFillDemo = () => {
+    setPhotoFiles([]);
+    setOtpSent(false);
     setFormData({
       assistanceType: 'RTLH',
       dusunId: 'jaraklor',
@@ -111,7 +116,7 @@ export default function SubmissionWizardView() {
       reporterName: 'Danang Prasetyo',
       reporterPhone: '081234567890',
       reporterRelation: 'Diri Sendiri',
-      otp: ['1', '2', '3', '4', '5', '6']
+      otp: ''
     });
     showToast('Contoh data pengajuan berhasil diisikan secara lengkap.', 'info');
   };
@@ -138,6 +143,8 @@ export default function SubmissionWizardView() {
       if (!formData.reporterPhone.trim() || formData.reporterPhone.length < 9) {
         errs.reporterPhone = "Nomor WhatsApp aktif wajib diisi untuk kabar status";
       }
+      if (!otpSent) errs.otp = "Minta kode verifikasi terlebih dahulu";
+      else if (!/^\d{6}$/.test(formData.otp)) errs.otp = "Kode verifikasi harus 6 digit";
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -157,7 +164,29 @@ export default function SubmissionWizardView() {
     window.scrollTo({ top: 40, behavior: 'smooth' });
   };
 
-  const handleFinalSubmit = (e) => {
+  const handleRequestOtp = async () => {
+    if (!formData.reporterName.trim() || formData.reporterPhone.trim().length < 9) {
+      showToast("Isi nama dan nomor WhatsApp yang valid sebelum meminta kode.", "warning");
+      return;
+    }
+    setIsRequestingOtp(true);
+    try {
+      const response = await requestApplicationOtp(formData.reporterPhone, formData.reporterName);
+      setOtpSent(true);
+      if (import.meta.env.DEV && response.simulation_otp) {
+        setFormData((previous) => ({ ...previous, otp: String(response.simulation_otp) }));
+        showToast(`Kode simulasi server: ${response.simulation_otp}`, "info");
+      } else {
+        showToast("Kode verifikasi dikirim ke WhatsApp Anda.", "success");
+      }
+    } catch (error) {
+      showToast(error.message || "Kode verifikasi gagal dikirim.", "error");
+    } finally {
+      setIsRequestingOtp(false);
+    }
+  };
+
+  const handleFinalSubmit = async (e) => {
     e.preventDefault();
     if (!validateStep(4)) {
       showToast("Lengkapi data kontak Anda sebelum mengirim.", "warning");
@@ -165,12 +194,15 @@ export default function SubmissionWizardView() {
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      const app = submitApplication(formData);
+    try {
+      const app = await submitApplication(formData, photoFiles);
       setCreatedTicket(app);
       speak(`Selamat, pengajuan Anda berhasil terdaftar dengan nomor tiket ${app.ticketNumber}`);
-    }, 800);
+    } catch (error) {
+      showToast(error.message || "Pengajuan tidak berhasil disimpan ke server.", "error");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const copyTicket = () => {
@@ -618,6 +650,8 @@ export default function SubmissionWizardView() {
                 <ImageUploader
                   photos={formData.photos}
                   onChange={(newPhotos) => setFormData({ ...formData, photos: newPhotos })}
+                  photoFiles={photoFiles}
+                  onPhotoFilesChange={setPhotoFiles}
                 />
               </div>
             </div>
@@ -677,13 +711,42 @@ export default function SubmissionWizardView() {
                     type="tel"
                     placeholder="Contoh: 081234567890"
                     value={formData.reporterPhone}
-                    onChange={(e) => setFormData({ ...formData, reporterPhone: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, reporterPhone: e.target.value, otp: '' });
+                      setOtpSent(false);
+                    }}
                     className="h-12 text-sm sm:text-base font-mono rounded-xl"
                   />
                   <p className="text-xs text-muted-foreground">
                     Nomor tiket dan kabar survei Kepala Dusun akan dikirimkan otomatis ke WhatsApp ini.
                   </p>
                   {errors.reporterPhone && <p className="text-xs text-rose-600 font-bold">{errors.reporterPhone}</p>}
+                </div>
+
+                <div className="sm:col-span-2 space-y-2 rounded-xl border border-border p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                    <div className="flex-1 space-y-1.5">
+                      <Label htmlFor="application-otp" className="text-sm font-bold text-foreground">
+                        Kode Verifikasi <span className="text-rose-600">*</span>
+                      </Label>
+                      <Input
+                        id="application-otp"
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        maxLength={6}
+                        placeholder="Masukkan 6 digit kode"
+                        value={formData.otp}
+                        onChange={(e) => setFormData({ ...formData, otp: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                        className="h-11 font-mono tracking-[0.3em]"
+                      />
+                    </div>
+                    <Button type="button" variant="outline" disabled={isRequestingOtp} onClick={handleRequestOtp} className="h-11 shrink-0">
+                      {isRequestingOtp ? 'Mengirim...' : otpSent ? 'Kirim ulang kode' : 'Kirim kode verifikasi'}
+                    </Button>
+                  </div>
+                  {errors.otp && <p className="text-xs font-bold text-rose-600">{errors.otp}</p>}
+                  <p className="text-xs text-muted-foreground">Kode diperlukan agar pengajuan diterima server dan diteruskan ke antrean Kasun.</p>
                 </div>
 
               </div>

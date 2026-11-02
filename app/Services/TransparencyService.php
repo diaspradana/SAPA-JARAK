@@ -15,6 +15,7 @@ class TransparencyService
     {
         $totalApplications = Application::count();
         $totalCompleted = Application::where('status', 'COMPLETED')->count();
+        $totalInProgress = Application::whereNotIn('status', ['COMPLETED', 'REJECTED'])->count();
         $totalRtlh = Application::where('assistance_type', 'RTLH')->count();
         $totalDisability = Application::where('assistance_type', 'DISABILITAS')->count();
 
@@ -24,6 +25,7 @@ class TransparencyService
         return [
             'total_applications' => $totalApplications,
             'total_completed' => $totalCompleted,
+            'total_in_progress' => $totalInProgress,
             'total_rtlh' => $totalRtlh,
             'total_disability' => $totalDisability,
             'total_allocated_budget' => $totalAllocatedBudget,

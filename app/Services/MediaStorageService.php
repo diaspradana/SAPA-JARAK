@@ -150,9 +150,11 @@ class MediaStorageService
             AuditLog::create([
                 'application_id' => $document->application_id,
                 'user_id' => $user?->id,
+                'actor_name' => $user?->name ?? 'Warga',
                 'action' => 'DOCUMENT_UPLOADED',
-                'description' => "Berkas '{$originalName}' ({$docType}) diunggah dengan visibilitas {$visibility}.",
-                'changes' => [
+                'entity_type' => Document::class,
+                'entity_id' => $document->id,
+                'new_values' => [
                     'document_id' => $document->id,
                     'document_type' => $docType,
                     'visibility' => $visibility,

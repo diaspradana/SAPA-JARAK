@@ -27,11 +27,11 @@ class ApplicationSeeder extends Seeder
         $sg  = Hamlet::where('code', 'SG')->first();
         $sb  = Hamlet::where('code', 'SB')->first();
 
-        $kasunKls = User::where('email', 'kasun.kalasan@jarak-kediri.desa.id')->first();
+        $kasunKls = User::where('email', 'kasun.kalasantimur@jarak-kediri.desa.id')->first();
         $kades = User::where('role', 'kades')->first();
 
         // 1. Completed Application (RTLH - #JRK-KLS-2026-009)
-        $ben1 = Beneficiary::create([
+        $ben1 = Beneficiary::updateOrCreate(['nik' => '3506120101750001'], [
             'name' => 'Bpk. Suparno',
             'nik' => '3506120101750001',
             'kk_number' => '3506120101750000',
@@ -44,7 +44,7 @@ class ApplicationSeeder extends Seeder
             'dtks_status' => 'Desil 1 (Sangat Miskin)',
         ]);
 
-        $app1 = Application::create([
+        $app1 = Application::updateOrCreate(['ticket_number' => '#JRK-KLS-2026-009'], [
             'ticket_number' => '#JRK-KLS-2026-009',
             'beneficiary_id' => $ben1->id,
             'hamlet_id' => $kls->id,
@@ -63,7 +63,10 @@ class ApplicationSeeder extends Seeder
             'completed_at' => now()->subDays(2),
         ]);
 
-        Verification::create([
+        Verification::updateOrCreate([
+            'application_id' => $app1->id,
+            'verification_level' => 'KASUN',
+        ], [
             'application_id' => $app1->id,
             'verifier_id' => $kasunKls?->id,
             'verification_level' => 'KASUN',
@@ -81,7 +84,7 @@ class ApplicationSeeder extends Seeder
             'verified_at' => now()->subDays(16),
         ]);
 
-        Funding::create([
+        Funding::updateOrCreate(['application_id' => $app1->id], [
             'application_id' => $app1->id,
             'source' => 'APBDES_DANA_DESA',
             'fiscal_year' => '2026',
@@ -93,7 +96,7 @@ class ApplicationSeeder extends Seeder
             'status' => 'DISBURSED',
         ]);
 
-        Procurement::create([
+        Procurement::updateOrCreate(['application_id' => $app1->id], [
             'application_id' => $app1->id,
             'rab_items' => [
                 ['item' => 'Semen Gresik 40kg', 'volume' => 35, 'unit' => 'Sak', 'price' => 58000, 'total' => 2030000],
@@ -109,7 +112,7 @@ class ApplicationSeeder extends Seeder
             'completion_date' => now()->subDays(2)->toDateString(),
         ]);
 
-        Handover::create([
+        Handover::updateOrCreate(['application_id' => $app1->id], [
             'application_id' => $app1->id,
             'bast_number' => '045.2/BAST-RTLH/09/2026',
             'handover_date' => now()->subDays(2)->toDateString(),
@@ -120,7 +123,7 @@ class ApplicationSeeder extends Seeder
         ]);
 
         // 2. Wheelchair Assistance Application (#JRK-JL-2026-004) - In Progress
-        $ben2 = Beneficiary::create([
+        $ben2 = Beneficiary::updateOrCreate(['nik' => '3506124508820003'], [
             'name' => 'Ibu Siti Aminah',
             'nik' => '3506124508820003',
             'kk_number' => '3506124508820000',
@@ -133,7 +136,7 @@ class ApplicationSeeder extends Seeder
             'dtks_status' => 'Desil 2 (Miskin)',
         ]);
 
-        $app2 = Application::create([
+        $app2 = Application::updateOrCreate(['ticket_number' => '#JRK-JL-2026-004'], [
             'ticket_number' => '#JRK-JL-2026-004',
             'beneficiary_id' => $ben2->id,
             'hamlet_id' => $jl->id,
@@ -151,7 +154,7 @@ class ApplicationSeeder extends Seeder
             'approved_at' => now()->subDays(1),
         ]);
 
-        Funding::create([
+        Funding::updateOrCreate(['application_id' => $app2->id], [
             'application_id' => $app2->id,
             'source' => 'APBDES_DANA_DESA',
             'fiscal_year' => '2026',
@@ -164,7 +167,7 @@ class ApplicationSeeder extends Seeder
         ]);
 
         // 3. New Application Waiting for Kasun Survey (#JRK-SG-2026-012)
-        $ben3 = Beneficiary::create([
+        $ben3 = Beneficiary::updateOrCreate(['nik' => '3506121102500005'], [
             'name' => 'Mbah Karyo Utomo',
             'nik' => '3506121102500005',
             'kk_number' => '3506121102500000',
@@ -177,12 +180,12 @@ class ApplicationSeeder extends Seeder
             'dtks_status' => 'Desil 1',
         ]);
 
-        Application::create([
+        Application::updateOrCreate(['ticket_number' => '#JRK-SG-2026-012'], [
             'ticket_number' => '#JRK-SG-2026-012',
             'beneficiary_id' => $ben3->id,
             'hamlet_id' => $sg->id,
-            'reporter_name' => 'Sugeng (Tetangga)',
-            'reporter_phone' => '085233445566',
+            'reporter_name' => 'Danang Prasetyo (Warga)',
+            'reporter_phone' => '081399881234',
             'reporter_relationship' => 'Tetangga',
             'assistance_type' => 'RTLH',
             'status' => 'WAITING_KASUN_VERIFICATION',

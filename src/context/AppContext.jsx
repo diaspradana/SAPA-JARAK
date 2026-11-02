@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { INITIAL_APPLICATIONS, INITIAL_NOTIFICATIONS, DEMO_ACCOUNTS, OFFICIAL_KASUN_ACCOUNTS, OFFICIAL_DESA_ACCOUNTS } from '../data/initialData';
 import { DUSUN_LIST, STATUS_STAGES } from '../data/desaConfig';
 import { 
   showToast as swalToast, 
@@ -10,13 +9,191 @@ import {
 
 const AppContext = createContext();
 
-const STORAGE_KEY_APPS = 'sapa_jarak_apps_v1';
-const STORAGE_KEY_NOTIFS = 'sapa_jarak_notifs_v1';
 const STORAGE_KEY_ROLE = 'sapa_jarak_role_v1';
 const STORAGE_KEY_USER = 'sapa_jarak_user_v1';
-const STORAGE_KEY_REGISTERED_USERS = 'sapa_jarak_registered_users_v1';
 const STORAGE_KEY_LOWBW = 'sapa_jarak_lowbw_v1';
 const STORAGE_KEY_THEME = 'sapa_jarak_theme_v1';
+const API_BASE_URL = '/api';
+
+const API_STATUS_MAP = {
+  DRAFT: 'SUBMITTED',
+  SUBMITTED: 'WAITING_KASUN',
+  WAITING_KASUN_VERIFICATION: 'WAITING_KASUN',
+  KASUN_VERIFICATION: 'KASUN_SURVEY',
+  RETURNED_WITH_NOTES: 'RETURNED',
+  FORWARDED_TO_VILLAGE: 'FORWARDED_TO_DESA',
+  VILLAGE_REVIEW: 'VILLAGE_REVIEW',
+  APPROVED: 'FUNDING_APPROVED',
+  FUNDING_ALLOCATED: 'FUNDING_APPROVED',
+  PROCUREMENT_IN_PROGRESS: 'PROCUREMENT',
+  READY_FOR_HANDOVER: 'HANDOVER',
+  COMPLETED: 'COMPLETED',
+  REJECTED: 'REJECTED'
+};
+
+function mapServerApplication(application) {
+  const beneficiary = application.beneficiary || {};
+  const hamlet = application.hamlet || {};
+  const hamletConfig = DUSUN_LIST.find((item) => (
+    item.code.toLowerCase() === String(hamlet.code || '').toLowerCase()
+    || item.name.toLowerCase() === String(hamlet.name || '').toLowerCase()
+  ));
+  const verification = application.latest_verification || application.latestVerification || {};
+  const checklist = verification.parameters_checklist || {};
+  const funding = application.funding || {};
+  const procurement = application.procurement || {};
+  const handover = application.handover || {};
+  const auditLogs = application.audit_logs || application.auditLogs || [];
+  const documents = application.documents || [];
+  const timeline = auditLogs.map((entry) => {
+    const newValues = entry.new_values || {};
+    const status = API_STATUS_MAP[newValues.status] || newValues.status || entry.action;
+    return {
+      status,
+      title: entry.action === 'APPLICATION_SUBMITTED' ? 'Pengajuan Diterima' : `Aktivitas: ${entry.action || 'Pembaruan data'}`,
+      time: entry.created_at || '',
+      note: newValues.reason || newValues.notes || newValues.meta?.reason || ''
+    };
+  });
+  const ticketNumber = String(application.ticket_number || '').replace(/^#/, '');
+
+  return {
+    id: application.id,
+    ticketNumber,
+    assistanceType: application.assistance_type,
+    dusunId: hamletConfig?.id || String(hamlet.id || ''),
+    dusunName: hamlet.name || '',
+    rt: beneficiary.rt || '',
+    rw: beneficiary.rw || '',
+    address: beneficiary.address || '',
+    beneficiaryName: beneficiary.name || '',
+    beneficiaryMaskedName: beneficiary.name ? `${beneficiary.name.slice(0, 1)}${'*'.repeat(Math.max(3, beneficiary.name.length - 1))}` : '',
+    nik: beneficiary.nik || '',
+    kkNumber: beneficiary.kk_number || '',
+    phone: application.reporter_phone || beneficiary.phone || '',
+    isUnregistered: Boolean(beneficiary.is_unregistered),
+    reporterName: application.reporter_name || '',
+    reporterPhone: application.reporter_phone || '',
+    reporterRelation: application.reporter_relationship || '',
+    description: application.description || '',
+    status: API_STATUS_MAP[application.status] || application.status || 'SUBMITTED',
+    submittedAt: application.submitted_at || application.created_at,
+    surveyScheduledAt: application.survey_scheduled_at
+      ? String(application.survey_scheduled_at).slice(0, 10)
+      : '',
+    survey: verification.id ? {
+      verifiedBy: verification.verifier?.name || 'Petugas Kasun',
+      verifiedAt: verification.verified_at,
+      coordinates: { lat: verification.latitude, lng: verification.longitude },
+      notes: verification.notes || '',
+      scoringParams: checklist.input || checklist,
+      score: verification.calculated_score,
+      recommendation: verification.recommendation || ''
+    } : null,
+    funding: funding.id ? {
+      source: funding.source,
+      budget: Number(funding.allocated_budget || 0),
+      approvedAt: funding.approved_at,
+      dtksMatched: Boolean(beneficiary.dtks_status),
+      dtksDesil: beneficiary.dtks_status || ''
+    } : null,
+    procurement: procurement.id ? {
+      contractor: procurement.contractor_or_vendor || '',
+      rabMaterials: (procurement.rab_items || []).map((item) => ({
+        ...item,
+        qty: item.quantity ?? item.qty,
+        price: item.total ?? item.price
+      })),
+      totalCost: Number(procurement.total_rab || 0),
+      progress: Number(procurement.progress_percentage || 0),
+      statusText: procurement.field_notes || ''
+    } : null,
+    handover: handover.id ? {
+      bastNumber: handover.bast_number,
+      handoverDate: handover.handover_date,
+      recipientSigned: Boolean(handover.signature_recipient_svg),
+      officerSigned: Boolean(handover.signature_official_svg)
+    } : null,
+    photos: {
+      initial: documents.filter((document) => document.document_type === 'FOTO_KONDISI_AWAL').map((document) => document.public_url).filter(Boolean),
+      survey: documents.filter((document) => document.document_type === 'FOTO_SURVEI_KASUN').map((document) => document.public_url).filter(Boolean)
+    },
+    timeline
+  };
+}
+
+function getApplicationsEndpoint(user) {
+  const apiRole = user?.apiRole
+    || (user?.role === 'public' ? 'public' : user?.role?.startsWith('kasun') ? 'kasun' : null);
+  if (apiRole === 'public') return `${API_BASE_URL}/warga/applications`;
+  if (apiRole === 'kasun') return `${API_BASE_URL}/kasun/queue`;
+  return `${API_BASE_URL}/desa/dashboard`;
+}
+
+async function parseApiResponse(response) {
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload.success === false) {
+    const validationMessage = payload.errors
+      ? Object.values(payload.errors).flat().join(' ')
+      : '';
+    throw new Error(validationMessage || payload.message || `Permintaan server gagal (${response.status}).`);
+  }
+  return payload;
+}
+
+function mapServerUser(apiUser, token) {
+  let mappedRole = apiUser.role;
+  if (apiUser.role === 'kasun') {
+    const hCode = (apiUser.hamlet?.code || '').toLowerCase();
+    const uName = (apiUser.name || '').toLowerCase();
+    if (hCode === 'jl' || uName.includes('jarak lor') || uName.includes('putro')) mappedRole = 'kasun_jaraklor';
+    else if (hCode === 'sg' || uName.includes('sagi') || uName.includes('miftahudin')) mappedRole = 'kasun_sagi';
+    else if (hCode === 'kls' || uName.includes('kalasan timur') || uName.includes('septian')) mappedRole = 'kasun_kalasan';
+    else if (hCode === 'sb' || uName.includes('kalasan barat') || uName.includes('simbar') || uName.includes('rindi')) mappedRole = 'kasun_simbar';
+    else if (hCode === 'jk' || uName.includes('jarak kidul')) mappedRole = 'kasun_jarakkidul';
+    else mappedRole = 'kasun';
+  } else if (['kasi_kesra', 'kades', 'sekdes', 'admin'].includes(apiUser.role)) {
+    mappedRole = 'desa';
+  } else {
+    mappedRole = 'public';
+  }
+
+  return {
+    id: `user-${apiUser.id}`,
+    serverId: apiUser.id,
+    name: apiUser.name,
+    email: apiUser.email,
+    phone: apiUser.phone,
+    nik: apiUser.nik || '',
+    kkNumber: apiUser.kk_number || '',
+    rt: apiUser.rt || '',
+    rw: apiUser.rw || '',
+    address: apiUser.address || '',
+    role: mappedRole,
+    apiRole: apiUser.role,
+    position: {
+      kades: 'Kepala Desa',
+      sekdes: 'Sekretaris Desa',
+      kasi_kesra: 'Petugas Verifikasi',
+      admin: 'Administrator Sistem',
+      kasun: 'Kepala Dusun',
+      public: 'Warga'
+    }[apiUser.role] || 'Petugas Desa',
+    roleLabel: mappedRole === 'desa'
+      ? ({
+        kades: 'Kepala Desa Jarak',
+        sekdes: 'Sekretaris Desa',
+        kasi_kesra: 'Petugas Verifikasi',
+        admin: 'Administrator Sistem'
+      }[apiUser.role] || 'Pemerintah Desa Jarak')
+      : (mappedRole.startsWith('kasun') ? `Kepala Dusun (${apiUser.hamlet?.name || 'Dusun'})` : 'Warga Masyarakat'),
+    dusunName: apiUser.hamlet?.name || null,
+    dusunId: DUSUN_LIST.find((dusun) => dusun.code.toLowerCase() === apiUser.hamlet?.code?.toLowerCase())?.id || null,
+    hamletId: apiUser.hamlet_id || apiUser.hamlet?.id || null,
+    token,
+    avatarInitials: (apiUser.name || '').split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase()
+  };
+}
 
 export function AppProvider({ children }) {
   const [theme, setTheme] = useState(() => {
@@ -29,32 +206,14 @@ export function AppProvider({ children }) {
     }
   });
 
-  const [applications, setApplications] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_APPS);
-      return saved ? JSON.parse(saved) : INITIAL_APPLICATIONS;
-    } catch {
-      return INITIAL_APPLICATIONS;
-    }
-  });
-
-  const [notifications, setNotifications] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_NOTIFS);
-      return saved ? JSON.parse(saved) : INITIAL_NOTIFICATIONS;
-    } catch {
-      return INITIAL_NOTIFICATIONS;
-    }
-  });
-
-  const [registeredUsers, setRegisteredUsers] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_REGISTERED_USERS);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [applications, setApplications] = useState([]);
+  const [syncStatus, setSyncStatus] = useState('idle');
+  const [syncError, setSyncError] = useState('');
+  const [lastSyncedAt, setLastSyncedAt] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [registeredUsers] = useState([]);
+  const [demoAccounts, setDemoAccounts] = useState([]);
+  const [demoAccountsError, setDemoAccountsError] = useState('');
 
   const [currentUser, setCurrentUser] = useState(() => {
     try {
@@ -86,12 +245,73 @@ export function AppProvider({ children }) {
     }
   });
 
-  const [currentView, setCurrentView] = useState('home');
+  const [currentView, setCurrentView] = useState(() => {
+    // If a warga user was already logged in, start at their dashboard
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_USER);
+      if (saved) {
+        const u = JSON.parse(saved);
+        if (u?.role === 'public') return 'warga_dashboard';
+        if (u?.role?.startsWith('kasun')) return 'kasun_dashboard';
+        if (u?.role === 'desa' || u?.role === 'admin') return 'desa_dashboard';
+      }
+    } catch {}
+    return 'home';
+  });
+  const [wargaView, setWargaView] = useState('beranda'); // internal warga dashboard sub-view
   const [loginRole, setLoginRole] = useState('warga'); // 'warga' | 'kasun' | 'desa'
   const [activeTicketNumber, setActiveTicketNumber] = useState(null);
   const [activeWhatsAppModal, setActiveWhatsAppModal] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
   const [isNotifDrawerOpen, setIsNotifDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    if (!currentUser?.token) return undefined;
+
+    let active = true;
+    fetch(`${API_BASE_URL}/auth/me`, {
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${currentUser.token}`
+      }
+    })
+      .then(parseApiResponse)
+      .then((payload) => {
+        if (!active) return;
+        const serverUser = mapServerUser(payload.data, currentUser.token);
+        setCurrentUser(serverUser);
+        try {
+          localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(serverUser));
+        } catch (error) {
+          console.error('Gagal menyimpan cache sesi akun:', error);
+        }
+      })
+      .catch((error) => {
+        if (active) console.error('Gagal memuat profil akun dari server:', error);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [currentUser?.token]);
+
+  useEffect(() => {
+    let active = true;
+    fetch(`${API_BASE_URL}/auth/demo-accounts`, { headers: { Accept: 'application/json' } })
+      .then(parseApiResponse)
+      .then((payload) => {
+        if (active && Array.isArray(payload.data)) {
+          setDemoAccounts(payload.data);
+          setDemoAccountsError('');
+        }
+      })
+      .catch((error) => {
+        if (active) setDemoAccountsError(error.message || 'Akun contoh tidak dapat dimuat dari server.');
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const openLogin = (role = 'warga') => {
     setLoginRole(role);
@@ -134,22 +354,58 @@ export function AppProvider({ children }) {
     });
   };
 
-  // Sync state to LocalStorage
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_APPS, JSON.stringify(applications));
-    } catch (e) {
-      console.error(e);
+    if (!currentUser?.token) {
+      setSyncStatus('idle');
+      setSyncError('');
+      return undefined;
     }
-  }, [applications]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_NOTIFS, JSON.stringify(notifications));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [notifications]);
+    let active = true;
+    let loading = false;
+    let timer;
+    setApplications([]);
+    const sync = async () => {
+      if (loading) return;
+      loading = true;
+      setSyncStatus((status) => status === 'synced' ? status : 'syncing');
+      try {
+        const response = await fetch(getApplicationsEndpoint(currentUser), {
+          headers: {
+            Accept: 'application/json',
+            Authorization: `Bearer ${currentUser.token}`
+          }
+        });
+        const payload = await parseApiResponse(response);
+        if (!Array.isArray(payload.data)) {
+          throw new Error('Format data pengajuan dari server tidak sesuai.');
+        }
+        if (active) {
+          setApplications(payload.data.map(mapServerApplication));
+          setSyncStatus('synced');
+          setSyncError('');
+          setLastSyncedAt(new Date().toISOString());
+        }
+      } catch (error) {
+        if (active) {
+          setApplications([]);
+          setSyncStatus('error');
+          setSyncError(error.message || 'Gagal menyinkronkan data dari server.');
+        }
+      } finally {
+        loading = false;
+      }
+    };
+
+    sync();
+    timer = window.setInterval(sync, 15000);
+    window.addEventListener('focus', sync);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener('focus', sync);
+    };
+  }, [currentUser?.token, currentUser?.apiRole]);
 
   useEffect(() => {
     try {
@@ -176,6 +432,106 @@ export function AppProvider({ children }) {
     swalToast(message, type);
   };
 
+  const serverRequest = async (path, options = {}) => {
+    const headers = { Accept: 'application/json', ...(options.headers || {}) };
+    const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+    if (options.body !== undefined && !isFormData) headers['Content-Type'] = 'application/json';
+    if (currentUser?.token) headers.Authorization = `Bearer ${currentUser.token}`;
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers,
+      body: options.body === undefined ? undefined : (isFormData ? options.body : JSON.stringify(options.body))
+    });
+    return parseApiResponse(response);
+  };
+
+  const refreshApplications = async () => {
+    if (!currentUser?.token) {
+      throw new Error('Sesi akun belum terhubung ke server. Silakan masuk menggunakan akun server.');
+    }
+    setSyncStatus('syncing');
+    try {
+      const payload = await serverRequest(getApplicationsEndpoint(currentUser).replace(API_BASE_URL, ''));
+      if (!Array.isArray(payload.data)) throw new Error('Format data pengajuan dari server tidak sesuai.');
+      const syncedApplications = payload.data.map(mapServerApplication);
+      setApplications(syncedApplications);
+      setSyncStatus('synced');
+      setSyncError('');
+      setLastSyncedAt(new Date().toISOString());
+      return syncedApplications;
+    } catch (error) {
+      setSyncStatus('error');
+      setSyncError(error.message);
+      throw error;
+    }
+  };
+
+  const trackApplication = async (ticketNumber) => {
+    const ticket = String(ticketNumber || '').trim().replace(/^#/, '');
+    if (!ticket) throw new Error('Masukkan nomor tiket untuk melacak pengajuan.');
+    const payload = await serverRequest(`/public/applications/track/${encodeURIComponent(ticket)}`);
+    return mapServerApplication(payload.data);
+  };
+
+  const updateKasunVisitSchedule = async (ticketNumber, scheduledAt) => {
+    const application = getServerApplication(ticketNumber);
+    const payload = await serverRequest(`/kasun/applications/${application.id}/schedule`, {
+      method: 'PUT',
+      body: { scheduled_at: scheduledAt || null }
+    });
+    const savedSchedule = payload.data.survey_scheduled_at
+      ? String(payload.data.survey_scheduled_at).slice(0, 10)
+      : '';
+    setApplications((previous) => previous.map((item) => (
+      item.ticketNumber === ticketNumber
+        ? { ...item, surveyScheduledAt: savedSchedule }
+        : item
+    )));
+    await refreshAfterServerWrite('Jadwal survei berhasil disimpan ke server.');
+  };
+
+  const updateProfile = async (profile) => {
+    const payload = await serverRequest('/warga/profile', {
+      method: 'PUT',
+      body: {
+        name: profile.name,
+        email: profile.email || null,
+        phone: profile.phone,
+        nik: profile.nik || null,
+        kk_number: profile.kkNumber || null,
+        rt: profile.rt || null,
+        rw: profile.rw || null,
+        address: profile.address || null
+      }
+    });
+    const updatedUser = mapServerUser(payload.data, currentUser?.token);
+    setCurrentUser(updatedUser);
+    localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(updatedUser));
+    showToast(payload.message || 'Profil berhasil diperbarui di server.', 'success');
+    return updatedUser;
+  };
+
+  const updatePassword = async (currentPassword, newPassword) => {
+    const payload = await serverRequest('/auth/password', {
+      method: 'PUT',
+      body: {
+        current_password: currentPassword,
+        new_password: newPassword,
+        new_password_confirmation: newPassword
+      }
+    });
+    return payload;
+  };
+
+  const refreshAfterServerWrite = async (successMessage) => {
+    showToast(successMessage, 'success');
+    try {
+      await refreshApplications();
+    } catch (error) {
+      showToast(`Perubahan sudah diterima server, tetapi daftar terbaru gagal dimuat: ${error.message}`, 'warning');
+    }
+  };
+
   const showAlert = swalAlert;
   const showConfirm = swalConfirm;
   const showWhatsAppAlert = swalWhatsAppAlert;
@@ -193,281 +549,168 @@ export function AppProvider({ children }) {
     setActiveWhatsAppModal(notif);
   };
 
-  // 1. Submit New Application (Public)
-  const submitApplication = (formData) => {
-    const dusunObj = DUSUN_LIST.find(d => d.id === formData.dusunId) || DUSUN_LIST[0];
-    const year = new Date().getFullYear();
-    const count = applications.filter(a => a.dusunId === formData.dusunId).length + 1;
-    const ticketNumber = `JRK-${dusunObj.code}-${year}-${String(count).padStart(3, '0')}`;
-    
-    // Mask name for public privacy
-    const rawName = formData.beneficiaryName || "Pemohon";
-    const nameParts = rawName.split(" ");
-    const maskedName = nameParts.length > 1 
-      ? `${nameParts[0]} ${nameParts[1][0]}*****` 
-      : `${rawName.substring(0, 3)}*****`;
+  const requestApplicationOtp = async (phone, name) => serverRequest('/public/otp/request', {
+    method: 'POST',
+    body: { phone, name }
+  });
 
-    const newApp = {
-      id: `APP-${Date.now()}`,
-      ticketNumber,
+  const submitApplication = async (formData, photoFiles = []) => {
+    const dusun = DUSUN_LIST.find((item) => item.id === formData.dusunId);
+    if (!dusun) throw new Error('Dusun yang dipilih tidak dikenali.');
+
+    const hamletPayload = await serverRequest('/public/hamlets');
+    const hamlet = (hamletPayload.data || []).find((item) => (
+      String(item.code).toLowerCase() === dusun.code.toLowerCase()
+      || String(item.name).toLowerCase() === dusun.name.toLowerCase()
+    ));
+    if (!hamlet) throw new Error(`Data Dusun ${dusun.name} belum tersedia di server.`);
+
+    const documentIds = [];
+    for (const file of photoFiles) {
+      if (!(file instanceof File)) continue;
+      const uploadData = new FormData();
+      uploadData.append('file', file);
+      uploadData.append('document_type', 'FOTO_KONDISI_AWAL');
+      uploadData.append('visibility', 'PUBLIC_MASKED');
+      uploadData.append('blur_type', 'pixelate');
+      const uploaded = await serverRequest('/documents/upload', { method: 'POST', body: uploadData });
+      documentIds.push(uploaded.data.id);
+    }
+
+    const payload = await serverRequest('/public/applications', {
+      method: 'POST',
+      body: {
+        beneficiary_name: formData.beneficiaryName,
+        nik: formData.nik || null,
+        kk_number: formData.kkNumber || null,
+        beneficiary_phone: formData.phone || formData.reporterPhone,
+        hamlet_id: hamlet.id,
+        rt: formData.rt || '01',
+        rw: formData.rw || '01',
+        address: formData.address || `RT ${formData.rt || '01'} / RW ${formData.rw || '01'}, Dusun ${dusun.name}, Desa Jarak`,
+        is_unregistered: Boolean(formData.isUnregistered),
+        assistance_type: formData.assistanceType,
+        reporter_name: formData.reporterName,
+        reporter_phone: formData.reporterPhone,
+        reporter_relationship: formData.reporterRelation || 'Diri Sendiri',
+        description: formData.description,
+        needs_description: formData.description,
+        otp: formData.otp,
+        document_ids: documentIds
+      }
+    });
+
+    const created = {
+      id: payload.data.id || payload.data.ticket_number,
+      ticketNumber: String(payload.data.ticket_number || '').replace(/^#/, ''),
       assistanceType: formData.assistanceType,
-      dusunId: formData.dusunId,
-      dusunName: dusunObj.name,
-      rt: formData.rt || "01",
-      rw: formData.rw || "01",
-      address: formData.address || `RT ${formData.rt || "01"} / RW ${formData.rw || "01"}, Dusun ${dusunObj.name}, Desa Jarak`,
-      
+      dusunId: dusun.id,
+      dusunName: dusun.name,
+      rt: formData.rt || '01',
+      rw: formData.rw || '01',
+      address: formData.address || '',
       beneficiaryName: formData.beneficiaryName,
-      beneficiaryMaskedName: maskedName,
-      nik: formData.nik || "3506120000000000",
-      kkNumber: formData.kkNumber || "3506120000000000",
+      beneficiaryMaskedName: `${formData.beneficiaryName?.slice(0, 1) || 'W'}***`,
+      nik: formData.nik || '',
+      kkNumber: formData.kkNumber || '',
       phone: formData.phone || formData.reporterPhone,
-      isUnregistered: !!formData.isUnregistered,
-      
       reporterName: formData.reporterName,
       reporterPhone: formData.reporterPhone,
-      reporterRelation: formData.reporterRelation || "Diri Sendiri",
-      
       description: formData.description,
-      status: "WAITING_KASUN",
-      submittedAt: new Date().toISOString(),
-      
-      photos: {
-        initial: formData.photos && formData.photos.length > 0 
-          ? formData.photos 
-          : ["https://images.unsplash.com/photo-1590381105924-c72589b9ef3f?auto=format&fit=crop&w=600&q=80"]
-      },
-      
-      timeline: [
-        {
-          status: "SUBMITTED",
-          title: "Pengajuan Diterima",
-          time: new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date()),
-          note: "Laporan bantuan berhasil dikirim dan diverifikasi melalui nomor WhatsApp."
-        },
-        {
-          status: "WAITING_KASUN",
-          title: "Menunggu Verifikasi Kasun",
-          time: new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date()),
-          note: `Notifikasi diteruskan ke Kepala Dusun ${dusunObj.name} (${dusunObj.kasunName}).`
-        }
-      ]
+      status: API_STATUS_MAP[payload.data.status] || 'WAITING_KASUN',
+      submittedAt: payload.data.submitted_at,
+      photos: { initial: [], survey: [] },
+      timeline: []
     };
-
-    setApplications(prev => [newApp, ...prev]);
-
-    // Send simulated WhatsApp notification
-    triggerWhatsAppAlert(
-      formData.reporterPhone,
-      ticketNumber,
-      `Halo ${formData.reporterName}, pengajuan bantuan ${formData.assistanceType} di Desa Jarak telah berhasil didaftarkan dengan Nomor Tiket #${ticketNumber}. Pantau status terkini secara transparan melalui: https://sapa-jarak.desa.id/lacak?ticket=${ticketNumber}`,
-      'Pengajuan Bantuan Terdaftar'
-    );
-
-    showToast(`Pengajuan berhasil dikirim! Nomor Tiket: #${ticketNumber}`, 'success');
-    return newApp;
+    setApplications((previous) => [created, ...previous.filter((app) => app.ticketNumber !== created.ticketNumber)]);
+    showToast(`Pengajuan tersimpan di server. Nomor tiket: #${created.ticketNumber}`, 'success');
+    return created;
   };
 
-  // 2. Kasun updates Survey & Recommends to Village
-  const submitKasunSurvey = (ticketNumber, surveyData) => {
-    setApplications(prev => prev.map(app => {
-      if (app.ticketNumber !== ticketNumber) return app;
+  const getServerApplication = (ticketNumber) => {
+    const application = applications.find((item) => item.ticketNumber === ticketNumber);
+    if (!application || !Number.isInteger(Number(application.id))) {
+      throw new Error('Berkas ini belum tersinkron ke server. Muat ulang dashboard dan coba lagi.');
+    }
+    return application;
+  };
 
-      const updatedStatus = surveyData.isReturned ? "RETURNED" : "FORWARDED_TO_DESA";
-      const nowStr = new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date());
-
-      const newTimelineItems = [
-        {
-          status: "KASUN_SURVEY",
-          title: "Survei Kasun Selesai",
-          time: nowStr,
-          note: `Kasun telah melakukan survei lapangan (Skor Kelayakan: ${surveyData.score}/100). Catatan: ${surveyData.notes}`
-        }
-      ];
-
-      if (surveyData.isReturned) {
-        newTimelineItems.push({
-          status: "RETURNED",
-          title: "Dikembalikan dengan Catatan",
-          time: nowStr,
-          note: `Perlu perbaikan berkas: ${surveyData.returnNotes}`
-        });
-      } else {
-        newTimelineItems.push({
-          status: "FORWARDED_TO_DESA",
-          title: "Direkomendasikan ke Pemerintah Desa",
-          time: nowStr,
-          note: `Diteruskan ke Kasi Kesra & Kepala Desa Jarak untuk validasi & penetapan pendanaan.`
-        });
+  const submitKasunSurvey = async (ticketNumber, surveyData) => {
+    const application = getServerApplication(ticketNumber);
+    for (const file of surveyData.surveyFiles || []) {
+      if (!(file instanceof File)) continue;
+      const uploadData = new FormData();
+      uploadData.append('file', file);
+      uploadData.append('application_id', String(application.id));
+      uploadData.append('document_type', 'FOTO_SURVEI_KASUN');
+      uploadData.append('visibility', 'PUBLIC_MASKED');
+      uploadData.append('blur_type', 'pixelate');
+      await serverRequest('/documents/upload', { method: 'POST', body: uploadData });
+    }
+    await serverRequest(`/kasun/applications/${application.id}/survey`, {
+      method: 'POST',
+      body: {
+        latitude: surveyData.coordinates?.lat,
+        longitude: surveyData.coordinates?.lng,
+        parameters: surveyData.scoringParams || {},
+        recommendation: surveyData.isReturned ? 'DIKEMBALIKAN' : 'LAYAK',
+        notes: surveyData.isReturned
+          ? `${surveyData.notes}\nCatatan perbaikan: ${surveyData.returnNotes}`
+          : surveyData.notes,
+        signature_svg: surveyData.signatureSvg || null
       }
+    });
+    await refreshAfterServerWrite('Hasil survei Kasun berhasil disimpan ke server.');
+  };
 
-      return {
-        ...app,
-        status: updatedStatus,
-        survey: {
-          verifiedBy: surveyData.verifiedBy || "Kepala Dusun",
-          verifiedAt: new Date().toISOString(),
-          coordinates: surveyData.coordinates || { lat: -7.9045, lng: 112.1894 },
-          notes: surveyData.notes,
-          scoringParams: surveyData.scoringParams,
-          score: surveyData.score,
-          recommendation: surveyData.recommendation
-        },
-        photos: {
-          ...app.photos,
-          survey: surveyData.surveyPhotos || app.photos.survey || []
-        },
-        timeline: [...app.timeline, ...newTimelineItems]
-      };
-    }));
-
-    const app = applications.find(a => a.ticketNumber === ticketNumber);
-    if (app) {
-      if (surveyData.isReturned) {
-        triggerWhatsAppAlert(
-          app.phone,
-          ticketNumber,
-          `Pengajuan #${ticketNumber} memerlukan tindak lanjut: ${surveyData.returnNotes}. Silakan hubungi Kasun setempat untuk koordinasi perbaikan data.`
-        );
-      } else {
-        triggerWhatsAppAlert(
-          app.phone,
-          ticketNumber,
-          `Kabar baik, pengajuan #${ticketNumber} telah selesai disurvei lapangan oleh Kasun dengan skor kelayakan ${surveyData.score}/100 dan direkomendasikan ke Pemerintah Desa Jarak.`
-        );
+  const approveDesaFunding = async (ticketNumber, fundingData) => {
+    const application = getServerApplication(ticketNumber);
+    await serverRequest(`/desa/applications/${application.id}/validate`, {
+      method: 'POST',
+      body: {
+        decision: 'APPROVED',
+        source: fundingData.source,
+        allocated_budget: Number(fundingData.budget),
+        notes: fundingData.notes
       }
-    }
-
-    showToast("Hasil survei Kasun berhasil disimpan & diteruskan ke Desa!", "success");
+    });
+    await refreshAfterServerWrite('Keputusan dan alokasi bantuan berhasil disimpan ke server.');
   };
 
-  // 3. Desa validates & approves funding
-  const approveDesaFunding = (ticketNumber, fundingData) => {
-    setApplications(prev => prev.map(app => {
-      if (app.ticketNumber !== ticketNumber) return app;
-
-      const nowStr = new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date());
-
-      return {
-        ...app,
-        status: "FUNDING_APPROVED",
-        funding: {
-          source: fundingData.source,
-          budget: Number(fundingData.budget),
-          approvedBy: "Kasi Kesejahteraan & Kepala Desa Jarak",
-          approvedAt: new Date().toISOString(),
-          dtksMatched: fundingData.dtksMatched ?? true,
-          dtksDesil: fundingData.dtksDesil || "Desil 1 (Sangat Miskin)",
-          duplicateCheckPassed: true,
-          notes: fundingData.notes
-        },
-        timeline: [
-          ...app.timeline,
-          {
-            status: "FUNDING_APPROVED",
-            title: "Bantuan & Anggaran Disetujui Pemdes",
-            time: nowStr,
-            note: `Disetujui alokasi dana sebesar Rp ${Number(fundingData.budget).toLocaleString('id-ID')} bersumber dari ${fundingData.source}.`
-          }
-        ]
-      };
-    }));
-
-    const app = applications.find(a => a.ticketNumber === ticketNumber);
-    if (app) {
-      triggerWhatsAppAlert(
-        app.phone,
-        ticketNumber,
-        `Selamat! Pengajuan bantuan #${ticketNumber} telah DISETUJUI oleh Pemerintah Desa Jarak dengan alokasi anggaran Rp ${Number(fundingData.budget).toLocaleString('id-ID')} dari ${fundingData.source}. Tahap pengadaan/pengerjaan segera dimulai.`
-      );
-    }
-
-    showToast("Bantuan dan sumber pendanaan berhasil disetujui!", "success");
+  const updateProcurementProgress = async (ticketNumber, procurementData) => {
+    const application = getServerApplication(ticketNumber);
+    await serverRequest(`/desa/applications/${application.id}/procurement`, {
+      method: 'POST',
+      body: {
+        rab_items: (procurementData.rabMaterials || []).map((item) => ({
+          item: item.item,
+          quantity: item.qty,
+          unit: item.unit,
+          total: Number(item.price || 0)
+        })),
+        total_rab: Number(procurementData.totalCost || 0),
+        progress_percentage: Number(procurementData.progress || 0),
+        contractor_or_vendor: procurementData.contractor || '',
+        field_notes: procurementData.statusText || ''
+      }
+    });
+    await refreshAfterServerWrite(`Progres ${procurementData.progress}% berhasil disimpan ke server.`);
   };
 
-  // 4. Update Procurement & Progress
-  const updateProcurementProgress = (ticketNumber, procurementData) => {
-    setApplications(prev => prev.map(app => {
-      if (app.ticketNumber !== ticketNumber) return app;
-
-      const nowStr = new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date());
-      const nextStatus = procurementData.progress >= 100 ? "HANDOVER" : "PROCUREMENT";
-
-      return {
-        ...app,
-        status: nextStatus,
-        procurement: {
-          ...app.procurement,
-          contractor: procurementData.contractor || app.procurement?.contractor || "Swakelola Desa",
-          rabMaterials: procurementData.rabMaterials || app.procurement?.rabMaterials || [],
-          totalCost: procurementData.totalCost || app.procurement?.totalCost || 0,
-          progress: procurementData.progress,
-          statusText: procurementData.statusText || `Pengerjaan fisik mencapai progres ${procurementData.progress}%`
-        },
-        photos: {
-          ...app.photos,
-          ...(procurementData.progress >= 50 && procurementData.photo50 ? { progress50: [procurementData.photo50] } : {}),
-          ...(procurementData.progress >= 100 && procurementData.photo100 ? { progress100: [procurementData.photo100] } : {})
-        },
-        timeline: [
-          ...app.timeline,
-          {
-            status: "PROCUREMENT",
-            title: `Progres Pelaksanaan ${procurementData.progress}%`,
-            time: nowStr,
-            note: procurementData.statusText || `Progres pelaksanaan fisik ${procurementData.progress}%.`
-          }
-        ]
-      };
-    }));
-
-    showToast(`Progres pengerjaan diperbarui: ${procurementData.progress}%`, "success");
-  };
-
-  // 5. Complete Handover BAST & Publish to Transparency
-  const completeHandoverBAST = (ticketNumber, handoverData) => {
-    setApplications(prev => prev.map(app => {
-      if (app.ticketNumber !== ticketNumber) return app;
-
-      const nowStr = new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date());
-
-      return {
-        ...app,
-        status: "COMPLETED",
-        handover: {
-          bastNumber: handoverData.bastNumber || `BAST/${app.assistanceType}/${app.ticketNumber.split('-')[1]}/${new Date().getFullYear()}`,
-          handoverDate: handoverData.handoverDate || new Date().toISOString().split('T')[0],
-          recipientSignature: handoverData.recipientSignature || null,
-          officerSignature: handoverData.officerSignature || null,
-          notes: handoverData.notes || "Bantuan diserahkan dalam keadaan baik dan lengkap.",
-          publicPublished: true
-        },
-        photos: {
-          ...app.photos,
-          handover: handoverData.handoverPhoto || app.photos?.handover || "https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?auto=format&fit=crop&w=600&q=80"
-        },
-        timeline: [
-          ...app.timeline,
-          {
-            status: "COMPLETED",
-            title: "Serah Terima BAST & Publikasi Transparansi",
-            time: nowStr,
-            note: `Berita Acara Serah Terima (${handoverData.bastNumber || 'BAST'}) telah disahkan dan data agregat masuk ke Dashboard Transparansi Publik.`
-          }
-        ]
-      };
-    }));
-
-    const app = applications.find(a => a.ticketNumber === ticketNumber);
-    if (app) {
-      triggerWhatsAppAlert(
-        app.phone,
-        ticketNumber,
-        `Penyerahan bantuan #${ticketNumber} telah SELESAI dan dokumen Berita Acara Serah Terima (BAST) telah diterbitkan. Terima kasih atas kerja sama masyarakat Desa Jarak.`
-      );
-    }
-
-    showToast("BAST berhasil disahkan & Bantuan dipublikasikan ke Transparansi Terbuka!", "success");
+  const completeHandoverBAST = async (ticketNumber, handoverData) => {
+    const application = getServerApplication(ticketNumber);
+    await serverRequest(`/desa/applications/${application.id}/handover`, {
+      method: 'POST',
+      body: {
+        bast_number: handoverData.bastNumber,
+        handover_date: handoverData.handoverDate || new Date().toISOString().slice(0, 10),
+        recipient_name: application.beneficiaryName,
+        signature_recipient_svg: handoverData.recipientSignature || null,
+        signature_official_svg: handoverData.officerSignature || null,
+        notes: handoverData.notes || 'Serah terima resmi telah dilakukan.'
+      }
+    });
+    await refreshAfterServerWrite('BAST berhasil disimpan dan status diperbarui di server.');
   };
 
   // Authentication: Login
@@ -480,94 +723,29 @@ export function AppProvider({ children }) {
       return { success: false, message: 'Mohon isi semua bidang.' };
     }
 
-    // Attempt Backend Sanctum API login if available
-    let apiSuccess = false;
-    let apiUser = null;
-    let apiToken = null;
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify({ login: cleanId, password: cleanPw })
       });
-      if (response.ok) {
-        const resData = await response.json();
-        if (resData.success && resData.data) {
-          apiSuccess = true;
-          apiUser = resData.data.user;
-          apiToken = resData.data.access_token;
-        }
-      }
-    } catch (e) {
-      // Offline / standalone Vite mode fallback
+      const payload = await parseApiResponse(response);
+      const foundUser = mapServerUser(payload.data.user, payload.data.access_token);
+
+      setCurrentUser(foundUser);
+      setActiveRole(foundUser.role);
+      localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(foundUser));
+      localStorage.setItem(STORAGE_KEY_ROLE, foundUser.role);
+      setCurrentView(foundUser.role.startsWith('kasun')
+        ? 'kasun_dashboard'
+        : foundUser.role === 'public' ? 'warga_dashboard' : 'desa_dashboard');
+      showToast(`Berhasil masuk! Selamat datang, ${foundUser.name}.`, 'success');
+      return { success: true, user: foundUser };
+    } catch (error) {
+      const message = error.message || 'Server tidak dapat dihubungi. Periksa koneksi MySQL dan Laravel.';
+      showToast(message, 'error');
+      return { success: false, message };
     }
-
-    let foundUser = null;
-
-    if (apiSuccess && apiUser) {
-      let mappedRole = apiUser.role;
-      if (apiUser.role === 'kasun') {
-        const hCode = (apiUser.hamlet?.code || '').toLowerCase();
-        const uName = (apiUser.name || '').toLowerCase();
-        if (hCode.includes('jl') || uName.includes('jarak lor') || uName.includes('putro')) mappedRole = 'kasun_jaraklor';
-        else if (hCode.includes('sg') || uName.includes('sagi') || uName.includes('miftahudin')) mappedRole = 'kasun_sagi';
-        else if (hCode.includes('kls') || uName.includes('kalasan timur') || uName.includes('septian')) mappedRole = 'kasun_kalasan';
-        else if (hCode.includes('sb') || uName.includes('kalasan barat') || uName.includes('simbar') || uName.includes('rindi')) mappedRole = 'kasun_simbar';
-        else if (hCode.includes('jk') || uName.includes('jarak kidul')) mappedRole = 'kasun_jarakkidul';
-        else mappedRole = 'kasun_kalasan';
-      } else if (apiUser.role === 'kasi_kesra' || apiUser.role === 'kades' || apiUser.role === 'sekdes' || apiUser.role === 'admin') {
-        mappedRole = 'desa';
-      } else {
-        mappedRole = 'public';
-      }
-
-      foundUser = {
-        id: `user-${apiUser.id}`,
-        name: apiUser.name,
-        email: apiUser.email,
-        phone: apiUser.phone,
-        role: mappedRole,
-        roleLabel: mappedRole === 'desa' ? 'Pemerintah Desa Jarak' : (mappedRole.startsWith('kasun') ? `Kepala Dusun (${apiUser.hamlet?.name || 'Dusun'})` : 'Warga Masyarakat'),
-        dusunName: apiUser.hamlet?.name || null,
-        token: apiToken,
-        avatarInitials: apiUser.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase(),
-      };
-    } else {
-      // Local Database matching against DEMO_ACCOUNTS and registeredUsers
-      const allUsers = [...DEMO_ACCOUNTS, ...registeredUsers];
-      foundUser = allUsers.find(u => {
-        const cleanPhoneInput = cleanId.replace(/\D/g, '');
-        const uPhoneClean = (u.phone || '').replace(/\D/g, '');
-        const idMatch = (u.email && u.email.toLowerCase() === cleanId.toLowerCase()) ||
-                        (uPhoneClean && cleanPhoneInput && uPhoneClean === cleanPhoneInput) ||
-                        (u.nik && u.nik === cleanId) ||
-                        (u.nip && u.nip.replace(/\s/g, '') === cleanId.replace(/\s/g, ''));
-        const pwMatch = u.password === cleanPw;
-        return idMatch && pwMatch;
-      });
-    }
-
-    if (!foundUser) {
-      showToast('Kombinasi email/no HP dan kata sandi salah.', 'error');
-      return { success: false, message: 'Kombinasi email/no HP dan kata sandi salah.' };
-    }
-
-    setCurrentUser(foundUser);
-    setActiveRole(foundUser.role);
-    localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(foundUser));
-    localStorage.setItem(STORAGE_KEY_ROLE, foundUser.role);
-
-    // Redirect to relevant view
-    if (foundUser.role.startsWith('kasun')) {
-      setCurrentView('kasun_dashboard');
-    } else if (foundUser.role === 'desa' || foundUser.role === 'admin' || foundUser.role === 'kasi_kesra' || foundUser.role === 'sekdes' || foundUser.role === 'kades') {
-      setCurrentView('desa_dashboard');
-    } else {
-      setCurrentView('home');
-    }
-
-    showToast(`Berhasil masuk! Selamat datang, ${foundUser.name}.`, 'success');
-    return { success: true, user: foundUser };
   };
 
   // Authentication: Register (Warga Masyarakat atau Petugas Desa)
@@ -584,53 +762,9 @@ export function AppProvider({ children }) {
         ? `petugas.${cleanPhone.replace(/\D/g, '')}@jarak-kediri.desa.id`
         : `warga.${cleanPhone.replace(/\D/g, '')}@jarak-kediri.desa.id`
     );
-
-    // Duplicate check
-    const allUsers = [...DEMO_ACCOUNTS, ...registeredUsers];
-    const exists = allUsers.some(u => 
-      (u.email && u.email.toLowerCase() === cleanEmail.toLowerCase()) ||
-      (u.phone && u.phone.replace(/\D/g, '') === cleanPhone.replace(/\D/g, ''))
-    );
-
-    if (exists) {
-      showToast('Nomor HP atau Email ini sudah terdaftar.', 'warning');
-      return { success: false, message: 'Nomor HP atau Email sudah terdaftar.' };
-    }
-
-    const dusunObj = DUSUN_LIST.find(d => d.id === formData.dusunId) || DUSUN_LIST[0];
-    const initials = formData.name.split(' ').filter(Boolean).map(n => n[0]).slice(0, 2).join('').toUpperCase() || (isOfficer ? 'PD' : 'WG');
-
-    const role = isOfficer ? 'desa' : 'public';
     const positionLabel = formData.positionLabel || formData.position || 'Aparatur Balai Desa';
-    const roleLabel = isOfficer ? `Petugas Desa (${positionLabel})` : 'Warga / Pelapor Terdaftar';
-    const badgeVariant = isOfficer ? 'success' : 'neutral';
-
-    const newUser = {
-      id: `user-${Date.now()}`,
-      name: formData.name,
-      email: cleanEmail,
-      phone: cleanPhone,
-      password: formData.password,
-      role: role,
-      roleLabel: roleLabel,
-      position: isOfficer ? positionLabel : null,
-      nip: formData.nip || null,
-      badgeVariant: badgeVariant,
-      nik: formData.nik || '',
-      kkNumber: formData.kkNumber || '',
-      dusunId: isOfficer ? null : dusunObj.id,
-      dusunName: isOfficer ? 'Kantor Balai Desa' : dusunObj.name,
-      rt: formData.rt || (isOfficer ? '00' : '01'),
-      rw: formData.rw || (isOfficer ? '00' : '01'),
-      address: isOfficer ? 'Kantor Balai Desa Jarak' : `RT ${formData.rt || '01'} / RW ${formData.rw || '01'}, Dusun ${dusunObj.name}, Desa Jarak`,
-      avatarInitials: initials,
-      subtitle: isOfficer ? `Aparatur Desa - ${positionLabel}` : `Warga Dusun ${dusunObj.name} (RT ${formData.rt || '01'}/RW ${formData.rw || '01'})`,
-      createdAt: new Date().toISOString()
-    };
-
-    // Try backend registration
     try {
-      const resp = await fetch('/api/auth/register', {
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify({
@@ -646,50 +780,24 @@ export function AppProvider({ children }) {
           nik: formData.nik,
           kk_number: formData.kkNumber,
           rt: formData.rt,
-          rw: formData.rw
+          rw: formData.rw,
+          address: formData.address
         })
       });
-      if (resp.ok) {
-        const rJson = await resp.json();
-        if (rJson.data?.access_token) {
-          newUser.token = rJson.data.access_token;
-        }
-      }
-    } catch (e) {
-      // offline fallback
+      const payload = await parseApiResponse(response);
+      const user = mapServerUser(payload.data.user, payload.data.access_token);
+      setCurrentUser(user);
+      setActiveRole(user.role);
+      localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(user));
+      localStorage.setItem(STORAGE_KEY_ROLE, user.role);
+      setCurrentView(user.role === 'public' ? 'warga_dashboard' : 'desa_dashboard');
+      showToast(payload.message || `Pendaftaran berhasil. Selamat datang, ${user.name}.`, 'success');
+      return { success: true, user };
+    } catch (error) {
+      const message = error.message || 'Server tidak dapat dihubungi. Periksa koneksi MySQL dan Laravel.';
+      showToast(message, 'error');
+      return { success: false, message };
     }
-
-    const updated = [newUser, ...registeredUsers];
-    setRegisteredUsers(updated);
-    localStorage.setItem(STORAGE_KEY_REGISTERED_USERS, JSON.stringify(updated));
-
-    // Auto login
-    setCurrentUser(newUser);
-    setActiveRole(role);
-    localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(newUser));
-    localStorage.setItem(STORAGE_KEY_ROLE, role);
-
-    if (isOfficer) {
-      triggerWhatsAppAlert(
-        cleanPhone,
-        'REG-PETUGAS',
-        `Selamat Bpk/Ibu ${formData.name}! Akun Petugas Desa (${positionLabel}) SAPA-JARAK telah aktif. Anda kini memiliki hak akses penuh untuk verifikasi bantuan, validasi APBDes, dan pengesahan serah terima BAST.`,
-        'Pendaftaran Petugas Desa Berhasil'
-      );
-      showToast(`Pendaftaran Petugas Desa berhasil! Selamat datang, ${formData.name}.`, 'success');
-      setCurrentView('desa_dashboard');
-    } else {
-      triggerWhatsAppAlert(
-        cleanPhone,
-        'REG-WARGA',
-        `Selamat Bpk/Ibu ${formData.name}! Akun SAPA-JARAK Anda telah aktif dengan NIK ${formData.nik || '-'}. Anda kini dapat mengajukan bantuan sosial dan memantau status secara langsung.`,
-        'Pendaftaran Akun Warga Berhasil'
-      );
-      showToast(`Pendaftaran berhasil! Selamat datang, ${formData.name}.`, 'success');
-      setCurrentView('home');
-    }
-
-    return { success: true, user: newUser };
   };
 
   // Authentication: Logout
@@ -707,6 +815,7 @@ export function AppProvider({ children }) {
     } catch (e) {
       // ignore offline
     }
+    setApplications([]);
     setCurrentUser(null);
     setActiveRole('public');
     localStorage.removeItem(STORAGE_KEY_USER);
@@ -715,17 +824,13 @@ export function AppProvider({ children }) {
     showToast('Anda telah keluar dari akun.', 'info');
   };
 
-  // Reset database to initial seed
-  const resetDatabase = () => {
-    setApplications(INITIAL_APPLICATIONS);
-    setNotifications(INITIAL_NOTIFICATIONS);
-    setCurrentUser(null);
-    setRegisteredUsers([]);
-    localStorage.removeItem(STORAGE_KEY_APPS);
-    localStorage.removeItem(STORAGE_KEY_NOTIFS);
-    localStorage.removeItem(STORAGE_KEY_USER);
-    localStorage.removeItem(STORAGE_KEY_REGISTERED_USERS);
-    showToast("Data simulasi SAPA-JARAK berhasil di-reset ke data awal.", "info");
+  const refreshServerData = async () => {
+    try {
+      await refreshApplications();
+      showToast('Data terbaru berhasil dimuat dari server.', 'success');
+    } catch (error) {
+      showToast(`Data server gagal dimuat: ${error.message}`, 'error');
+    }
   };
 
   return (
@@ -734,6 +839,14 @@ export function AppProvider({ children }) {
         theme,
         toggleTheme,
         applications,
+        syncStatus,
+        syncError,
+        lastSyncedAt,
+        refreshApplications,
+        trackApplication,
+        updateKasunVisitSchedule,
+        updateProfile,
+        updatePassword,
         notifications,
         activeRole,
         setActiveRole,
@@ -752,19 +865,23 @@ export function AppProvider({ children }) {
         showWhatsAppAlert,
         isNotifDrawerOpen,
         setIsNotifDrawerOpen,
+        wargaView,
+        setWargaView,
+        requestApplicationOtp,
         submitApplication,
         submitKasunSurvey,
         approveDesaFunding,
         updateProcurementProgress,
         completeHandoverBAST,
-        resetDatabase,
+        refreshServerData,
         triggerWhatsAppAlert,
         currentUser,
         setCurrentUser,
         registeredUsers,
-        demoAccounts: DEMO_ACCOUNTS,
-        officialKasunAccounts: OFFICIAL_KASUN_ACCOUNTS,
-        officialDesaAccounts: OFFICIAL_DESA_ACCOUNTS,
+        demoAccounts,
+        demoAccountsError,
+        officialKasunAccounts: demoAccounts.filter((account) => account.role === 'kasun'),
+        officialDesaAccounts: demoAccounts.filter((account) => ['kades', 'kasi_kesra', 'sekdes', 'admin'].includes(account.role)),
         loginRole,
         setLoginRole,
         openLogin,

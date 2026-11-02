@@ -68,17 +68,18 @@ export default function DesaValidationView({ onBack }) {
 
     if (!result.isConfirmed) return;
 
-    approveDesaFunding(forwardApp.ticketNumber, {
-      source: selectedFunding,
-      budget: budgetAmount,
-      dtksMatched: true,
-      dtksDesil,
-      notes: validationNotes
-    });
-
-    showToast(`Bantuan tiket #${forwardApp.ticketNumber} disetujui & anggaran ditetapkan!`, 'success');
-
-    if (onBack) onBack();
+    try {
+      await approveDesaFunding(forwardApp.ticketNumber, {
+        source: selectedFunding,
+        budget: budgetAmount,
+        dtksMatched: true,
+        dtksDesil,
+        notes: validationNotes
+      });
+      if (onBack) onBack();
+    } catch (error) {
+      showToast(error.message || 'Persetujuan gagal disimpan ke server.', 'error');
+    }
   };
 
   if (!forwardApp) {

@@ -4,43 +4,50 @@ import { Camera, X, Shield, Upload } from 'lucide-react';
 export default function ImageUploader({ 
   photos = [], 
   onChange, 
+  photoFiles = [],
+  onPhotoFilesChange,
   maxPhotos = 4,
   label = "Dokumentasi Foto Faktual Lapangan", 
   helperText = "Lampirkan foto kondisi fisik rumah atau kondisi warga. Format JPG/PNG (Maks. 5 MB)."
 }) {
   const [isCompressing, setIsCompressing] = useState(false);
   const [blurFaces, setBlurFaces] = useState(true);
+  const [uploadError, setUploadError] = useState('');
   const fileInputRef = useRef(null);
-
-  const samplePresets = [
-    { label: "Dinding Bambu Gedek", url: "https://images.unsplash.com/photo-1590381105924-c72589b9ef3f?auto=format&fit=crop&w=600&q=80" },
-    { label: "Rangka Atap Rapuh", url: "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=600&q=80" },
-    { label: "Warga Butuh Kursi Roda", url: "https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=600&q=80" },
-    { label: "Dinding Bata Mentah", url: "https://images.unsplash.com/photo-1541888946425-d0fbb18f15f6?auto=format&fit=crop&w=600&q=80" }
-  ];
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
 
+    const availableSlots = Math.max(0, maxPhotos - photos.length);
+    const validFiles = files.filter(file => (
+      ['image/jpeg', 'image/png', 'image/webp'].includes(file.type) && file.size <= 10 * 1024 * 1024
+    )).slice(0, availableSlots);
+    if (validFiles.length !== files.length) {
+      setUploadError('Foto harus JPG, PNG, atau WEBP dan berukuran maksimal 10 MB. Foto yang melebihi batas tidak ditambahkan.');
+    } else {
+      setUploadError('');
+    }
+    if (!validFiles.length) {
+      e.target.value = '';
+      return;
+    }
+
     setIsCompressing(true);
     setTimeout(() => {
-      const newUrls = files.map(file => URL.createObjectURL(file));
+      const newUrls = validFiles.map(file => URL.createObjectURL(file));
       const updated = [...photos, ...newUrls].slice(0, maxPhotos);
       if (onChange) onChange(updated);
+      if (onPhotoFilesChange) onPhotoFilesChange([...photoFiles, ...validFiles].slice(0, maxPhotos));
       setIsCompressing(false);
     }, 400);
-  };
-
-  const handleAddPreset = (url) => {
-    if (photos.length >= maxPhotos) return;
-    const updated = [...photos, url];
-    if (onChange) onChange(updated);
+    e.target.value = '';
   };
 
   const handleRemovePhoto = (index) => {
     const updated = photos.filter((_, idx) => idx !== index);
     if (onChange) onChange(updated);
+    if (onPhotoFilesChange) onPhotoFilesChange(photoFiles.filter((_, idx) => idx !== index));
   };
 
   return (
@@ -50,6 +57,7 @@ export default function ImageUploader({
           <label className="block text-xs font-bold text-neutral-900">{label}</label>
           <p className="text-[11px] text-neutral-500">{helperText}</p>
         </div>
+        {uploadError && <p role="alert" className="text-[11px] font-semibold text-rose-700">{uploadError}</p>}
 
         {/* Privacy Blur Toggle */}
         <button
@@ -92,26 +100,6 @@ export default function ImageUploader({
           <span className="text-[11px] text-neutral-500 block">
             {photos.length} dari {maxPhotos} foto terlampir
           </span>
-        </div>
-      </div>
-
-      {/* Sample presets for quick testing */}
-      <div className="bg-neutral-100 p-2.5 rounded border border-neutral-200 text-neutral-600 space-y-1">
-        <span className="font-bold text-neutral-800 text-[11px] block">
-          Sampel Foto Faktual untuk Demo:
-        </span>
-        <div className="flex flex-wrap gap-1.5">
-          {samplePresets.map((preset, idx) => (
-            <button
-              key={idx}
-              type="button"
-              disabled={photos.length >= maxPhotos || photos.includes(preset.url)}
-              onClick={() => handleAddPreset(preset.url)}
-              className="px-2 py-0.5 bg-white hover:bg-neutral-50 border border-neutral-300 rounded text-[10px] font-medium text-neutral-800 transition disabled:opacity-40"
-            >
-              + {preset.label}
-            </button>
-          ))}
         </div>
       </div>
 

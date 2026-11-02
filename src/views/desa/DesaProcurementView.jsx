@@ -30,7 +30,8 @@ export default function DesaProcurementView({ onBack }) {
   const { 
     applications, 
     activeTicketNumber, 
-    updateProcurementProgress
+    updateProcurementProgress,
+    showToast
   } = useApp();
 
   const app = applications.find(a => a.ticketNumber === activeTicketNumber) || 
@@ -72,7 +73,7 @@ export default function DesaProcurementView({ onBack }) {
     setRabList(rabList.filter((_, i) => i !== index));
   };
 
-  const handleSaveProgress = () => {
+  const handleSaveProgress = async () => {
     if (!app) return;
 
     const data = {
@@ -85,8 +86,12 @@ export default function DesaProcurementView({ onBack }) {
       photo100
     };
 
-    updateProcurementProgress(app.ticketNumber, data);
-    if (onBack) onBack();
+    try {
+      await updateProcurementProgress(app.ticketNumber, data);
+      if (onBack) onBack();
+    } catch (error) {
+      showToast(error.message || 'Pembaruan pengadaan gagal disimpan ke server.', 'error');
+    }
   };
 
   if (!app) {

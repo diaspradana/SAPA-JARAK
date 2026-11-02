@@ -6,7 +6,7 @@ import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
 
 export default function Footer() {
-  const { setCurrentView, resetDatabase, showConfirm } = useApp();
+  const { setCurrentView, refreshServerData, showConfirm } = useApp();
 
   return (
     <footer className="bg-card text-card-foreground border-t border-border pt-14 pb-10 text-xs sm:text-sm transition-colors">
@@ -130,19 +130,19 @@ export default function Footer() {
             <button
               onClick={async () => {
                 const result = await showConfirm({
-                  title: 'Kembalikan ke Data Awal Demo?',
-                  text: 'Seluruh riwayat tiket pengajuan dan survei akan dikembalikan ke kondisi awal demo.',
-                  confirmButtonText: 'Ya, Reset Data',
-                  confirmColorClass: 'bg-rose-600 hover:bg-rose-700',
-                  icon: 'warning'
+                  title: 'Muat ulang data server?',
+                  text: 'Data akan diambil ulang dari database server tanpa mengubah atau menghapusnya.',
+                  confirmButtonText: 'Muat Ulang',
+                  confirmColorClass: 'bg-emerald-700 hover:bg-emerald-800',
+                  icon: 'question'
                 });
                 if (result.isConfirmed) {
-                  resetDatabase();
+                  refreshServerData();
                 }
               }}
               className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 font-semibold"
             >
-              <RotateCcw size={12} /> Reset Data Demo
+              <RotateCcw size={12} /> Muat Ulang Data Server
             </button>
           </div>
         </div>

@@ -353,6 +353,10 @@ class ExportService
         $dusunName = 'Semua_Dusun';
         $query = Application::with(['beneficiary', 'hamlet', 'latestVerification']);
 
+        if ($user?->role === 'kasun' && !$user->hamlet_id) {
+            abort(403, 'Akun Kasun belum memiliki wilayah dusun yang ditetapkan.');
+        }
+
         if ($user && $user->hamlet_id) {
             $query->where('hamlet_id', $user->hamlet_id);
             $dusunName = $user->hamlet ? str_replace(' ', '_', $user->hamlet->name) : "Dusun_{$user->hamlet_id}";

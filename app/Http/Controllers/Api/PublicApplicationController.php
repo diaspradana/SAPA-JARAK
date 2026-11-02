@@ -37,11 +37,15 @@ class PublicApplicationController extends Controller
 
         $this->whatsappService->sendOtp($phone, $otp, $name);
 
-        return response()->json([
+        $response = [
             'success' => true,
             'message' => "Kode OTP telah dikirimkan ke nomor WhatsApp {$phone}.",
-            'simulation_otp' => $otp, // Useful for demo & testing
-        ]);
+        ];
+        if (app()->environment(['local', 'testing'])) {
+            $response['simulation_otp'] = $otp;
+        }
+
+        return response()->json($response);
     }
 
     /**
@@ -77,8 +81,8 @@ class PublicApplicationController extends Controller
             ->where('created_at', '>=', now()->subMinutes(15))
             ->exists();
 
-        // For flexible development, accept demo OTP '123456' as well
-        if (!$validOtp && $validated['otp'] !== '123456') {
+        $demoOtpAllowed = app()->environment(['local', 'testing']) && $validated['otp'] === '123456';
+        if (!$validOtp && !$demoOtpAllowed) {
             return response()->json([
                 'success' => false,
                 'message' => 'Kode OTP tidak valid atau telah kedaluwarsa.',
@@ -101,6 +105,7 @@ class PublicApplicationController extends Controller
             'success' => true,
             'message' => 'Pengajuan bantuan sosial berhasil dibuat.',
             'data' => [
+                'id' => $application->id,
                 'ticket_number' => $application->ticket_number,
                 'status' => $application->status,
                 'submitted_at' => $application->submitted_at->toISOString(),
@@ -172,5 +177,104 @@ class PublicApplicationController extends Controller
         }
 
         return $pdfService->generateReceiptPdf($application);
+    }
+    /**
+     * Get all applications belonging to the authenticated warga.
+     */
+    public function myApplications(Request $request)
+    {
+        $user = $request->user();
+        $applications = Application::with([
+            'beneficiary',
+            'hamlet',
+            'latestVerification.verifier',
+            'funding',
+            'procurement',
+            'handover',
+            'auditLogs' => fn ($q) => $q->latest(),
+            'documents' => fn($q) => $q->where('visibility', 'PUBLIC_MASKED'),
+        ])
+            ->where(function ($q) use ($user) {
+                $q->where('reporter_phone', $user->phone);
+                if ($user->nik) {
+                    $q->orWhereHas('beneficiary', fn($bq) => $bq->where('nik', $user->nik));
+                }
+            })
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json(['success' => true, 'data' => $applications]);
+    }
+
+    /**
+     * Get notifications for the authenticated warga.
+     */
+    public function myNotifications(Request $request)
+    {
+        $user = $request->user();
+        $notifications = Notification::where('recipient_phone', $user->phone)
+            ->orderBy('created_at', 'desc')
+            ->limit(50)
+            ->get();
+
+        return response()->json(['success' => true, 'data' => $notifications]);
+    }
+
+    /**
+     * Submit a pengaduan (complaint / inquiry) from a warga.
+     */
+    public function submitPengaduan(Request $request)
+    {
+        $validated = $request->validate([
+            'type'          => 'required|in:PERTANYAAN,KOREKSI_DATA,KELUHAN',
+            'ticket_number' => 'nullable|string|max:30',
+            'message'       => 'required|string|min:10|max:2000',
+        ]);
+
+        $user = $request->user();
+        $pengaduanNumber = 'PDU-' . strtoupper(substr($validated['type'], 0, 3)) . '-' . date('Ymd') . '-' . rand(1000, 9999);
+
+        \App\Models\AuditLog::create([
+            'user_id'     => $user->id,
+            'actor_name'  => $user->name,
+            'action'      => 'PENGADUAN_SUBMITTED',
+            'entity_type' => 'Pengaduan',
+            'entity_id'   => null,
+            'new_values'  => array_merge($validated, ['pengaduan_number' => $pengaduanNumber]),
+            'ip_address'  => $request->ip(),
+            'user_agent'  => $request->userAgent(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pengaduan berhasil dikirim. Tim desa akan menindaklanjuti dalam 2x24 jam.',
+            'data'    => ['pengaduan_number' => $pengaduanNumber],
+        ], 201);
+    }
+
+    /**
+     * Update profile for the authenticated warga.
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+        $validated = $request->validate([
+            'name'      => 'sometimes|required|string|max:150',
+            'email'     => "sometimes|nullable|email|max:150|unique:users,email,{$user->id}",
+            'phone'     => "sometimes|required|string|max:30|unique:users,phone,{$user->id}",
+            'nik'       => "sometimes|nullable|string|max:20|unique:users,nik,{$user->id}",
+            'kk_number' => 'sometimes|nullable|string|max:20',
+            'rt'        => 'sometimes|nullable|string|max:5',
+            'rw'        => 'sometimes|nullable|string|max:5',
+            'address'   => 'sometimes|nullable|string|max:255',
+        ]);
+
+        $user->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Profil berhasil diperbarui di server.',
+            'data' => $user->load('hamlet'),
+        ]);
     }
 }

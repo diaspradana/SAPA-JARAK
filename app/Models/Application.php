@@ -27,6 +27,7 @@ class Application extends Model
         'verified_at',
         'approved_at',
         'completed_at',
+        'survey_scheduled_at',
     ];
 
     protected $casts = [
@@ -34,6 +35,7 @@ class Application extends Model
         'verified_at' => 'datetime',
         'approved_at' => 'datetime',
         'completed_at' => 'datetime',
+        'survey_scheduled_at' => 'datetime',
         'priority_score' => 'integer',
     ];
 
