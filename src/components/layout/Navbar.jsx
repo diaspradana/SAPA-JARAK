@@ -36,7 +36,7 @@ export default function Navbar() {
     currentUser,
     logout,
     openLogin,
-    openRegisterPetugas
+    openRegisterAccount
   } = useApp();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -271,12 +271,12 @@ export default function Navbar() {
 
                 <Button
                   size="sm"
-                  onClick={openRegisterPetugas}
-                  className="h-9 px-3.5 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-lg shadow-xs gap-1.5"
-                  title="Pendaftaran Akun Aparatur & Petugas Balai Desa Jarak"
+                  onClick={openRegisterAccount}
+                  className="h-9 px-3.5 text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg shadow-xs gap-1.5"
+                  title="Pendaftaran akun warga atau administrator desa"
                 >
                   <ShieldCheck size={15} />
-                  <span>Daftar Petugas Desa</span>
+                  <span>Daftar Akun</span>
                 </Button>
               </div>
             )}
@@ -342,13 +342,13 @@ export default function Navbar() {
 
                 <Button
                   onClick={() => {
-                    openRegisterPetugas();
+                    openRegisterAccount();
                     setMobileMenuOpen(false);
                   }}
                   className="w-full text-xs font-bold h-10 gap-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-xs"
                 >
                   <ShieldCheck size={16} />
-                  <span>Registrasi Petugas Desa Baru</span>
+                  <span>Registrasi Warga / Admin Desa</span>
                 </Button>
               </div>
             )}

@@ -24,7 +24,7 @@ const LOGIN_ROLES = [
 ];
 
 export default function LoginView() {
-  const { login, setCurrentView, showToast, showAlert, loginRole, openRegisterPetugas } = useApp();
+  const { login, setCurrentView, showToast, showAlert, loginRole, openRegisterAccount } = useApp();
   const [selectedRole, setSelectedRole] = useState(loginRole || 'warga');
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -220,11 +220,11 @@ export default function LoginView() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={openRegisterPetugas}
+                  onClick={openRegisterAccount}
                   className="w-full gap-2 rounded-lg"
                 >
                   <ShieldCheck size={16} />
-                  Daftar sebagai petugas desa
+                  Daftar sebagai warga atau admin desa
                 </Button>
               </div>
             )}
