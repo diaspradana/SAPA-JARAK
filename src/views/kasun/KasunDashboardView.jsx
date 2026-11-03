@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import sapaJarakLogo from '../../assets/sapa-jarak-logo.png';
 import StatusBadge from '../../components/common/StatusBadge';
 import SyncStatusBanner from '../../components/common/SyncStatusBanner';
 import { DUSUN_LIST, getKasunDusunId } from '../../data/desaConfig';
@@ -258,7 +259,17 @@ export default function KasunDashboardView() {
           )}
         >
           <div className="border-b border-border p-4">
-            <p className="text-xs font-semibold text-muted-foreground">Menu Kasun</p>
+            <div className="flex items-center gap-2.5">
+              <img
+                src={sapaJarakLogo}
+                alt="Logo SAPA-JARAK"
+                className="h-9 w-9 shrink-0 rounded-lg bg-white object-contain"
+              />
+              <div>
+                <p className="text-sm font-bold text-foreground">SAPA-JARAK</p>
+                <p className="text-xs font-semibold text-muted-foreground">Menu Kasun</p>
+              </div>
+            </div>
             <p className="mt-1 truncate text-sm font-bold text-foreground">Dusun {currentDusun.name}</p>
           </div>
           <nav aria-label="Menu Kasun" className="space-y-1 p-2">

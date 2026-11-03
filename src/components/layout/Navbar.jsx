@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useVoice } from '../../context/VoiceContext';
+import sapaJarakLogo from '../../assets/sapa-jarak-logo.png';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { 
-  Building2,
   Volume2, 
   VolumeX, 
   Wifi, 
@@ -135,9 +135,11 @@ export default function Navbar() {
           className="flex items-center gap-3 cursor-pointer select-none group" 
           onClick={() => handleNavClick(homeView)}
         >
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-700 to-emerald-900 text-white flex items-center justify-center font-black shadow-md group-hover:scale-105 transition-transform">
-            <Building2 size={20} className="text-emerald-200" />
-          </div>
+          <img
+            src={sapaJarakLogo}
+            alt="Logo SAPA-JARAK"
+            className="w-10 h-10 rounded-xl bg-white object-contain shadow-md group-hover:scale-105 transition-transform"
+          />
           <div>
             <div className="flex items-center gap-2">
               <span className="font-black text-lg sm:text-xl text-foreground tracking-tight">SAPA-JARAK</span>

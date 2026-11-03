@@ -1,14 +1,22 @@
 import React from 'react';
-import { Building2, MapPin, Phone, Mail, Clock, ShieldCheck, RotateCcw } from 'lucide-react';
+import { MapPin, Phone, Mail, Clock, ShieldCheck, RotateCcw } from 'lucide-react';
+import sapaJarakLogo from '../../assets/sapa-jarak-logo.png';
 import { DESA_CONFIG, DUSUN_LIST } from '../../data/desaConfig';
 import { useApp } from '../../context/AppContext';
-import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
 
+const FOOTER_DUSUN_ORDER = ['jaraklor', 'jarakkidul', 'sagi', 'kalasan', 'simbar'];
+const FOOTER_KASUN_NAMES = {
+  jarakkidul: '-',
+  kalasan: 'Septian Yoga P.',
+};
+
 export default function Footer() {
-  const { currentUser, setCurrentView, refreshServerData, showConfirm } = useApp();
+  const { currentUser, refreshServerData, showConfirm } = useApp();
 
   const isDesaStaff = currentUser?.role === 'desa' || currentUser?.role === 'admin';
+  const footerDusunList = [...DUSUN_LIST]
+    .sort((a, b) => FOOTER_DUSUN_ORDER.indexOf(a.id) - FOOTER_DUSUN_ORDER.indexOf(b.id));
   const handleRefresh = async () => {
     const result = await showConfirm({
       title: 'Muat ulang data server?',
@@ -25,9 +33,11 @@ export default function Footer() {
       <footer className="mt-auto border-t border-border bg-card text-card-foreground">
         <div className="mx-auto flex max-w-[1500px] flex-col gap-4 px-4 py-4 text-xs sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="flex items-start gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-              <Building2 size={17} />
-            </div>
+            <img
+              src={sapaJarakLogo}
+              alt="Logo SAPA-JARAK"
+              className="h-9 w-9 shrink-0 rounded-xl bg-white object-contain"
+            />
             <div>
               <p className="font-bold text-foreground">Ruang Kerja Pemerintah Desa Jarak</p>
               <p className="mt-0.5 text-muted-foreground">
@@ -59,14 +69,16 @@ export default function Footer() {
   return (
     <footer className="bg-card text-card-foreground border-t border-border pt-14 pb-10 text-xs sm:text-sm transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 space-y-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           
           {/* Col 1: Government Identity */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-bold shadow-xs">
-                <Building2 size={20} className="text-emerald-200" />
-              </div>
+              <img
+                src={sapaJarakLogo}
+                alt="Logo SAPA-JARAK"
+                className="w-10 h-10 rounded-xl bg-white object-contain shadow-xs"
+              />
               <div>
                 <span className="font-extrabold text-foreground block tracking-tight text-sm sm:text-base">PEMDES JARAK</span>
                 <span className="text-xs text-muted-foreground font-medium">Kec. Plosoklaten, Kab. Kediri</span>
@@ -85,63 +97,16 @@ export default function Footer() {
           <div className="space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Wilayah Dusun Binaan</h4>
             <ul className="space-y-2 text-xs sm:text-sm">
-              {DUSUN_LIST.map((d) => (
+              {footerDusunList.map((d) => (
                 <li key={d.id} className="flex justify-between py-1 border-b border-border text-muted-foreground">
-                  <span className="text-foreground font-semibold">Dusun {d.name}</span>
-                  <span>Kasun: <b>{d.kasunName}</b></span>
+                  <span className="text-foreground font-semibold">Kasun {d.name}</span>
+                  <span><b>{FOOTER_KASUN_NAMES[d.id] || d.kasunName}</b></span>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Col 3: Navigation */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Menu Layanan Cepat</h4>
-            <ul className="space-y-2 text-xs sm:text-sm">
-              <li>
-                <button 
-                  onClick={() => { setCurrentView('ajukan'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                  className="text-muted-foreground hover:text-emerald-700 dark:hover:text-emerald-400 font-medium transition-colors"
-                >
-                  ✍️ Ajukan Permohonan Bantuan
-                </button>
-              </li>
-              <li>
-                <button 
-                  onClick={() => { setCurrentView('lacak'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                  className="text-muted-foreground hover:text-emerald-700 dark:hover:text-emerald-400 font-medium transition-colors"
-                >
-                  🔍 Lacak Status Nomor Tiket
-                </button>
-              </li>
-              <li>
-                <button 
-                  onClick={() => { setCurrentView('transparansi'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                  className="text-muted-foreground hover:text-emerald-700 dark:hover:text-emerald-400 font-medium transition-colors"
-                >
-                  📊 Transparansi & Keterbukaan APBDes
-                </button>
-              </li>
-              <li>
-                <button 
-                  onClick={() => { setCurrentView('login'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                  className="text-emerald-700 dark:text-emerald-400 hover:underline font-bold transition-colors"
-                >
-                  🔑 Masuk Petugas / Akun Warga
-                </button>
-              </li>
-              <li>
-                <button 
-                  onClick={() => { setCurrentView('register'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                  className="text-muted-foreground hover:text-emerald-700 dark:hover:text-emerald-400 font-medium transition-colors"
-                >
-                  👤 Pendaftaran Akun Warga Baru
-                </button>
-              </li>
-            </ul>
-          </div>
-
-          {/* Col 4: Contact */}
+          {/* Col 3: Contact */}
           <div className="space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Kantor Pelayanan Desa</h4>
             <ul className="space-y-2.5 text-xs sm:text-sm text-muted-foreground">

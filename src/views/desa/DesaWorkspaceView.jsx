@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import sapaJarakLogo from '../../assets/sapa-jarak-logo.png';
 import StatusBadge from '../../components/common/StatusBadge';
 import SyncStatusBanner from '../../components/common/SyncStatusBanner';
 import DesaValidationView from './DesaValidationView';
@@ -22,7 +23,6 @@ import {
   Activity,
   AlertTriangle,
   BarChart3,
-  Building2,
   CheckCircle2,
   ClipboardCheck,
   FileCheck2,
@@ -582,7 +582,11 @@ export default function DesaWorkspaceView() {
       <Card className="overflow-hidden rounded-2xl border-border/80 shadow-sm">
         <CardContent className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-700 text-white"><Building2 size={24} /></div>
+            <img
+              src={sapaJarakLogo}
+              alt="Logo SAPA-JARAK"
+              className="h-12 w-12 shrink-0 rounded-2xl bg-white object-contain"
+            />
             <div>
               <div className="flex flex-wrap items-center gap-2"><Badge variant="success">Pemerintah Desa Jarak</Badge><span className="text-xs text-muted-foreground">Kec. Plosoklaten</span></div>
               <h1 className="mt-1 text-xl font-black sm:text-2xl">Dashboard Petugas Desa</h1>
