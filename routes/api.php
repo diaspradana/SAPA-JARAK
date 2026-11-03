@@ -87,6 +87,12 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin,kades'])->group(
     // Ringkasan Sistem & Telemetri
     Route::get('/overview', [AdminController::class, 'overview']);
 
+    // Scoped account management for Kasun, citizen, and administrator accounts
+    Route::get('/managed-accounts/{category}', [AdminController::class, 'managedAccounts']);
+    Route::post('/managed-accounts/{category}', [AdminController::class, 'createManagedAccount']);
+    Route::put('/managed-accounts/{category}/{id}', [AdminController::class, 'updateManagedAccount']);
+    Route::delete('/managed-accounts/{category}/{id}', [AdminController::class, 'deleteManagedAccount']);
+
     // Manajemen Aparatur Desa (Users)
     Route::get('/users', [AdminController::class, 'users']);
     Route::post('/users', [AdminController::class, 'createUser']);

@@ -81,7 +81,10 @@ export default function Navbar() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  if (currentUser?.role?.startsWith('kasun') && currentView === 'kasun_dashboard') {
+  if (
+    (currentUser?.role?.startsWith('kasun') && currentView === 'kasun_dashboard')
+    || (isDesaStaff && currentView?.startsWith('desa_'))
+  ) {
     return null;
   }
 

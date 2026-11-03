@@ -445,6 +445,37 @@ export function AppProvider({ children }) {
     return parseApiResponse(response);
   };
 
+  const fetchManagedAccounts = async (category) => {
+    const accountsPayload = await serverRequest(`/admin/managed-accounts/${encodeURIComponent(category)}`);
+    const hamletsPayload = category === 'kasun'
+      ? await serverRequest('/admin/hamlets')
+      : { data: [] };
+    return {
+      users: accountsPayload.data,
+      hamlets: hamletsPayload.data
+    };
+  };
+
+  const createManagedAccount = async (category, account) => (
+    serverRequest(`/admin/managed-accounts/${encodeURIComponent(category)}`, {
+      method: 'POST',
+      body: account
+    })
+  );
+
+  const updateManagedAccount = async (category, id, account) => (
+    serverRequest(`/admin/managed-accounts/${encodeURIComponent(category)}/${id}`, {
+      method: 'PUT',
+      body: account
+    })
+  );
+
+  const deleteManagedAccount = async (category, id) => (
+    serverRequest(`/admin/managed-accounts/${encodeURIComponent(category)}/${id}`, {
+      method: 'DELETE'
+    })
+  );
+
   const refreshApplications = async () => {
     if (!currentUser?.token) {
       throw new Error('Sesi akun belum terhubung ke server. Silakan masuk menggunakan akun server.');
@@ -843,6 +874,10 @@ export function AppProvider({ children }) {
         syncError,
         lastSyncedAt,
         refreshApplications,
+        fetchManagedAccounts,
+        createManagedAccount,
+        updateManagedAccount,
+        deleteManagedAccount,
         trackApplication,
         updateKasunVisitSchedule,
         updateProfile,

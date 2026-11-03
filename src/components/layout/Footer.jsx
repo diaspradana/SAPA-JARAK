@@ -12,9 +12,10 @@ const FOOTER_KASUN_NAMES = {
 };
 
 export default function Footer() {
-  const { currentUser, refreshServerData, showConfirm } = useApp();
+  const { currentUser, currentView, refreshServerData, showConfirm } = useApp();
 
   const isDesaStaff = currentUser?.role === 'desa' || currentUser?.role === 'admin';
+  const isDesaDashboard = isDesaStaff && currentView?.startsWith('desa_');
   const isKasun = currentUser?.role?.startsWith('kasun');
   const footerDusunList = [...DUSUN_LIST]
     .sort((a, b) => FOOTER_DUSUN_ORDER.indexOf(a.id) - FOOTER_DUSUN_ORDER.indexOf(b.id));
@@ -62,36 +63,28 @@ export default function Footer() {
 
   if (isDesaStaff) {
     return (
-      <footer className="mt-auto border-t border-border bg-card text-card-foreground">
-        <div className="mx-auto flex max-w-[1500px] flex-col gap-4 px-4 py-4 text-xs sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <div className="flex items-start gap-3">
+      <footer className={`mt-auto border-t border-border bg-card text-card-foreground ${isDesaDashboard ? 'lg:ml-[250px]' : ''}`}>
+        <div className="mx-auto flex max-w-[1500px] flex-col gap-3 px-4 py-3 text-xs sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
             <img
               src={sapaJarakLogo}
               alt="Logo SAPA-JARAK"
               className="h-9 w-9 shrink-0 rounded-xl bg-white object-contain"
             />
-            <div>
-              <p className="font-bold text-foreground">Ruang Kerja Pemerintah Desa Jarak</p>
-              <p className="mt-0.5 text-muted-foreground">
-                {currentUser?.position || currentUser?.roleLabel || 'Petugas Desa'} · Gunakan data sesuai kewenangan dan jaga kerahasiaan informasi warga.
+            <div className="min-w-0">
+              <p className="font-bold text-foreground">Pemerintah Desa Jarak</p>
+              <p className="mt-0.5 truncate text-muted-foreground">
+                {currentUser?.name || currentUser?.position || currentUser?.roleLabel || 'Petugas Desa'} · Jaga kerahasiaan informasi warga.
               </p>
             </div>
           </div>
 
-          <div className="flex flex-col gap-2 sm:items-end">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
-              <a href={`mailto:${DESA_CONFIG.emailDesa}`} className="hover:text-emerald-700 dark:hover:text-emerald-300">
-                Bantuan: {DESA_CONFIG.emailDesa}
-              </a>
-              <span className="hidden sm:inline">·</span>
-              <span>© {new Date().getFullYear()} Pemdes Jarak</span>
-            </div>
-            <button
-              onClick={handleRefresh}
-              className="inline-flex items-center gap-1 self-start font-semibold text-emerald-800 hover:underline dark:text-emerald-300 sm:self-end"
-            >
-              <RotateCcw size={12} /> Muat ulang data
-            </button>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground sm:justify-end">
+            <a href={`mailto:${DESA_CONFIG.emailDesa}`} className="hover:text-emerald-700 dark:hover:text-emerald-300">
+              Bantuan: {DESA_CONFIG.emailDesa}
+            </a>
+            <span className="hidden sm:inline">·</span>
+            <span>© {new Date().getFullYear()} Pemdes Jarak</span>
           </div>
         </div>
       </footer>
