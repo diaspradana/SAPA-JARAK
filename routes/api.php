@@ -74,7 +74,8 @@ Route::prefix('desa')->middleware(['auth:sanctum', 'role:kades,kasi_kesra,sekdes
 
 // Modul Pengunggahan Berkas & Media Storage (Upload, Kompresi, dan Privasi Sensor Wajah)
 Route::prefix('documents')->group(function () {
-    Route::post('/upload', [DocumentController::class, 'upload']);
+    // Unauthenticated and CPU-heavy (compression + face blur): limit per client IP
+    Route::post('/upload', [DocumentController::class, 'upload'])->middleware('throttle:30,1');
     Route::get('/', [DocumentController::class, 'index']);
     Route::get('/{id}', [DocumentController::class, 'show']);
     Route::get('/{id}/file', [DocumentController::class, 'download']);

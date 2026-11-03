@@ -29,7 +29,7 @@ app = FastAPI(
     title="SAPA-JARAK AI & Privacy Microservice",
     description=(
         "Microservice terpadu asisten rekomendasi bansos (RandomForest) "
-        "dan Privacy AI pengaburan wajah dokumentasi warga (OpenCV Haar Cascades)."
+        "dan Privacy AI pengaburan wajah dokumentasi warga (OpenCV YuNet DNN)."
     ),
     version="1.1.0"
 )
@@ -85,7 +85,7 @@ def root():
         "status": "online",
         "capabilities": [
             "Decision Support System (RandomForest Classifier)",
-            "Privacy AI: 1-vCPU Face Blurring Engine (OpenCV Haar Cascades)"
+            "Privacy AI: 1-vCPU Face Blurring Engine (OpenCV YuNet DNN)"
         ],
         "vps_profile": "1 vCPU / 1-2GB RAM Optimized",
         "docs": "/docs"
@@ -99,7 +99,7 @@ def health_check():
         "cv_engine_ready": True,
         "engines": {
             "tabular_ml": "FastAPI + scikit-learn (RandomForest)",
-            "computer_vision": "OpenCV Headless Haar Cascades (1-vCPU tuned)"
+            "computer_vision": "OpenCV Headless YuNet DNN + Haar fallback (1-vCPU tuned)"
         }
     }
 
@@ -191,7 +191,7 @@ def predict_eligibility(features: CitizenFeatures):
 MAX_UPLOAD_SIZE = 15 * 1024 * 1024  # 15 MB limit to protect memory on 1 vCPU VPS
 
 @app.post("/blur-face", summary="Pengaburan Wajah Otomatis (Face Blurring / Pixelate)")
-async def blur_face_endpoint(
+def blur_face_endpoint(
     file: UploadFile = File(..., description="Berkas gambar (JPEG, PNG, WebP)"),
     blur_type: str = Query("pixelate", regex="^(pixelate|mosaic|gaussian)$", description="Gaya sensor: 'pixelate' (TV mosaic sensor, anonimitas 100%) atau 'gaussian' (blur halus)"),
     blur_strength: int = Query(51, ge=11, le=151, description="Kekuatan kernel Gaussian blur (angka ganjil, aktif jika blur_type=gaussian)"),
@@ -207,8 +207,11 @@ async def blur_face_endpoint(
     - Model Deep Learning YuNet hanya 232 KB (inferensi 20-45ms)
     - Alokasi memori sangat rendah (< 35MB RAM)
     - Pilihan gaya sensor: 'pixelate' (TV broadcast mosaic) atau 'gaussian'
+
+    Endpoint sinkron (def) agar FastAPI menjalankannya di threadpool; kerja CPU OpenCV
+    tidak memblokir event loop sehingga /health tetap responsif.
     """
-    contents = await file.read()
+    contents = file.file.read()
     if len(contents) > MAX_UPLOAD_SIZE:
         raise HTTPException(status_code=413, detail="Ukuran berkas melebihi batas maksimal 15MB.")
 
@@ -252,7 +255,7 @@ async def blur_face_endpoint(
     }
 
 @app.post("/detect-faces", summary="Deteksi Koordinat Wajah (Bounding Boxes via YuNet)")
-async def detect_faces_endpoint(
+def detect_faces_endpoint(
     file: UploadFile = File(..., description="Berkas gambar (JPEG, PNG, WebP)"),
     padding: float = Query(0.20, ge=0.0, le=0.5, description="Margin padding di sekeliling wajah (default: 0.20)"),
     score_threshold: float = Query(0.55, ge=0.1, le=0.99, description="Ambang batas kepercayaan deteksi YuNet")
@@ -260,7 +263,7 @@ async def detect_faces_endpoint(
     """
     Mengembalikan koordinat kotak pembatas (bounding boxes) wajah menggunakan YuNet Deep Learning.
     """
-    contents = await file.read()
+    contents = file.file.read()
     if len(contents) > MAX_UPLOAD_SIZE:
         raise HTTPException(status_code=413, detail="Ukuran berkas melebihi batas maksimal 15MB.")
 

@@ -9,6 +9,7 @@ Original Photo -> Face Detection (YuNet SOTA) -> Automatic Blur/Pixelate -> Publ
 
 import os
 import time
+import threading
 from typing import Tuple, List, Dict, Any, Optional
 import numpy as np
 import cv2
@@ -16,9 +17,16 @@ import cv2
 # Model resolution limit for rapid 1-vCPU inference
 MAX_DETECTION_DIMENSION = 1280
 
-# YuNet Deep Neural Network Face Detector
+# Haar fallback minimum face size in detection-image pixels (absolute, not scaled)
+HAAR_MIN_FACE_SIZE = (24, 24)
+
+# Short side (px) of the downscaled face region used for Gaussian censoring
+GAUSSIAN_WORK_SIZE = 32
+
+# YuNet Deep Neural Network Face Detector (shared across request threads)
 _YUNET_DETECTOR = None
 _YUNET_LOAD_ATTEMPTED = False
+_YUNET_LOCK = threading.Lock()
 _FRONTAL_CASCADE = None
 _PROFILE_CASCADE = None
 
@@ -128,22 +136,27 @@ def detect_face_bounding_boxes(
 
     raw_boxes: List[Tuple[float, float, float, float]] = []
     detector_used = "YuNet-DNN"
+    yunet_ok = False
 
     # Step 2: Attempt Detection using YuNet (Deep Learning)
-    yunet = get_yunet_detector(score_threshold=score_threshold)
-    if yunet is not None:
-        try:
-            yunet.setInputSize((new_w, new_h))
-            _, faces = yunet.detect(detection_img)
-            if faces is not None and len(faces) > 0:
-                for face in faces:
-                    fx, fy, fw, fh = face[:4]
-                    raw_boxes.append((float(fx), float(fy), float(fw), float(fh)))
-        except Exception as e:
-            print(f"[WARN] Error pada inferensi YuNet: {e}")
+    with _YUNET_LOCK:
+        yunet = get_yunet_detector(score_threshold=score_threshold)
+        if yunet is not None:
+            try:
+                yunet.setInputSize((new_w, new_h))
+                _, faces = yunet.detect(detection_img)
+                yunet_ok = True
+                if faces is not None and len(faces) > 0:
+                    for face in faces:
+                        fx, fy, fw, fh = face[:4]
+                        raw_boxes.append((float(fx), float(fy), float(fw), float(fh)))
+            except Exception as e:
+                print(f"[WARN] Error pada inferensi YuNet: {e}")
 
-    # Step 3: Fallback to Haar Cascades if YuNet found 0 faces or unavailable
-    if len(raw_boxes) == 0:
+    # Step 3: Fallback to Haar Cascades only when YuNet is unavailable or failed.
+    # A successful YuNet pass with 0 faces is trusted: most RTLH photos show houses only,
+    # and running Haar there costs ~0.5-1.3 s per photo with no extra recall.
+    if not yunet_ok:
         detector_used = "Haar-Cascade-Fallback"
         gray = cv2.cvtColor(detection_img, cv2.COLOR_BGR2GRAY)
         gray = cv2.equalizeHist(gray)
@@ -153,8 +166,8 @@ def detect_face_bounding_boxes(
             detected = frontal.detectMultiScale(
                 gray,
                 scaleFactor=1.08,
-                minNeighbors=3,
-                minSize=(int(20 * scale), int(20 * scale))
+                minNeighbors=5,
+                minSize=HAAR_MIN_FACE_SIZE
             )
             if len(detected) > 0:
                 for (x, y, bw, bh) in detected:
@@ -166,8 +179,8 @@ def detect_face_bounding_boxes(
                 detected_prof = profile.detectMultiScale(
                     gray,
                     scaleFactor=1.08,
-                    minNeighbors=3,
-                    minSize=(int(20 * scale), int(20 * scale))
+                    minNeighbors=5,
+                    minSize=HAAR_MIN_FACE_SIZE
                 )
                 if len(detected_prof) > 0:
                     for (x, y, bw, bh) in detected_prof:
@@ -254,15 +267,18 @@ def apply_face_blur(
             output[by:by + bh, bx:bx + bw] = blended
 
         else:
-            # Gaussian blur mode
-            ksize = max(11, blur_strength)
-            face_ksize = max(ksize, (min(bw, bh) // 2) * 2 + 1)
-            if face_ksize % 2 == 0:
-                face_ksize += 1
+            # Gaussian blur mode: blur a downscaled copy so cost stays constant for large faces
+            # (a full-resolution kernel sized to the face took ~8.6 s for a 900px face).
+            scale = GAUSSIAN_WORK_SIZE / float(min(bw, bh))
+            small_w = max(4, int(round(bw * scale)))
+            small_h = max(4, int(round(bh * scale)))
+            small = cv2.resize(roi, (small_w, small_h), interpolation=cv2.INTER_AREA)
 
-            # Double-pass Gaussian blur for complete privacy obscuration
-            pass1 = cv2.GaussianBlur(roi, (face_ksize, face_ksize), 0)
-            censored_roi = cv2.GaussianBlur(pass1, (face_ksize, face_ksize), 0)
+            # blur_strength (11-151) maps to a kernel relative to the 32px work size
+            ksize = max(5, int(GAUSSIAN_WORK_SIZE * blur_strength / 51.0) // 2 * 2 + 1)
+            pass1 = cv2.GaussianBlur(small, (ksize, ksize), 0)
+            pass2 = cv2.GaussianBlur(pass1, (ksize, ksize), 0)
+            censored_roi = cv2.resize(pass2, (bw, bh), interpolation=cv2.INTER_LINEAR)
 
             # Elliptical mask with wider border coverage
             mask = np.zeros((bh, bw), dtype=np.float32)

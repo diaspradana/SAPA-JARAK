@@ -7632,6 +7632,8 @@ class ComposerStaticInit6dd12d4bb2eac81a52a8b36c143da619
         'Termwind\\ValueObjects\\Styles' => __DIR__ . '/..' . '/nunomaduro/termwind/src/ValueObjects/Styles.php',
         'Tests\\Feature\\AdminApiTest' => __DIR__ . '/../..' . '/tests/Feature/AdminApiTest.php',
         'Tests\\Feature\\ExportApiTest' => __DIR__ . '/../..' . '/tests/Feature/ExportApiTest.php',
+        'Tests\\Feature\\KasunApiTest' => __DIR__ . '/../..' . '/tests/Feature/KasunApiTest.php',
+        'Tests\\Feature\\ServerDemoDataTest' => __DIR__ . '/../..' . '/tests/Feature/ServerDemoDataTest.php',
         'Tests\\TestCase' => __DIR__ . '/../..' . '/tests/TestCase.php',
         'Tests\\Unit\\ExportServiceTest' => __DIR__ . '/../..' . '/tests/Unit/ExportServiceTest.php',
         'TheSeer\\Tokenizer\\Exception' => __DIR__ . '/..' . '/theseer/tokenizer/src/Exception.php',

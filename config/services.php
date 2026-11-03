@@ -18,4 +18,10 @@ return [
         'simulation' => env('WHATSAPP_SIMULATION_MODE', true),
     ],
 
+    // FastAPI sidecar (ml_service): /predict & /blur-face. Docker sets ML_SERVICE_URL=http://ai_assistant:8001
+    'ml' => [
+        'url' => rtrim(env('ML_SERVICE_URL', 'http://127.0.0.1:8001'), '/'),
+        'timeout' => (float) env('ML_SERVICE_TIMEOUT', 15),
+    ],
+
 ];

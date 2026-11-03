@@ -3,7 +3,7 @@
         'name' => 'rickthor7/sapa-jarak',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '27abd0205cae6f990d550c91132698adaeee2366',
+        'reference' => 'de69b13440116646e9b22daa9734556f2a57b09c',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -881,7 +881,7 @@
         'rickthor7/sapa-jarak' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '27abd0205cae6f990d550c91132698adaeee2366',
+            'reference' => 'de69b13440116646e9b22daa9734556f2a57b09c',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
