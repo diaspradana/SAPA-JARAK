@@ -10,8 +10,10 @@ import { cn } from '../../lib/utils';
 import {
   Accessibility,
   ArrowUpRight,
+  Bell,
   CalendarDays,
   CheckCircle2,
+  ChevronRight,
   ClipboardCheck,
   Clock3,
   FileClock,
@@ -20,8 +22,10 @@ import {
   LogOut,
   Menu,
   MapPin,
+  Moon,
   RotateCcw,
   ShieldCheck,
+  Sun,
   UserCheck,
   X,
 } from 'lucide-react';
@@ -121,6 +125,10 @@ export default function KasunDashboardView() {
   const {
     applications,
     currentUser,
+    theme,
+    toggleTheme,
+    notifications,
+    setIsNotifDrawerOpen,
     updateKasunVisitSchedule,
     showToast,
     setCurrentView,
@@ -212,7 +220,155 @@ export default function KasunDashboardView() {
     : section.label;
 
   return (
-    <div className="mx-auto max-w-[1440px] space-y-5 px-4 py-5 sm:px-6 sm:py-7">
+    <div className="min-h-screen bg-neutral-50 font-sans dark:bg-neutral-950">
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <aside
+        id="kasun-sidebar-menu"
+        className={cn(
+          'fixed inset-y-0 left-0 z-40 flex h-screen w-64 flex-col border-r border-border bg-card shadow-2xl transition-transform duration-300 lg:translate-x-0 lg:shadow-none',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+      >
+        <div className="flex items-center justify-between border-b border-border bg-emerald-900 p-4">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <img
+              src={sapaJarakLogo}
+              alt="Logo SAPA-JARAK"
+              className="h-9 w-9 shrink-0 rounded-lg bg-white object-contain"
+            />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-white">SAPA-JARAK</p>
+              <p className="text-[10px] font-medium text-emerald-200">Menu Kasun</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Tutup menu"
+            className="rounded-lg p-1 text-white/75 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="border-b border-border bg-emerald-50 p-4 dark:bg-emerald-950/30">
+          <p className="truncate text-sm font-bold text-foreground">Dusun {currentDusun.name}</p>
+          <p className="mt-1 truncate text-xs text-muted-foreground">
+            {currentUser?.name || currentDusun.kasunName}
+          </p>
+        </div>
+
+        <nav aria-label="Menu Kasun" className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
+          {sections.map(item => {
+            const Icon = item.icon;
+            const badgeCount = item.id === 'incoming' ? waitingApps.length : item.id === 'revisions' ? revisionApps.length : null;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => handleSectionChange(item.id)}
+                aria-current={activeSection === item.id ? 'page' : undefined}
+                className={cn(
+                  'flex min-h-10 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors',
+                  activeSection === item.id
+                    ? 'bg-emerald-800 text-white'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                )}
+              >
+                <Icon size={17} className="shrink-0" />
+                <span className="flex-1">{item.label}</span>
+                {badgeCount > 0 && (
+                  <span className={cn(
+                    'min-w-6 rounded-full px-1.5 py-0.5 text-center text-[11px] font-bold',
+                    activeSection === item.id ? 'bg-white/20 text-white' : 'bg-muted text-foreground'
+                  )}>
+                    {badgeCount}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="border-t border-border p-2">
+          <Button
+            onClick={logout}
+            variant="ghost"
+            className="w-full justify-start gap-3 rounded-lg px-3 text-sm font-medium text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:text-rose-300 dark:hover:bg-rose-950/40"
+          >
+            <LogOut size={17} />
+            Keluar
+          </Button>
+        </div>
+      </aside>
+
+      <div className="min-h-screen lg:ml-64">
+        <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b border-border bg-card/95 px-4 shadow-xs backdrop-blur sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Buka menu Kasun"
+              aria-expanded={sidebarOpen}
+              aria-controls="kasun-sidebar-menu"
+              className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden"
+            >
+              <Menu size={20} />
+            </button>
+            <nav aria-label="Lokasi halaman" className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="hidden font-semibold sm:inline">Ruang Kerja Kasun</span>
+              <ChevronRight size={13} className="hidden shrink-0 sm:block" />
+              <span className="truncate font-bold text-foreground">{section.label}</span>
+            </nav>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Ganti ke mode terang' : 'Ganti ke mode gelap'}
+              title={theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
+              className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              {theme === 'dark' ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} className="text-emerald-700" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsNotifDrawerOpen(true)}
+              aria-label="Buka notifikasi"
+              title="Notifikasi"
+              className="relative rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <Bell size={18} />
+              {notifications.length > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[9px] font-bold text-white">
+                  {notifications.length}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSectionChange('profile')}
+              aria-label="Buka profil"
+              className="flex items-center gap-2 rounded-xl px-1.5 py-1 transition-colors hover:bg-muted sm:px-2"
+            >
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-700 text-xs font-bold text-white">
+                {currentUser?.avatarInitials || currentUser?.name?.charAt(0)?.toUpperCase() || 'K'}
+              </span>
+              <span className="hidden max-w-[150px] truncate text-xs font-bold text-foreground sm:block">
+                {currentUser?.name || currentDusun.kasunName}
+              </span>
+            </button>
+          </div>
+        </header>
+
+        <main className="mx-auto max-w-[1440px] space-y-5 px-4 py-5 sm:px-6 sm:py-7">
       <Card className="overflow-hidden rounded-3xl border-emerald-900/10 shadow-sm">
         <CardContent className="flex flex-col justify-between gap-4 bg-gradient-to-br from-emerald-950 to-emerald-800 p-5 text-white sm:flex-row sm:items-center sm:p-6">
           <div className="flex items-start gap-4">
@@ -235,87 +391,7 @@ export default function KasunDashboardView() {
       </Card>
 
       <SyncStatusBanner />
-
-      <button
-        type="button"
-        onClick={() => setSidebarOpen(open => !open)}
-        aria-expanded={sidebarOpen}
-        aria-controls="kasun-sidebar-menu"
-        className="flex h-11 w-full items-center justify-between rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground lg:hidden"
-      >
-        <span className="flex items-center gap-2">
-          <Menu size={17} />
-          {section.label}
-        </span>
-        {sidebarOpen ? <X size={17} /> : <span className="text-xs text-muted-foreground">Buka menu</span>}
-      </button>
-
-      <div className="grid gap-5 lg:grid-cols-[250px_minmax(0,1fr)] lg:items-start">
-        <aside
-          id="kasun-sidebar-menu"
-          className={cn(
-            'h-fit overflow-hidden rounded-2xl border border-border bg-card shadow-sm lg:sticky lg:top-24',
-            sidebarOpen ? 'block' : 'hidden lg:block'
-          )}
-        >
-          <div className="border-b border-border p-4">
-            <div className="flex items-center gap-2.5">
-              <img
-                src={sapaJarakLogo}
-                alt="Logo SAPA-JARAK"
-                className="h-9 w-9 shrink-0 rounded-lg bg-white object-contain"
-              />
-              <div>
-                <p className="text-sm font-bold text-foreground">SAPA-JARAK</p>
-                <p className="text-xs font-semibold text-muted-foreground">Menu Kasun</p>
-              </div>
-            </div>
-            <p className="mt-1 truncate text-sm font-bold text-foreground">Dusun {currentDusun.name}</p>
-          </div>
-          <nav aria-label="Menu Kasun" className="space-y-1 p-2">
-            {sections.map(item => {
-              const Icon = item.icon;
-              const badgeCount = item.id === 'incoming' ? waitingApps.length : item.id === 'revisions' ? revisionApps.length : null;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => handleSectionChange(item.id)}
-                  aria-current={activeSection === item.id ? 'page' : undefined}
-                  className={cn(
-                    'flex min-h-10 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors',
-                    activeSection === item.id
-                      ? 'bg-emerald-800 text-white'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  )}
-                >
-                  <Icon size={17} className="shrink-0" />
-                  <span className="flex-1">{item.label}</span>
-                  {badgeCount > 0 && (
-                    <span className={cn(
-                      'min-w-6 rounded-full px-1.5 py-0.5 text-center text-[11px] font-bold',
-                      activeSection === item.id ? 'bg-white/20 text-white' : 'bg-muted text-foreground'
-                    )}>
-                      {badgeCount}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
-          <div className="border-t border-border p-2">
-            <Button
-              onClick={logout}
-              variant="ghost"
-              className="w-full justify-start gap-3 rounded-lg px-3 text-sm font-medium text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:text-rose-300 dark:hover:bg-rose-950/40"
-            >
-              <LogOut size={17} />
-              Keluar
-            </Button>
-          </div>
-        </aside>
-
-        <main className="min-w-0 space-y-5">
+      <div className="space-y-5">
 
       {activeSection === 'profile' ? (
         <Card className="rounded-3xl">
@@ -538,6 +614,7 @@ export default function KasunDashboardView() {
           )}
         </>
       )}
+      </div>
         </main>
       </div>
     </div>

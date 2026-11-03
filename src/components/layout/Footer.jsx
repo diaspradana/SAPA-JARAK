@@ -1,7 +1,7 @@
 import React from 'react';
 import { MapPin, Phone, Mail, Clock, ShieldCheck, RotateCcw } from 'lucide-react';
 import sapaJarakLogo from '../../assets/sapa-jarak-logo.png';
-import { DESA_CONFIG, DUSUN_LIST } from '../../data/desaConfig';
+import { DESA_CONFIG, DUSUN_LIST, getKasunDusunId } from '../../data/desaConfig';
 import { useApp } from '../../context/AppContext';
 import { Separator } from '../ui/separator';
 
@@ -15,8 +15,10 @@ export default function Footer() {
   const { currentUser, refreshServerData, showConfirm } = useApp();
 
   const isDesaStaff = currentUser?.role === 'desa' || currentUser?.role === 'admin';
+  const isKasun = currentUser?.role?.startsWith('kasun');
   const footerDusunList = [...DUSUN_LIST]
     .sort((a, b) => FOOTER_DUSUN_ORDER.indexOf(a.id) - FOOTER_DUSUN_ORDER.indexOf(b.id));
+  const kasunDusun = DUSUN_LIST.find(dusun => dusun.id === getKasunDusunId(currentUser));
   const handleRefresh = async () => {
     const result = await showConfirm({
       title: 'Muat ulang data server?',
@@ -27,6 +29,36 @@ export default function Footer() {
     });
     if (result.isConfirmed) refreshServerData();
   };
+
+  if (isKasun) {
+    return (
+      <footer className="mt-auto border-t border-border bg-card text-card-foreground">
+        <div className="mx-auto flex max-w-[1500px] flex-col gap-3 px-4 py-3 text-xs sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <img
+              src={sapaJarakLogo}
+              alt="Logo SAPA-JARAK"
+              className="h-9 w-9 shrink-0 rounded-xl bg-white object-contain"
+            />
+            <div className="min-w-0">
+              <p className="font-bold text-foreground">Ruang Kerja Kasun · Desa Jarak</p>
+              <p className="mt-0.5 truncate text-muted-foreground">
+                {currentUser?.name || kasunDusun?.kasunName || 'Kepala Dusun'}
+                {kasunDusun?.name ? ` · Dusun ${kasunDusun.name}` : ''}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1 text-muted-foreground sm:items-end">
+            <a href={`mailto:${DESA_CONFIG.emailDesa}`} className="hover:text-emerald-700 dark:hover:text-emerald-300">
+              Bantuan: {DESA_CONFIG.emailDesa}
+            </a>
+            <span>© {new Date().getFullYear()} Pemerintah Desa Jarak</span>
+          </div>
+        </div>
+      </footer>
+    );
+  }
 
   if (isDesaStaff) {
     return (
