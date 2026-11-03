@@ -90,7 +90,7 @@ class VerificationService
     public function getMlRecommendation(array $citizenData): array
     {
         try {
-            $mlHost = env('ML_SERVICE_URL', 'http://ai_assistant:8001');
+            $mlHost = config('services.ml.url');
             $response = Http::timeout(2.0)->post("{$mlHost}/predict", $citizenData);
 
             if ($response->successful()) {

@@ -181,6 +181,26 @@ function ApplicationCard({ app }) {
             </div>
           )}
 
+          {/* Photos (face-blurred public copies; photos still being blurred are not listed yet) */}
+          {(app.photos?.initial?.length > 0 || app.photos?.survey?.length > 0) && (
+            <div>
+              <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                Foto Dokumentasi
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {[
+                  ...(app.photos.initial || []).map((url) => ({ url, label: 'Foto Pengajuan' })),
+                  ...(app.photos.survey || []).map((url) => ({ url, label: 'Survei Kasun' })),
+                ].map(({ url, label }) => (
+                  <a key={url} href={url} target="_blank" rel="noreferrer" className="relative block rounded-xl overflow-hidden border border-gray-100 dark:border-neutral-800 aspect-video">
+                    <img src={url} alt={label} loading="lazy" className="w-full h-full object-cover" />
+                    <span className="absolute bottom-1.5 left-1.5 bg-black/75 text-white text-[10px] px-1.5 py-0.5 rounded font-bold">{label}</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Survey info */}
           {app.survey && (
             <div className="bg-gray-50 dark:bg-neutral-800 rounded-xl p-3 text-xs space-y-1">

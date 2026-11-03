@@ -14,8 +14,11 @@ class Document extends Model
         'document_type',
         'file_path',
         'public_file_path',
+        'blur_status',
+        'faces_detected',
         'original_filename',
         'file_size',
+        'public_file_size',
         'mime_type',
         'visibility',
         'description',
@@ -24,6 +27,8 @@ class Document extends Model
 
     protected $casts = [
         'file_size' => 'integer',
+        'public_file_size' => 'integer',
+        'faces_detected' => 'integer',
     ];
 
     protected $appends = [

@@ -252,6 +252,29 @@ Buka aplikasi di **http://localhost:3000**. Frontend meneruskan permintaan API k
 backend Laravel di **http://127.0.0.1:8000**. Jangan tutup kedua terminal selama
 aplikasi digunakan.
 
+**Terminal 3 — sensor wajah foto warga (`ml_service`, opsional tetapi disarankan):**
+
+```bat
+cd ml_service
+pip install -r requirements.txt
+uvicorn server:app --host 127.0.0.1 --port 8001
+```
+
+Foto pengajuan (maks. 10 MB) disimpan dua versi: salinan internal untuk petugas, dan
+salinan publik yang wajahnya disensor oleh `ml_service/face_blur.py` lalu dikompresi
+(maks. 1280 px, JPEG q75). Status sensor tercatat di kolom `documents.blur_status`
+(`BLURRED`, `NO_FACE`, `PENDING`, `SKIPPED`). Jika `ml_service` tidak berjalan, foto
+berstatus `PENDING` dan **tidak ditampilkan ke publik**. Setelah layanan aktif, jalankan:
+
+```bat
+php artisan documents:blur-pending
+```
+
+Kebutuhan lokal: aktifkan `extension=gd` di `php.ini`, set `upload_max_filesize` dan
+`post_max_size` minimal `12M`, jalankan `php artisan storage:link` sekali, dan (bila
+URL berbeda) set `ML_SERVICE_URL=http://127.0.0.1:8001` di `.env`. Uji mandiri mesin
+sensor: `cd ml_service && python test_face_blur.py`.
+
 Untuk pemakaian berikutnya, cukup nyalakan MySQL, buka terminal backend dengan
 `sapa.bat`, jalankan `php artisan serve --host=127.0.0.1 --port=8000`, lalu buka
 terminal frontend dan jalankan `npm run dev`. Tidak perlu mengulang `composer install`,
