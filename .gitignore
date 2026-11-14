@@ -1,52 +1,108 @@
-# Laravel core & dependencies
-/node_modules
-/public/build
-/public/hot
-/public/storage
-/storage/*.key
-/vendor
+# ==============================================================================
+# SAPA-JARAK .gitignore
+# Keamanan & Kebersihan Repositori (Anti-Leakage & Clean Code Standard)
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Kredensial, Rahasia, dan Konfigurasi Lingkungan (CRITICAL: Anti-Leak)
+# ------------------------------------------------------------------------------
 .env
-.env.backup
-.env.production
-.phpunit.result.cache
-.phpunit.cache/
-*.bak
-*.tmp
+.env.*
+!.env.example
+!.env.docker.example
+auth.json
 Homestead.json
 Homestead.yaml
-auth.json
 
-# Logs & lockfile diagnostics
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# Kunci Kriptografi, SSL/TLS, dan SSH Keys
+*.key
+*.pem
+*.crt
+*.cer
+*.pfx
+*.p12
+*.id_rsa
+*.id_ed25519
+*.pub
+oauth-*.key
 
-# React / Frontend tooling & caches
+# ------------------------------------------------------------------------------
+# 2. Basis Data, Dump SQL, dan Data Sensitif Kependudukan (NIK/KK Warga)
+# ------------------------------------------------------------------------------
+database/database.sqlite*
+database/sqlite/
+*.sqlite
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite3
+*.db
+*.sql
+*.sql.gz
+*.dump
+*.dump.gz
+ml_service/dataset_bansos_jarak.csv
+
+# ------------------------------------------------------------------------------
+# 3. Berkas Unggahan Warga & Storage Internal (Foto Asli, KTP, Tanda Tangan)
+# ------------------------------------------------------------------------------
+/storage/app/*
+!/storage/app/.gitignore
+!/storage/app/public/
+/storage/app/public/*
+!/storage/app/public/.gitignore
+/public/storage
+
+# ------------------------------------------------------------------------------
+# 4. Cache Runtime, Log, dan Session Aplikasi
+# ------------------------------------------------------------------------------
+/storage/framework/cache/*
+!/storage/framework/cache/.gitignore
+/storage/framework/cache/data/*
+!/storage/framework/cache/data/.gitignore
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitignore
+/storage/framework/views/*
+!/storage/framework/views/.gitignore
+/storage/logs/*
+!/storage/logs/.gitignore
+*.log
+
+# ------------------------------------------------------------------------------
+# 5. Dependency & Artefak Build (Backend & Frontend)
+# ------------------------------------------------------------------------------
+/vendor/
+/node_modules/
+/public/build/
+/public/hot/
+dist/
+coverage/
+.next/
+/bootstrap/ssr
+
+# ------------------------------------------------------------------------------
+# 6. File Cadangan, Temporary & Sampah Editor
+# ------------------------------------------------------------------------------
+*.bak
+*.backup
+*.old
+*.tmp
+*~
+*.swp
+*.swo
+
+# ------------------------------------------------------------------------------
+# 7. Testing & Linting Caches
+# ------------------------------------------------------------------------------
+.phpunit.result.cache
+.phpunit.cache/
 .eslintcache
 .stylelintcache
 *.tsbuildinfo
-.next/
-dist/
-coverage/
 
-# Inertia / SSR (if using Inertia.js SSR)
-/bootstrap/ssr
-
-# IDE & OS files
-/.fleet
-/.idea
-/.vscode
-.DS_Store
-Thumbs.db
-
-#personal for my environment
-#/docs 
-/docs/09-machine-learning-implementation-roadmap.md
-/docs/11-team-backend-rz-scoring-and-testing.md
-
-# Python / FastAPI / Machine Learning
+# ------------------------------------------------------------------------------
+# 8. Python & Machine Learning Services
+# ------------------------------------------------------------------------------
 __pycache__/
 *.py[cod]
 *$py.class
@@ -59,17 +115,19 @@ env/
 *.egg-info/
 *.pkl
 *.joblib
-ml_service/dataset_bansos_jarak.csv
 
-# Docker environment & local secrets
-.env.docker
-.env.local
-.env.*.local
+# ------------------------------------------------------------------------------
+# 9. IDE, OS, dan Skrip Lokal Mesin Pengembang
+# ------------------------------------------------------------------------------
+/.fleet
+/.idea
+/.vscode
+.DS_Store
+Thumbs.db
+desktop.ini
+sapa.bat
+*.local.bat
 
-# SQLite database and temporary journal files
-database/database.sqlite
-*.sqlite
-*.sqlite-journal
-*.sqlite-shm
-*.sqlite-wal
-database/sqlite/
+# Catatan Dokumen Internal
+/docs/09-machine-learning-implementation-roadmap.md
+/docs/11-team-backend-rz-scoring-and-testing.md
