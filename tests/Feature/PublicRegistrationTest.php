@@ -15,6 +15,11 @@ class PublicRegistrationTest extends TestCase
             'name' => 'Warga Jarak',
             'phone' => '081234567890',
             'password' => 'secret123',
+            'nik' => '3506010101010001',
+            'kk_number' => '3506010101010002',
+            'rt' => '01',
+            'rw' => '02',
+            'address' => 'Dusun Jarak Lor',
         ]);
 
         $response->assertCreated()
@@ -23,7 +28,25 @@ class PublicRegistrationTest extends TestCase
         $this->assertDatabaseHas('users', [
             'phone' => '081234567890',
             'role' => 'public',
+            'nik' => '3506010101010001',
+            'kk_number' => '3506010101010002',
+            'rt' => '01',
+            'rw' => '02',
+            'address' => 'Dusun Jarak Lor',
         ]);
+    }
+
+    public function test_warga_registration_requires_identity_and_address_fields(): void
+    {
+        $response = $this->postJson('/api/auth/register', [
+            'name' => 'Warga Tanpa Identitas',
+            'phone' => '081234567899',
+            'password' => 'secret123',
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['nik', 'kk_number', 'rt', 'rw', 'address']);
+        $this->assertDatabaseMissing('users', ['phone' => '081234567899']);
     }
 
     public function test_admin_desa_registration_requires_the_configured_invitation_code(): void

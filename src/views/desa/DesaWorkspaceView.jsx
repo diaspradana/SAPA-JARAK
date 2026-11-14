@@ -223,7 +223,12 @@ export default function DesaWorkspaceView() {
     phone: '',
     password: '',
     hamlet_id: '',
-    status: 'active'
+    status: 'active',
+    nik: '',
+    kk_number: '',
+    rt: '',
+    rw: '',
+    address: ''
   });
   const [accountsError, setAccountsError] = useState('');
   const roleCategory = getRoleCategory(currentUser);
@@ -293,7 +298,12 @@ export default function DesaWorkspaceView() {
       phone: account?.phone || '',
       password: '',
       hamlet_id: account?.hamlet_id ? String(account.hamlet_id) : '',
-      status: account?.status || 'active'
+      status: account?.status || 'active',
+      nik: account?.nik || '',
+      kk_number: account?.kk_number || '',
+      rt: account?.rt || '',
+      rw: account?.rw || '',
+      address: account?.address || ''
     });
     setAccountFormOpen(true);
   };
@@ -312,6 +322,13 @@ export default function DesaWorkspaceView() {
     };
     if (accountForm.password) payload.password = accountForm.password;
     if (accountCategory === 'kasun') payload.hamlet_id = Number(accountForm.hamlet_id);
+    if (accountCategory === 'warga') {
+      payload.nik = accountForm.nik.trim();
+      payload.kk_number = accountForm.kk_number.trim();
+      payload.rt = accountForm.rt.trim();
+      payload.rw = accountForm.rw.trim();
+      payload.address = accountForm.address.trim();
+    }
 
     try {
       if (editingAccount) {
@@ -629,6 +646,30 @@ export default function DesaWorkspaceView() {
                   Email <span className="font-normal text-muted-foreground">(opsional)</span>
                   <Input type="email" maxLength={255} value={accountForm.email} onChange={(event) => setAccountForm({ ...accountForm, email: event.target.value })} />
                 </label>
+                {accountCategory === 'warga' && (
+                  <>
+                    <label className="space-y-1.5 text-xs font-semibold">
+                      NIK *
+                      <Input required inputMode="numeric" minLength={16} maxLength={16} value={accountForm.nik} onChange={(event) => setAccountForm({ ...accountForm, nik: event.target.value })} />
+                    </label>
+                    <label className="space-y-1.5 text-xs font-semibold">
+                      Nomor KK *
+                      <Input required inputMode="numeric" minLength={16} maxLength={16} value={accountForm.kk_number} onChange={(event) => setAccountForm({ ...accountForm, kk_number: event.target.value })} />
+                    </label>
+                    <label className="space-y-1.5 text-xs font-semibold">
+                      RT *
+                      <Input required inputMode="numeric" maxLength={5} value={accountForm.rt} onChange={(event) => setAccountForm({ ...accountForm, rt: event.target.value })} />
+                    </label>
+                    <label className="space-y-1.5 text-xs font-semibold">
+                      RW *
+                      <Input required inputMode="numeric" maxLength={5} value={accountForm.rw} onChange={(event) => setAccountForm({ ...accountForm, rw: event.target.value })} />
+                    </label>
+                    <label className="space-y-1.5 text-xs font-semibold sm:col-span-2">
+                      Alamat lengkap *
+                      <Input required maxLength={255} value={accountForm.address} onChange={(event) => setAccountForm({ ...accountForm, address: event.target.value })} />
+                    </label>
+                  </>
+                )}
                 {accountCategory === 'kasun' && (
                   <label className="space-y-1.5 text-xs font-semibold">
                     Dusun tugas

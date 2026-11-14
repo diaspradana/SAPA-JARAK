@@ -276,9 +276,20 @@ class AdminApiTest extends TestCase
             'email' => 'warga.baru@example.test',
             'phone' => '081234567904',
             'password' => 'secure-pass-123',
+            'nik' => '3506010101010003',
+            'kk_number' => '3506010101010004',
+            'rt' => '01',
+            'rw' => '02',
+            'address' => 'Dusun Kalasan',
         ]);
         $create->assertCreated()->assertJsonPath('data.role', 'public');
         $wargaId = $create->json('data.id');
+        $this->assertDatabaseHas('users', [
+            'id' => $wargaId,
+            'nik' => '3506010101010003',
+            'kk_number' => '3506010101010004',
+            'address' => 'Dusun Kalasan',
+        ]);
 
         $this->putJson("/api/admin/managed-accounts/warga/{$wargaId}", [
             'name' => 'Warga Diperbarui',
@@ -288,6 +299,21 @@ class AdminApiTest extends TestCase
         $this->deleteJson("/api/admin/managed-accounts/warga/{$wargaId}")
             ->assertOk();
         $this->assertDatabaseMissing('users', ['id' => $wargaId]);
+    }
+
+    public function test_admin_cannot_create_warga_account_without_required_identity_fields(): void
+    {
+        Sanctum::actingAs($this->admin, ['role:admin', '*']);
+
+        $response = $this->postJson('/api/admin/managed-accounts/warga', [
+            'name' => 'Warga Belum Lengkap',
+            'phone' => '081234567906',
+            'password' => 'secure-pass-123',
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['nik', 'kk_number', 'rt', 'rw', 'address']);
+        $this->assertDatabaseMissing('users', ['phone' => '081234567906']);
     }
 
     public function test_admin_can_read_update_and_delete_other_admin_accounts(): void

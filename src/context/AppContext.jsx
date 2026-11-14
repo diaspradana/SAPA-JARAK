@@ -781,12 +781,16 @@ export function AppProvider({ children }) {
 
   // Authentication: register warga or invited village administrator.
   const register = async (formData) => {
+    const isAdmin = formData.accountType === 'admin_desa';
     if (!formData.name || !formData.phone || !formData.password) {
       showToast('Mohon lengkapi data wajib (Nama, No HP, Kata Sandi).', 'warning');
       return { success: false, message: 'Data tidak lengkap.' };
     }
+    if (!isAdmin && (!formData.nik || !formData.kkNumber || !formData.rt || !formData.rw || !formData.address)) {
+      showToast('Mohon lengkapi NIK, Nomor KK, RT, RW, dan alamat.', 'warning');
+      return { success: false, message: 'Data identitas warga belum lengkap.' };
+    }
 
-    const isAdmin = formData.accountType === 'admin_desa';
     const cleanPhone = formData.phone.trim();
     const cleanEmail = formData.email ? formData.email.trim() : (
       isAdmin

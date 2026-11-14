@@ -23,11 +23,11 @@ class AuthController extends Controller
             'account_type' => 'nullable|string|in:warga,admin_desa',
             'auth_code' => 'required_if:account_type,admin_desa|string|max:100',
             'hamlet_id' => 'nullable|exists:hamlets,id',
-            'nik' => 'nullable|string|max:20|unique:users,nik',
-            'kk_number' => 'nullable|string|max:20',
-            'rt' => 'nullable|string|max:5',
-            'rw' => 'nullable|string|max:5',
-            'address' => 'nullable|string|max:255',
+            'nik' => 'required_unless:account_type,admin_desa|nullable|string|digits:16|unique:users,nik',
+            'kk_number' => 'required_unless:account_type,admin_desa|nullable|string|digits:16',
+            'rt' => 'required_unless:account_type,admin_desa|nullable|string|max:5',
+            'rw' => 'required_unless:account_type,admin_desa|nullable|string|max:5',
+            'address' => 'required_unless:account_type,admin_desa|nullable|string|max:255',
         ]);
 
         $accountType = $validated['account_type'] ?? 'warga';

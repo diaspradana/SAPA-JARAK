@@ -87,7 +87,7 @@ class AdminController extends Controller
         $users = User::with('hamlet:id,name,code')
             ->where('role', $role)
             ->orderBy('name')
-            ->get(['id', 'name', 'email', 'phone', 'role', 'hamlet_id', 'status', 'created_at']);
+            ->get(['id', 'name', 'email', 'phone', 'role', 'hamlet_id', 'status', 'nik', 'kk_number', 'rt', 'rw', 'address', 'created_at']);
 
         return response()->json([
             'success' => true,
@@ -113,6 +113,11 @@ class AdminController extends Controller
                 Rule::requiredIf($role === 'kasun'),
             ],
             'status' => 'nullable|in:active,inactive',
+            'nik' => [Rule::requiredIf($role === 'public'), 'nullable', 'string', 'digits:16', 'unique:users,nik'],
+            'kk_number' => [Rule::requiredIf($role === 'public'), 'nullable', 'string', 'digits:16'],
+            'rt' => [Rule::requiredIf($role === 'public'), 'nullable', 'string', 'max:5'],
+            'rw' => [Rule::requiredIf($role === 'public'), 'nullable', 'string', 'max:5'],
+            'address' => [Rule::requiredIf($role === 'public'), 'nullable', 'string', 'max:255'],
         ]);
 
         if ($role === 'kasun' && User::where('role', 'kasun')
@@ -134,6 +139,11 @@ class AdminController extends Controller
             'role' => $role,
             'hamlet_id' => $role === 'kasun' ? $validated['hamlet_id'] : null,
             'status' => $validated['status'] ?? 'active',
+            'nik' => $validated['nik'] ?? null,
+            'kk_number' => $validated['kk_number'] ?? null,
+            'rt' => $validated['rt'] ?? null,
+            'rw' => $validated['rw'] ?? null,
+            'address' => $validated['address'] ?? null,
         ]);
 
         $this->syncKasunHamlet($user);
@@ -162,6 +172,11 @@ class AdminController extends Controller
                 'exists:hamlets,id',
             ],
             'status' => 'sometimes|required|in:active,inactive',
+            'nik' => ['sometimes', 'required', 'string', 'digits:16', Rule::unique('users', 'nik')->ignore($user->id)],
+            'kk_number' => 'sometimes|required|string|digits:16',
+            'rt' => 'sometimes|required|string|max:5',
+            'rw' => 'sometimes|required|string|max:5',
+            'address' => 'sometimes|required|string|max:255',
         ]);
 
         if ($category === 'admin' && $user->id === $request->user()?->id && ($validated['status'] ?? null) === 'inactive') {

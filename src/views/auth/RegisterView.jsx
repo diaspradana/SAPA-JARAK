@@ -198,27 +198,27 @@ export default function RegisterView() {
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="register-nik">NIK (opsional)</Label>
-                      <Input id="register-nik" value={formData.nik} onChange={updateField('nik')} maxLength={20} className="mt-1.5 h-11 rounded-xl" />
+                      <Label htmlFor="register-nik">NIK *</Label>
+                      <Input id="register-nik" value={formData.nik} onChange={updateField('nik')} inputMode="numeric" minLength={16} maxLength={16} required className="mt-1.5 h-11 rounded-xl" />
                     </div>
                     <div>
-                      <Label htmlFor="register-kk">Nomor KK (opsional)</Label>
-                      <Input id="register-kk" value={formData.kkNumber} onChange={updateField('kkNumber')} maxLength={20} className="mt-1.5 h-11 rounded-xl" />
+                      <Label htmlFor="register-kk">Nomor KK *</Label>
+                      <Input id="register-kk" value={formData.kkNumber} onChange={updateField('kkNumber')} inputMode="numeric" minLength={16} maxLength={16} required className="mt-1.5 h-11 rounded-xl" />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="register-rt">RT (opsional)</Label>
-                      <Input id="register-rt" value={formData.rt} onChange={updateField('rt')} maxLength={5} className="mt-1.5 h-11 rounded-xl" />
+                      <Label htmlFor="register-rt">RT *</Label>
+                      <Input id="register-rt" value={formData.rt} onChange={updateField('rt')} inputMode="numeric" maxLength={5} required className="mt-1.5 h-11 rounded-xl" />
                     </div>
                     <div>
-                      <Label htmlFor="register-rw">RW (opsional)</Label>
-                      <Input id="register-rw" value={formData.rw} onChange={updateField('rw')} maxLength={5} className="mt-1.5 h-11 rounded-xl" />
+                      <Label htmlFor="register-rw">RW *</Label>
+                      <Input id="register-rw" value={formData.rw} onChange={updateField('rw')} inputMode="numeric" maxLength={5} required className="mt-1.5 h-11 rounded-xl" />
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="register-address">Alamat (opsional)</Label>
-                    <Input id="register-address" value={formData.address} onChange={updateField('address')} maxLength={255} className="mt-1.5 h-11 rounded-xl" />
+                    <Label htmlFor="register-address">Alamat lengkap *</Label>
+                    <Input id="register-address" value={formData.address} onChange={updateField('address')} maxLength={255} required className="mt-1.5 h-11 rounded-xl" />
                   </div>
                 </>
               )}
