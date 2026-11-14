@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
+import sapaJarakLogo from '../../assets/sapa-jarak-logo.png';
 import {
   LayoutDashboard,
   PlusCircle,
@@ -12,7 +13,6 @@ import {
   LogOut,
   Menu,
   X,
-  Building2,
   ChevronRight,
   Home,
   Sun,
@@ -101,7 +101,6 @@ export default function WargaDashboardLayout() {
     { id: 'ajukan', label: 'Ajukan Bantuan', icon: PlusCircle, badge: null },
     { id: 'status', label: 'Status Pengajuan', icon: Clock, badge: activeCount > 0 ? activeCount : null },
     { id: 'riwayat', label: 'Riwayat Pengajuan', icon: FileText },
-    { id: 'notifikasi', label: 'Notifikasi', icon: Bell, badge: unreadCount > 0 ? unreadCount : null },
     { id: 'informasi', label: 'Informasi Bantuan', icon: Info },
     { id: 'pengaduan', label: 'Pengaduan / Bantuan', icon: MessageCircle },
     { id: 'profil', label: 'Profil Saya', icon: User },
@@ -160,16 +159,18 @@ export default function WargaDashboardLayout() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-40 h-full w-72 bg-white dark:bg-neutral-900 border-r border-gray-200 dark:border-neutral-800 flex flex-col shadow-2xl transition-transform duration-300 lg:translate-x-0 lg:relative lg:z-auto lg:shadow-none ${
+        className={`fixed inset-y-0 left-0 z-40 h-screen w-72 bg-white dark:bg-neutral-900 border-r border-gray-200 dark:border-neutral-800 flex flex-col shadow-2xl transition-transform duration-300 lg:translate-x-0 lg:shadow-none ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         {/* Sidebar Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-neutral-800 bg-gradient-to-r from-emerald-700 to-emerald-800">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-white/15 text-white flex items-center justify-center">
-              <Building2 size={20} />
-            </div>
+            <img
+              src={sapaJarakLogo}
+              alt="Logo SAPA-JARAK"
+              className="w-9 h-9 rounded-xl bg-white object-contain"
+            />
             <div>
               <div className="text-white font-black text-base tracking-tight">SAPA-JARAK</div>
               <div className="text-emerald-200 text-[10px] font-medium">Portal Warga Masyarakat</div>
@@ -247,7 +248,7 @@ export default function WargaDashboardLayout() {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 lg:ml-72">
         {/* Top Bar */}
         <header className="sticky top-0 z-20 bg-white dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-800 px-4 sm:px-6 h-14 flex items-center justify-between gap-3 shadow-xs">
           {/* Left: Hamburger + Breadcrumb */}

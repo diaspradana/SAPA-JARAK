@@ -323,7 +323,7 @@ export function AppProvider({ children }) {
     }
   };
 
-  const openRegisterPetugas = () => {
+  const openRegisterAccount = () => {
     setCurrentView('register');
     try {
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -444,6 +444,37 @@ export function AppProvider({ children }) {
     });
     return parseApiResponse(response);
   };
+
+  const fetchManagedAccounts = async (category) => {
+    const accountsPayload = await serverRequest(`/admin/managed-accounts/${encodeURIComponent(category)}`);
+    const hamletsPayload = category === 'kasun'
+      ? await serverRequest('/admin/hamlets')
+      : { data: [] };
+    return {
+      users: accountsPayload.data,
+      hamlets: hamletsPayload.data
+    };
+  };
+
+  const createManagedAccount = async (category, account) => (
+    serverRequest(`/admin/managed-accounts/${encodeURIComponent(category)}`, {
+      method: 'POST',
+      body: account
+    })
+  );
+
+  const updateManagedAccount = async (category, id, account) => (
+    serverRequest(`/admin/managed-accounts/${encodeURIComponent(category)}/${id}`, {
+      method: 'PUT',
+      body: account
+    })
+  );
+
+  const deleteManagedAccount = async (category, id) => (
+    serverRequest(`/admin/managed-accounts/${encodeURIComponent(category)}/${id}`, {
+      method: 'DELETE'
+    })
+  );
 
   const refreshApplications = async () => {
     if (!currentUser?.token) {
@@ -748,21 +779,24 @@ export function AppProvider({ children }) {
     }
   };
 
-  // Authentication: Register (Warga Masyarakat atau Petugas Desa)
+  // Authentication: register warga or invited village administrator.
   const register = async (formData) => {
+    const isAdmin = formData.accountType === 'admin_desa';
     if (!formData.name || !formData.phone || !formData.password) {
       showToast('Mohon lengkapi data wajib (Nama, No HP, Kata Sandi).', 'warning');
       return { success: false, message: 'Data tidak lengkap.' };
     }
+    if (!isAdmin && (!formData.nik || !formData.kkNumber || !formData.rt || !formData.rw || !formData.address)) {
+      showToast('Mohon lengkapi NIK, Nomor KK, RT, RW, dan alamat.', 'warning');
+      return { success: false, message: 'Data identitas warga belum lengkap.' };
+    }
 
-    const isOfficer = formData.accountType === 'petugas_desa';
     const cleanPhone = formData.phone.trim();
     const cleanEmail = formData.email ? formData.email.trim() : (
-      isOfficer 
-        ? `petugas.${cleanPhone.replace(/\D/g, '')}@jarak-kediri.desa.id`
+      isAdmin
+        ? `admin.${cleanPhone.replace(/\D/g, '')}@jarak-kediri.desa.id`
         : `warga.${cleanPhone.replace(/\D/g, '')}@jarak-kediri.desa.id`
     );
-    const positionLabel = formData.positionLabel || formData.position || 'Aparatur Balai Desa';
     try {
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
@@ -772,10 +806,8 @@ export function AppProvider({ children }) {
           phone: cleanPhone,
           email: cleanEmail,
           password: formData.password,
-          account_type: isOfficer ? 'petugas_desa' : 'warga',
-          role: isOfficer ? 'desa' : 'public',
-          position: isOfficer ? positionLabel : null,
-          nip: formData.nip,
+          account_type: isAdmin ? 'admin_desa' : 'warga',
+          role: isAdmin ? 'admin' : 'public',
           auth_code: formData.authCode,
           nik: formData.nik,
           kk_number: formData.kkNumber,
@@ -843,6 +875,10 @@ export function AppProvider({ children }) {
         syncError,
         lastSyncedAt,
         refreshApplications,
+        fetchManagedAccounts,
+        createManagedAccount,
+        updateManagedAccount,
+        deleteManagedAccount,
         trackApplication,
         updateKasunVisitSchedule,
         updateProfile,
@@ -885,7 +921,7 @@ export function AppProvider({ children }) {
         loginRole,
         setLoginRole,
         openLogin,
-        openRegisterPetugas,
+        openRegisterAccount,
         login,
         register,
         logout

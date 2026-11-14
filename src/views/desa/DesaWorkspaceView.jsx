@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import sapaJarakLogo from '../../assets/sapa-jarak-logo.png';
 import StatusBadge from '../../components/common/StatusBadge';
 import SyncStatusBanner from '../../components/common/SyncStatusBanner';
 import DesaValidationView from './DesaValidationView';
@@ -22,22 +23,27 @@ import {
   Activity,
   AlertTriangle,
   BarChart3,
-  Building2,
   CheckCircle2,
   ClipboardCheck,
+  ChevronDown,
   FileCheck2,
   FileText,
   Hammer,
   Home,
   LogOut,
+  Menu,
   Map as MapIcon,
   Search,
   Settings,
   ShieldCheck,
   Users,
+  Plus,
+  Pencil,
+  Trash2,
   UserRound,
   UserRoundCog,
-  HeartPulse
+  HeartPulse,
+  X
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -61,18 +67,27 @@ const MENU_ITEMS = [
   { id: 'applications', label: 'Manajemen Pengajuan', icon: FileText },
   { id: 'verification', label: 'Verifikasi Tingkat 2', icon: ClipboardCheck },
   { id: 'validation', label: 'Validasi Data', icon: ShieldCheck },
-  { id: 'residents', label: 'Manajemen Warga', icon: Users },
+  { id: 'residents', label: 'Akun Warga', icon: Users },
+  { id: 'kasun_accounts', label: 'Akun Kasun', icon: UserRoundCog },
   { id: 'rtlh', label: 'Data RTLH', icon: Home },
   { id: 'disability', label: 'Data Disabilitas', icon: HeartPulse, restricted: true },
   { id: 'recommendations', label: 'Rekomendasi Bantuan', icon: CheckCircle2 },
   { id: 'statistics', label: 'Peta & Statistik', icon: MapIcon },
   { id: 'reports', label: 'Laporan', icon: FileText },
   { id: 'audit', label: 'Audit Log', icon: Activity },
-  { id: 'users', label: 'Manajemen Pengguna', icon: UserRoundCog, adminOnly: true },
+  { id: 'users', label: 'Akun Administrator', icon: UserRoundCog, adminOnly: true },
   { id: 'settings', label: 'Pengaturan Sistem', icon: Settings, adminOnly: true },
   { id: 'procurement', label: 'Pengadaan RAB', icon: Hammer },
   { id: 'handover', label: 'BAST & Ledger', icon: FileCheck2, kadesOnly: true },
-  { id: 'profile', label: 'Profil & Keluar', icon: UserRound }
+  { id: 'profile', label: 'Profil', icon: UserRound }
+];
+
+const MENU_GROUPS = [
+  { id: 'workflow', label: 'Pengajuan & Verifikasi', itemIds: ['applications', 'verification', 'validation', 'recommendations'] },
+  { id: 'data', label: 'Data Warga & Wilayah', itemIds: ['residents', 'rtlh', 'disability', 'statistics'] },
+  { id: 'operations', label: 'Pelaksanaan & Laporan', itemIds: ['procurement', 'handover', 'reports'] },
+  { id: 'accounts', label: 'Manajemen Akun', itemIds: ['kasun_accounts', 'users'] },
+  { id: 'administration', label: 'Administrasi Sistem', itemIds: ['audit', 'settings', 'profile'] }
 ];
 
 function getRoleCategory(user) {
@@ -178,10 +193,14 @@ export default function DesaWorkspaceView() {
   const {
     applications: savedApplications,
     currentUser,
-    officialDesaAccounts,
-    registeredUsers,
     setActiveTicketNumber,
-    logout
+    logout,
+    fetchManagedAccounts,
+    createManagedAccount,
+    updateManagedAccount,
+    deleteManagedAccount,
+    showToast,
+    showConfirm
   } = useApp();
   const applications = Array.isArray(savedApplications) ? savedApplications : [];
   const [activeTab, setActiveTab] = useState('overview');
@@ -190,6 +209,28 @@ export default function DesaWorkspaceView() {
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [filterType, setFilterType] = useState('ALL');
   const [selectedApplication, setSelectedApplication] = useState(null);
+  const [openMenuGroup, setOpenMenuGroup] = useState('workflow');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [managedAccounts, setManagedAccounts] = useState([]);
+  const [accountHamlets, setAccountHamlets] = useState([]);
+  const [accountsLoading, setAccountsLoading] = useState(false);
+  const [accountFormOpen, setAccountFormOpen] = useState(false);
+  const [editingAccount, setEditingAccount] = useState(null);
+  const [accountSaving, setAccountSaving] = useState(false);
+  const [accountForm, setAccountForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    password: '',
+    hamlet_id: '',
+    status: 'active',
+    nik: '',
+    kk_number: '',
+    rt: '',
+    rw: '',
+    address: ''
+  });
+  const [accountsError, setAccountsError] = useState('');
   const roleCategory = getRoleCategory(currentUser);
   const isVillageHead = roleCategory === 'kades';
   const isSystemAdmin = roleCategory === 'admin';
@@ -200,6 +241,134 @@ export default function DesaWorkspaceView() {
     && (!item.kadesOnly || isVillageHead)
     && (!item.restricted || isVillageHead || roleCategory === 'verifier')
   ));
+  const visibleMenuGroups = MENU_GROUPS.map((group) => ({
+    ...group,
+    items: visibleMenu.filter((item) => group.itemIds.includes(item.id))
+  })).filter((group) => group.items.length > 0);
+  const accountCategory = activeTab === 'kasun_accounts'
+    ? 'kasun'
+    : activeTab === 'residents'
+      ? 'warga'
+      : activeTab === 'users'
+        ? 'admin'
+        : null;
+
+  useEffect(() => {
+    const activeGroup = MENU_GROUPS.find((group) => group.itemIds.includes(activeTab));
+    if (activeGroup) setOpenMenuGroup(activeGroup.id);
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (!accountCategory) return undefined;
+
+    let active = true;
+    setAccountsLoading(true);
+    setAccountsError('');
+    fetchManagedAccounts(accountCategory)
+      .then(({ users, hamlets: availableHamlets }) => {
+        if (!active) return;
+        setManagedAccounts(users);
+        setAccountHamlets(availableHamlets);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setAccountsError(error.message);
+        showToast(`Data akun gagal dimuat dari database: ${error.message}`, 'error');
+      })
+      .finally(() => {
+        if (active) setAccountsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [accountCategory, currentUser?.token]);
+
+  const reloadManagedAccounts = async (category = accountCategory) => {
+    const result = await fetchManagedAccounts(category);
+    setManagedAccounts(result.users);
+    setAccountHamlets(result.hamlets);
+  };
+
+  const openAccountForm = (account = null) => {
+    setEditingAccount(account);
+    setAccountForm({
+      name: account?.name || '',
+      email: account?.email || '',
+      phone: account?.phone || '',
+      password: '',
+      hamlet_id: account?.hamlet_id ? String(account.hamlet_id) : '',
+      status: account?.status || 'active',
+      nik: account?.nik || '',
+      kk_number: account?.kk_number || '',
+      rt: account?.rt || '',
+      rw: account?.rw || '',
+      address: account?.address || ''
+    });
+    setAccountFormOpen(true);
+  };
+
+  const saveManagedAccount = async (event) => {
+    event.preventDefault();
+    if (!accountCategory) return;
+
+    setAccountSaving(true);
+    setAccountsError('');
+    const payload = {
+      name: accountForm.name.trim(),
+      email: accountForm.email.trim() || null,
+      phone: accountForm.phone.trim(),
+      status: accountForm.status
+    };
+    if (accountForm.password) payload.password = accountForm.password;
+    if (accountCategory === 'kasun') payload.hamlet_id = Number(accountForm.hamlet_id);
+    if (accountCategory === 'warga') {
+      payload.nik = accountForm.nik.trim();
+      payload.kk_number = accountForm.kk_number.trim();
+      payload.rt = accountForm.rt.trim();
+      payload.rw = accountForm.rw.trim();
+      payload.address = accountForm.address.trim();
+    }
+
+    try {
+      if (editingAccount) {
+        await updateManagedAccount(accountCategory, editingAccount.id, payload);
+        showToast('Akun berhasil diperbarui.', 'success');
+      } else {
+        await createManagedAccount(accountCategory, payload);
+        showToast('Akun berhasil dibuat.', 'success');
+      }
+      setAccountFormOpen(false);
+      setEditingAccount(null);
+      await reloadManagedAccounts();
+    } catch (error) {
+      setAccountsError(error.message);
+      showToast(`Perubahan akun gagal disimpan: ${error.message}`, 'error');
+    } finally {
+      setAccountSaving(false);
+    }
+  };
+
+  const removeManagedAccount = async (account) => {
+    if (!accountCategory) return;
+    const confirmation = await showConfirm({
+      title: 'Hapus akun ini?',
+      text: `Akun ${account.name} akan dihapus dari database dan tidak dapat digunakan untuk masuk.`,
+      confirmButtonText: 'Hapus akun',
+      confirmColorClass: 'bg-rose-600 hover:bg-rose-700',
+      icon: 'warning'
+    });
+    if (!confirmation.isConfirmed) return;
+
+    try {
+      await deleteManagedAccount(accountCategory, account.id);
+      showToast('Akun berhasil dihapus.', 'success');
+      await reloadManagedAccounts();
+    } catch (error) {
+      showToast(`Akun gagal dihapus: ${error.message}`, 'error');
+    }
+  };
+
   const hamlets = [...new Set(applications.map((application) => application.dusunName).filter(Boolean))].sort();
   const normalizedSearch = search.trim().toLowerCase();
   const filteredApplications = applications.filter((application) => {
@@ -221,11 +390,6 @@ export default function DesaWorkspaceView() {
     ['FORWARDED_TO_DESA', 'RETURNED', 'WAITING_KASUN'].includes(application.status)
   )).length;
   const activeApplications = applications.filter((application) => !['COMPLETED', 'REJECTED'].includes(application.status)).length;
-  const wargaByNik = new Map();
-  applications.forEach((application) => {
-    const key = application.nik || application.beneficiaryName || application.id;
-    if (!wargaByNik.has(key)) wargaByNik.set(key, application);
-  });
   const eligibleRecommendations = applications
     .filter((application) => application.status === 'FORWARDED_TO_DESA' || application.status === 'VILLAGE_REVIEW')
     .sort((a, b) => (b.survey?.score || 0) - (a.survey?.score || 0));
@@ -438,23 +602,185 @@ export default function DesaWorkspaceView() {
     );
   };
 
-  const renderResidents = () => (
-    <Card className="overflow-hidden rounded-2xl border-border/80">
-      <CardHeader className="border-b border-border/60 p-4">
-        <CardTitle className="text-base">Data warga terkait pengajuan</CardTitle>
-        <p className="text-xs text-muted-foreground">Rekap berdasarkan penerima unik yang tercatat pada pengajuan.</p>
-      </CardHeader>
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader><TableRow><TableHead>Nama</TableHead><TableHead>NIK</TableHead><TableHead>Dusun</TableHead><TableHead>Pengajuan</TableHead><TableHead>Kontak</TableHead></TableRow></TableHeader>
-          <TableBody>{[...wargaByNik.values()].map((person) => (
-            <TableRow key={person.id}><TableCell className="font-semibold">{person.beneficiaryName}</TableCell><TableCell className="font-mono">{person.nik || '-'}</TableCell><TableCell>{person.dusunName || '-'}</TableCell><TableCell>{person.assistanceType || '-'}</TableCell><TableCell>{person.phone || '-'}</TableCell></TableRow>
-          ))}</TableBody>
-        </Table>
+  const renderManagedAccounts = () => {
+    const categoryLabels = {
+      kasun: { title: 'Manajemen Akun Kasun', description: 'Daftarkan akun Kasun, tetapkan dusun tugas, dan kelola akses masuk.' },
+      warga: { title: 'Manajemen Akun Warga', description: 'Kelola akun warga yang terdaftar pada sistem.' },
+      admin: { title: 'Manajemen Akun Administrator', description: 'Lihat, perbarui, atau hapus akun administrator sistem.' }
+    };
+    const config = categoryLabels[accountCategory];
+    if (!config) return null;
+
+    return (
+      <div className="space-y-4">
+        <Card className="rounded-2xl border-border/80">
+          <CardHeader className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle className="text-base">{config.title}</CardTitle>
+              <p className="mt-1 text-xs text-muted-foreground">{config.description}</p>
+            </div>
+            {accountCategory !== 'admin' && (
+              <Button size="sm" onClick={() => openAccountForm()} className="gap-2 bg-emerald-700 text-white hover:bg-emerald-800">
+                <Plus size={15} /> Tambah akun
+              </Button>
+            )}
+          </CardHeader>
+        </Card>
+
+        {accountFormOpen && (editingAccount || accountCategory !== 'admin') && (
+          <Card className="rounded-2xl border-border/80">
+            <CardHeader className="p-4 pb-0">
+              <CardTitle className="text-base">{editingAccount ? 'Ubah akun' : 'Daftarkan akun baru'}</CardTitle>
+            </CardHeader>
+            <form onSubmit={saveManagedAccount}>
+              <CardContent className="grid gap-4 p-4 sm:grid-cols-2">
+                <label className="space-y-1.5 text-xs font-semibold">
+                  Nama lengkap
+                  <Input required maxLength={255} value={accountForm.name} onChange={(event) => setAccountForm({ ...accountForm, name: event.target.value })} />
+                </label>
+                <label className="space-y-1.5 text-xs font-semibold">
+                  Nomor HP
+                  <Input required maxLength={30} value={accountForm.phone} onChange={(event) => setAccountForm({ ...accountForm, phone: event.target.value })} />
+                </label>
+                <label className="space-y-1.5 text-xs font-semibold">
+                  Email <span className="font-normal text-muted-foreground">(opsional)</span>
+                  <Input type="email" maxLength={255} value={accountForm.email} onChange={(event) => setAccountForm({ ...accountForm, email: event.target.value })} />
+                </label>
+                {accountCategory === 'warga' && (
+                  <>
+                    <label className="space-y-1.5 text-xs font-semibold">
+                      NIK *
+                      <Input required inputMode="numeric" minLength={16} maxLength={16} value={accountForm.nik} onChange={(event) => setAccountForm({ ...accountForm, nik: event.target.value })} />
+                    </label>
+                    <label className="space-y-1.5 text-xs font-semibold">
+                      Nomor KK *
+                      <Input required inputMode="numeric" minLength={16} maxLength={16} value={accountForm.kk_number} onChange={(event) => setAccountForm({ ...accountForm, kk_number: event.target.value })} />
+                    </label>
+                    <label className="space-y-1.5 text-xs font-semibold">
+                      RT *
+                      <Input required inputMode="numeric" maxLength={5} value={accountForm.rt} onChange={(event) => setAccountForm({ ...accountForm, rt: event.target.value })} />
+                    </label>
+                    <label className="space-y-1.5 text-xs font-semibold">
+                      RW *
+                      <Input required inputMode="numeric" maxLength={5} value={accountForm.rw} onChange={(event) => setAccountForm({ ...accountForm, rw: event.target.value })} />
+                    </label>
+                    <label className="space-y-1.5 text-xs font-semibold sm:col-span-2">
+                      Alamat lengkap *
+                      <Input required maxLength={255} value={accountForm.address} onChange={(event) => setAccountForm({ ...accountForm, address: event.target.value })} />
+                    </label>
+                  </>
+                )}
+                {accountCategory === 'kasun' && (
+                  <label className="space-y-1.5 text-xs font-semibold">
+                    Dusun tugas
+                    <select
+                      required
+                      value={accountForm.hamlet_id}
+                      onChange={(event) => setAccountForm({ ...accountForm, hamlet_id: event.target.value })}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="">Pilih dusun</option>
+                      {accountHamlets.map((hamlet) => (
+                        <option key={hamlet.id} value={hamlet.id}>{hamlet.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                <label className="space-y-1.5 text-xs font-semibold">
+                  Kata sandi {editingAccount && <span className="font-normal text-muted-foreground">(kosongkan jika tidak diubah)</span>}
+                  <Input
+                    type="password"
+                    minLength={8}
+                    required={!editingAccount}
+                    autoComplete="new-password"
+                    value={accountForm.password}
+                    onChange={(event) => setAccountForm({ ...accountForm, password: event.target.value })}
+                  />
+                </label>
+                <label className="space-y-1.5 text-xs font-semibold">
+                  Status akun
+                  <select
+                    value={accountForm.status}
+                    onChange={(event) => setAccountForm({ ...accountForm, status: event.target.value })}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="active">Aktif</option>
+                    <option value="inactive">Nonaktif</option>
+                  </select>
+                </label>
+                {accountsError && <p role="alert" className="text-xs font-medium text-rose-600 sm:col-span-2">{accountsError}</p>}
+                <div className="flex flex-wrap justify-end gap-2 sm:col-span-2">
+                  <Button type="button" variant="outline" onClick={() => setAccountFormOpen(false)}>Batal</Button>
+                  <Button type="submit" disabled={accountSaving} className="bg-emerald-700 text-white hover:bg-emerald-800">
+                    {accountSaving ? 'Menyimpan...' : editingAccount ? 'Simpan perubahan' : 'Buat akun'}
+                  </Button>
+                </div>
+              </CardContent>
+            </form>
+          </Card>
+        )}
+
+        <Card className="overflow-hidden rounded-2xl border-border/80">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nama</TableHead>
+                  <TableHead>Kontak</TableHead>
+                  {accountCategory === 'kasun' && <TableHead>Dusun</TableHead>}
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Tindakan</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {managedAccounts.map((account) => {
+                  const isCurrentAccount = String(account.id) === String(currentUser?.serverId);
+                  return (
+                    <TableRow key={account.id}>
+                      <TableCell>
+                        <p className="font-semibold">{account.name}{isCurrentAccount ? ' (Akun Anda)' : ''}</p>
+                        <p className="text-xs text-muted-foreground">{account.email || 'Email belum diisi'}</p>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">{account.phone}</TableCell>
+                      {accountCategory === 'kasun' && <TableCell>{account.hamlet?.name || 'Belum ditetapkan'}</TableCell>}
+                      <TableCell>
+                        <Badge variant={account.status === 'active' ? 'success' : 'outline'}>
+                          {account.status === 'active' ? 'Aktif' : 'Nonaktif'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-1">
+                          <Button type="button" variant="outline" size="sm" onClick={() => openAccountForm(account)} className="gap-1.5">
+                            <Pencil size={13} /> Ubah
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={isCurrentAccount}
+                            onClick={() => removeManagedAccount(account)}
+                            className="gap-1.5 text-rose-600 hover:bg-rose-50 hover:text-rose-700 disabled:opacity-50"
+                            title={isCurrentAccount ? 'Akun yang sedang digunakan tidak dapat dihapus' : 'Hapus akun'}
+                          >
+                            <Trash2 size={13} /> Hapus
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+          {accountsLoading && <p className="p-8 text-center text-sm text-muted-foreground">Memuat akun dari database...</p>}
+          {!accountsLoading && accountsError && <p role="alert" className="p-8 text-center text-sm text-rose-600">{accountsError}</p>}
+          {!accountsLoading && !accountsError && managedAccounts.length === 0 && (
+            <p className="p-8 text-center text-sm text-muted-foreground">Belum ada akun pada kategori ini.</p>
+          )}
+        </Card>
       </div>
-      {!wargaByNik.size && <p className="p-8 text-center text-sm text-muted-foreground">Data warga belum tersedia.</p>}
-    </Card>
-  );
+    );
+  };
 
   const renderRecommendations = () => (
     <div className="space-y-4">
@@ -518,21 +844,6 @@ export default function DesaWorkspaceView() {
     );
   };
 
-  const renderUsers = () => {
-    const users = [...(officialDesaAccounts || []), ...(registeredUsers || [])];
-    return (
-      <div className="space-y-4">
-        <Card className="rounded-2xl border-border/80"><CardContent className="p-4 text-xs text-muted-foreground">Akun dan peran ditampilkan sebagai referensi. Perubahan kewenangan harus dilakukan melalui mekanisme admin yang terotorisasi; admin sistem tidak memperoleh kewenangan menyetujui bantuan.</CardContent></Card>
-        <Card className="overflow-hidden rounded-2xl border-border/80">
-          <CardHeader className="border-b border-border/60 p-4"><CardTitle className="text-base">Pengguna Pemerintah Desa</CardTitle></CardHeader>
-          <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Nama</TableHead><TableHead>Peran</TableHead><TableHead>Email</TableHead></TableRow></TableHeader>
-            <TableBody>{users.map((user) => <TableRow key={user.id}><TableCell className="font-semibold">{user.name}</TableCell><TableCell>{user.position || user.roleLabel || 'Petugas Desa'}</TableCell><TableCell>{user.email || '-'}</TableCell></TableRow>)}</TableBody>
-          </Table></div>
-        </Card>
-      </div>
-    );
-  };
-
   const renderSettings = () => (
     <Card className="rounded-2xl border-border/80">
       <CardHeader className="p-4"><CardTitle className="text-base">Pengaturan alur kerja</CardTitle><p className="text-xs text-muted-foreground">Informasi konfigurasi yang digunakan dalam aplikasi.</p></CardHeader>
@@ -561,13 +872,12 @@ export default function DesaWorkspaceView() {
     if (activeTab === 'applications') return renderApplicationList();
     if (activeTab === 'verification') return renderVerification();
     if (activeTab === 'validation') return renderValidation();
-    if (activeTab === 'residents') return renderResidents();
+    if (['residents', 'kasun_accounts', 'users'].includes(activeTab)) return renderManagedAccounts();
     if (activeTab === 'rtlh') return renderApplicationPanel('Rekap data RTLH', applications.filter((application) => application.assistanceType === 'RTLH'), 'Kondisi rumah, hasil penilaian, dan dokumen terkait.', false);
     if (activeTab === 'disability') return renderApplicationPanel('Rekap data Disabilitas', applications.filter((application) => application.assistanceType === 'DISABILITAS'), 'Data dukungan berdasarkan pengajuan bantuan Disabilitas.', false);
     if (activeTab === 'recommendations') return renderRecommendations();
     if (activeTab === 'statistics') return renderStatistics();
     if (activeTab === 'audit') return renderAudit();
-    if (activeTab === 'users' && isSystemAdmin) return renderUsers();
     if (activeTab === 'settings' && isSystemAdmin) return renderSettings();
     if (activeTab === 'profile') return renderProfile();
     if (activeTab === 'reports') return <DesaReportsView onBack={() => setActiveTab('overview')} />;
@@ -578,46 +888,173 @@ export default function DesaWorkspaceView() {
   };
 
   return (
-    <div className="mx-auto max-w-[1500px] space-y-5 px-4 py-6 sm:px-6 lg:py-8" data-aos="fade-up" data-aos-duration="500">
-      <Card className="overflow-hidden rounded-2xl border-border/80 shadow-sm">
-        <CardContent className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-700 text-white"><Building2 size={24} /></div>
-            <div>
-              <div className="flex flex-wrap items-center gap-2"><Badge variant="success">Pemerintah Desa Jarak</Badge><span className="text-xs text-muted-foreground">Kec. Plosoklaten</span></div>
-              <h1 className="mt-1 text-xl font-black sm:text-2xl">Dashboard Petugas Desa</h1>
-              <p className="text-xs text-muted-foreground">{currentUser?.name || 'Petugas Desa'} · {currentUser?.position || currentUser?.roleLabel || 'Petugas Verifikasi'}</p>
-            </div>
-          </div>
-          <Button variant="outline" size="sm" onClick={() => setActiveTab('profile')} className="gap-2 self-start sm:self-auto"><UserRound size={15} /> Profil</Button>
-        </CardContent>
-      </Card>
+    <div className="min-h-screen bg-neutral-50 font-sans dark:bg-neutral-950" data-aos="fade-up" data-aos-duration="500">
+      {sidebarOpen && (
+        <button
+          type="button"
+          aria-label="Tutup menu"
+          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-      <div className="grid items-start gap-5 lg:grid-cols-[245px_minmax(0,1fr)]">
-        <nav aria-label="Menu dashboard desa" className="flex gap-1 overflow-x-auto rounded-2xl border border-border/80 bg-card p-2 lg:sticky lg:top-4 lg:flex-col lg:overflow-visible">
-          {visibleMenu.map((item) => {
-            const Icon = item.icon;
+      <aside className={cn(
+        'fixed inset-y-0 left-0 z-40 flex h-screen w-[250px] flex-col border-r border-border bg-card shadow-2xl transition-transform duration-300 lg:translate-x-0 lg:shadow-none',
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      )}>
+        <div className="flex items-center gap-3 border-b border-border bg-emerald-900 p-4">
+          <img src={sapaJarakLogo} alt="Logo SAPA-JARAK" className="h-10 w-10 shrink-0 rounded-xl bg-white object-contain" />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-black text-white">SAPA-JARAK</p>
+            <p className="text-[10px] font-medium text-emerald-200">Ruang Kerja Desa</p>
+          </div>
+          <button type="button" onClick={() => setSidebarOpen(false)} aria-label="Tutup menu" className="ml-auto rounded-lg p-1 text-white/75 hover:bg-white/10 hover:text-white lg:hidden">
+            <X size={17} />
+          </button>
+        </div>
+
+        <div className="border-b border-border bg-emerald-50 px-4 py-3 dark:bg-emerald-950/30">
+          <p className="truncate text-sm font-bold text-foreground">{currentUser?.name || 'Petugas Desa'}</p>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">{currentUser?.position || currentUser?.roleLabel || 'Petugas Verifikasi'}</p>
+        </div>
+
+        <nav aria-label="Menu dashboard desa" className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3">
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedApplication(null);
+              setActiveTab('overview');
+              setSidebarOpen(false);
+            }}
+            aria-current={activeTab === 'overview' ? 'page' : undefined}
+            className={cn(
+              'flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs font-bold transition-colors',
+              activeTab === 'overview'
+                ? 'bg-emerald-700 text-white shadow-sm'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            )}
+          >
+            <BarChart3 size={15} className="shrink-0" />
+            <span>Dashboard Utama</span>
+          </button>
+          {visibleMenuGroups.map((group) => {
+            const GroupIcon = group.items[0].icon;
+            const isOpen = openMenuGroup === group.id;
             return (
-              <button key={item.id} type="button" onClick={() => { setSelectedApplication(null); setActiveTab(item.id); }} aria-current={activeTab === item.id ? 'page' : undefined} className={cn(
-                'flex shrink-0 items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition-colors lg:w-full',
-                activeTab === item.id ? 'bg-emerald-700 text-white shadow-sm' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              )}>
-                <Icon size={16} className="shrink-0" /><span>{item.label}</span>
-                {item.id === 'verification' && pendingVerification.length > 0 && <span className="ml-auto rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">{pendingVerification.length}</span>}
-              </button>
+              <section key={group.id} className="rounded-xl">
+                <button
+                  type="button"
+                  aria-expanded={isOpen}
+                  onClick={() => setOpenMenuGroup(isOpen ? null : group.id)}
+                  className={cn(
+                    'flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs font-bold transition-colors',
+                    isOpen || group.items.some(item => item.id === activeTab)
+                      ? 'text-emerald-800 dark:text-emerald-300'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  )}
+                >
+                  <GroupIcon size={15} className="shrink-0" />
+                  <span className="flex-1">{group.label}</span>
+                  <ChevronDown size={14} className={cn('transition-transform', isOpen && 'rotate-180')} />
+                </button>
+                {isOpen && (
+                  <div className="ml-2 space-y-0.5 border-l border-border py-1 pl-2">
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedApplication(null);
+                            setActiveTab(item.id);
+                            setSidebarOpen(false);
+                          }}
+                          aria-current={activeTab === item.id ? 'page' : undefined}
+                          className={cn(
+                            'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-semibold transition-colors',
+                            activeTab === item.id
+                              ? 'bg-emerald-700 text-white shadow-sm'
+                              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                          )}
+                        >
+                          <Icon size={15} className="shrink-0" />
+                          <span className="flex-1">{item.label}</span>
+                          {item.id === 'verification' && pendingVerification.length > 0 && (
+                            <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">{pendingVerification.length}</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
             );
           })}
         </nav>
 
-        <main className="min-w-0 space-y-4">
+        <div className="border-t border-border p-3">
+          <Button
+            onClick={logout}
+            variant="ghost"
+            className="w-full justify-start gap-2.5 rounded-lg text-sm font-semibold text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:text-rose-300 dark:hover:bg-rose-950/40"
+          >
+            <LogOut size={16} /> Keluar akun
+          </Button>
+        </div>
+      </aside>
+
+      <main className="min-h-screen lg:ml-[250px]">
+        <div className="mx-auto max-w-[1500px] space-y-5 px-4 py-5 sm:px-6 lg:py-7">
+          <Card className="overflow-hidden rounded-2xl border-border/80 shadow-sm">
+            <CardContent className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSidebarOpen(true)}
+                  aria-label="Buka menu desa"
+                  aria-expanded={sidebarOpen}
+                  className="rounded-lg p-2 text-muted-foreground hover:bg-muted lg:hidden"
+                >
+                  <Menu size={19} />
+                </button>
+                <img
+                  src={sapaJarakLogo}
+                  alt="Logo SAPA-JARAK"
+                  className="hidden h-12 w-12 shrink-0 rounded-2xl bg-white object-contain sm:block"
+                />
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="success">Pemerintah Desa Jarak</Badge>
+                    <span className="text-xs text-muted-foreground">Kec. Plosoklaten</span>
+                  </div>
+                  <h1 className="mt-1 text-xl font-black sm:text-2xl">Dashboard Petugas Desa</h1>
+                  <p className="text-xs text-muted-foreground">
+                    {currentUser?.name || 'Petugas Desa'} · {currentUser?.position || currentUser?.roleLabel || 'Petugas Verifikasi'}
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setActiveTab('profile')}
+                className="hidden gap-2 self-start sm:inline-flex sm:self-auto"
+              >
+                <UserRound size={15} /> Profil
+              </Button>
+            </CardContent>
+          </Card>
+
           <SyncStatusBanner />
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-black">{titles[activeTab] || 'Dashboard Utama'}</h2>
-            <Badge variant="outline">{isVillageHead ? 'Kepala Desa' : isSystemAdmin ? 'Admin Sistem' : roleCategory === 'operator' ? 'Operator Desa' : 'Petugas Verifikasi'}</Badge>
+            <Badge variant="outline">
+              {isVillageHead ? 'Kepala Desa' : isSystemAdmin ? 'Admin Sistem' : roleCategory === 'operator' ? 'Operator Desa' : 'Petugas Verifikasi'}
+            </Badge>
           </div>
           {renderActiveView()}
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

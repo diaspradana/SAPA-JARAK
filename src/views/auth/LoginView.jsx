@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import sapaJarakLogo from '../../assets/sapa-jarak-logo.png';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -23,7 +24,7 @@ const LOGIN_ROLES = [
 ];
 
 export default function LoginView() {
-  const { login, setCurrentView, showToast, showAlert, loginRole, openRegisterPetugas } = useApp();
+  const { login, setCurrentView, showToast, showAlert, loginRole, openRegisterAccount } = useApp();
   const [selectedRole, setSelectedRole] = useState(loginRole || 'warga');
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -104,9 +105,11 @@ export default function LoginView() {
 
         <section className="bg-card text-card-foreground rounded-2xl border border-border shadow-lg overflow-hidden">
           <header className="p-6 sm:p-8 text-center border-b border-border">
-            <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-emerald-700 text-white flex items-center justify-center">
-              <Building2 size={24} />
-            </div>
+            <img
+              src={sapaJarakLogo}
+              alt="Logo SAPA-JARAK"
+              className="w-12 h-12 mx-auto mb-4 rounded-xl bg-white object-contain"
+            />
             <h1 className="text-2xl font-bold tracking-tight text-foreground">Masuk ke SAPA-JARAK</h1>
             <p className="mt-2 text-sm text-muted-foreground">
               Pilih jenis akun, lalu masukkan informasi login Anda.
@@ -217,11 +220,11 @@ export default function LoginView() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={openRegisterPetugas}
+                  onClick={openRegisterAccount}
                   className="w-full gap-2 rounded-lg"
                 >
                   <ShieldCheck size={16} />
-                  Daftar sebagai petugas desa
+                  Daftar sebagai warga atau admin desa
                 </Button>
               </div>
             )}

@@ -17,6 +17,230 @@ use Carbon\Carbon;
 
 class AdminController extends Controller
 {
+    private function managedAccountRole(Request $request, string $category): string
+    {
+        $role = match ($category) {
+            'kasun' => 'kasun',
+            'warga' => 'public',
+            'admin' => 'admin',
+            default => abort(404, 'Kategori akun tidak ditemukan.'),
+        };
+
+        if ($category === 'admin' && $request->user()?->role !== 'admin') {
+            abort(403, 'Hanya administrator sistem yang dapat mengelola akun administrator.');
+        }
+
+        return $role;
+    }
+
+    private function managedAccountAudit(Request $request, string $action, User $user, ?array $oldValues = null): void
+    {
+        $actor = $request->user();
+        AuditLog::create([
+            'user_id' => $actor?->id,
+            'actor_name' => $actor?->name ?? 'Administrator',
+            'action' => $action,
+            'entity_type' => User::class,
+            'entity_id' => $user->id,
+            'old_values' => $oldValues,
+            'new_values' => $action === 'USER_DELETED' ? null : $user->only([
+                'id', 'name', 'email', 'phone', 'role', 'hamlet_id', 'status',
+            ]),
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+    }
+
+    private function syncKasunHamlet(User $user, ?array $oldValues = null, bool $remove = false): void
+    {
+        if ($oldValues && !empty($oldValues['hamlet_id'])) {
+            $oldHamlet = Hamlet::find($oldValues['hamlet_id']);
+            if ($oldHamlet && (
+                (int) $oldValues['hamlet_id'] !== (int) $user->hamlet_id
+                || $user->status !== 'active'
+                || $remove
+            )) {
+                $fieldsToClear = [];
+                if ($oldHamlet->head_name === $oldValues['name']) {
+                    $fieldsToClear['head_name'] = null;
+                }
+                if ($oldHamlet->head_phone === $oldValues['phone']) {
+                    $fieldsToClear['head_phone'] = null;
+                }
+                if ($fieldsToClear) {
+                    $oldHamlet->update($fieldsToClear);
+                }
+            }
+        }
+
+        if ($user->role === 'kasun' && $user->hamlet_id && $user->status === 'active') {
+            Hamlet::whereKey($user->hamlet_id)->update([
+                'head_name' => $user->name,
+                'head_phone' => $user->phone,
+            ]);
+        }
+    }
+
+    public function managedAccounts(Request $request, string $category)
+    {
+        $role = $this->managedAccountRole($request, $category);
+        $users = User::with('hamlet:id,name,code')
+            ->where('role', $role)
+            ->orderBy('name')
+            ->get(['id', 'name', 'email', 'phone', 'role', 'hamlet_id', 'status', 'nik', 'kk_number', 'rt', 'rw', 'address', 'created_at']);
+
+        return response()->json([
+            'success' => true,
+            'data' => $users,
+        ]);
+    }
+
+    public function createManagedAccount(Request $request, string $category)
+    {
+        $role = $this->managedAccountRole($request, $category);
+        if ($category === 'admin') {
+            abort(405, 'Pembuatan akun administrator tidak tersedia melalui menu ini.');
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'nullable|email|max:255|unique:users,email',
+            'phone' => 'required|string|max:30|unique:users,phone',
+            'password' => 'required|string|min:8',
+            'hamlet_id' => [
+                'nullable',
+                'exists:hamlets,id',
+                Rule::requiredIf($role === 'kasun'),
+            ],
+            'status' => 'nullable|in:active,inactive',
+            'nik' => [Rule::requiredIf($role === 'public'), 'nullable', 'string', 'digits:16', 'unique:users,nik'],
+            'kk_number' => [Rule::requiredIf($role === 'public'), 'nullable', 'string', 'digits:16'],
+            'rt' => [Rule::requiredIf($role === 'public'), 'nullable', 'string', 'max:5'],
+            'rw' => [Rule::requiredIf($role === 'public'), 'nullable', 'string', 'max:5'],
+            'address' => [Rule::requiredIf($role === 'public'), 'nullable', 'string', 'max:255'],
+        ]);
+
+        if ($role === 'kasun' && User::where('role', 'kasun')
+            ->where('hamlet_id', $validated['hamlet_id'])
+            ->where('status', 'active')
+            ->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dusun tersebut sudah memiliki akun Kasun aktif.',
+                'errors' => ['hamlet_id' => ['Pilih dusun lain atau nonaktifkan akun Kasun yang lama.']],
+            ], 422);
+        }
+
+        $user = User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'] ?? null,
+            'phone' => $validated['phone'],
+            'password' => Hash::make($validated['password']),
+            'role' => $role,
+            'hamlet_id' => $role === 'kasun' ? $validated['hamlet_id'] : null,
+            'status' => $validated['status'] ?? 'active',
+            'nik' => $validated['nik'] ?? null,
+            'kk_number' => $validated['kk_number'] ?? null,
+            'rt' => $validated['rt'] ?? null,
+            'rw' => $validated['rw'] ?? null,
+            'address' => $validated['address'] ?? null,
+        ]);
+
+        $this->syncKasunHamlet($user);
+        $this->managedAccountAudit($request, 'USER_CREATED', $user);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Akun {$category} '{$user->name}' berhasil dibuat.",
+            'data' => $user->load('hamlet:id,name,code'),
+        ], 201);
+    }
+
+    public function updateManagedAccount(Request $request, string $category, int $id)
+    {
+        $role = $this->managedAccountRole($request, $category);
+        $user = User::where('role', $role)->findOrFail($id);
+        $validated = $request->validate([
+            'name' => 'sometimes|required|string|max:255',
+            'email' => ['sometimes', 'nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'phone' => ['sometimes', 'required', 'string', 'max:30', Rule::unique('users', 'phone')->ignore($user->id)],
+            'password' => 'nullable|string|min:8',
+            'hamlet_id' => [
+                'sometimes',
+                Rule::requiredIf($role === 'kasun'),
+                'nullable',
+                'exists:hamlets,id',
+            ],
+            'status' => 'sometimes|required|in:active,inactive',
+            'nik' => ['sometimes', 'required', 'string', 'digits:16', Rule::unique('users', 'nik')->ignore($user->id)],
+            'kk_number' => 'sometimes|required|string|digits:16',
+            'rt' => 'sometimes|required|string|max:5',
+            'rw' => 'sometimes|required|string|max:5',
+            'address' => 'sometimes|required|string|max:255',
+        ]);
+
+        if ($category === 'admin' && $user->id === $request->user()?->id && ($validated['status'] ?? null) === 'inactive') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak dapat menonaktifkan akun administrator yang sedang digunakan.',
+            ], 422);
+        }
+
+        if ($role === 'kasun' && isset($validated['hamlet_id']) && User::where('role', 'kasun')
+            ->where('hamlet_id', $validated['hamlet_id'])
+            ->where('status', 'active')
+            ->where('id', '!=', $user->id)
+            ->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dusun tersebut sudah memiliki akun Kasun aktif.',
+                'errors' => ['hamlet_id' => ['Pilih dusun lain atau nonaktifkan akun Kasun yang lama.']],
+            ], 422);
+        }
+
+        $oldValues = $user->only(['name', 'email', 'phone', 'role', 'hamlet_id', 'status']);
+        if (!empty($validated['password'])) {
+            $user->password = Hash::make($validated['password']);
+        }
+        unset($validated['password']);
+        if ($role === 'public') {
+            unset($validated['hamlet_id']);
+        }
+
+        $user->fill($validated);
+        $user->save();
+        $this->syncKasunHamlet($user, $oldValues);
+        $this->managedAccountAudit($request, 'USER_UPDATED', $user, $oldValues);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Akun '{$user->name}' berhasil diperbarui.",
+            'data' => $user->load('hamlet:id,name,code'),
+        ]);
+    }
+
+    public function deleteManagedAccount(Request $request, string $category, int $id)
+    {
+        $role = $this->managedAccountRole($request, $category);
+        $user = User::where('role', $role)->findOrFail($id);
+        if ($user->id === $request->user()?->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak dapat menghapus akun yang sedang digunakan.',
+            ], 422);
+        }
+
+        $oldValues = $user->only(['id', 'name', 'email', 'phone', 'role', 'hamlet_id', 'status']);
+        $this->syncKasunHamlet($user, $oldValues, true);
+        $this->managedAccountAudit($request, 'USER_DELETED', $user, $oldValues);
+        $user->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Akun '{$oldValues['name']}' berhasil dihapus.",
+        ]);
+    }
+
     /**
      * Admin Overview: system stats, apparatus metrics, storage, and configuration summary.
      */

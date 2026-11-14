@@ -1,14 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { useVoice } from '../../context/VoiceContext';
+import sapaJarakLogo from '../../assets/sapa-jarak-logo.png';
 import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
 import { 
-  Building2,
-  Volume2, 
-  VolumeX, 
-  Wifi, 
-  WifiOff, 
   Bell, 
   Menu, 
   X,
@@ -37,17 +31,14 @@ export default function Navbar() {
     setCurrentView, 
     notifications, 
     setIsNotifDrawerOpen,
-    lowBandwidthMode,
-    setLowBandwidthMode,
     refreshServerData,
     showConfirm,
     currentUser,
     logout,
     openLogin,
-    openRegisterPetugas
+    openRegisterAccount
   } = useApp();
 
-  const { voiceEnabled, toggleVoice } = useVoice();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isDesaStaff = currentUser?.role === 'desa' || currentUser?.role === 'admin';
   const homeView = isDesaStaff ? 'desa_dashboard' : 'home';
@@ -90,6 +81,13 @@ export default function Navbar() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  if (
+    (currentUser?.role?.startsWith('kasun') && currentView === 'kasun_dashboard')
+    || (isDesaStaff && currentView?.startsWith('desa_'))
+  ) {
+    return null;
+  }
+
   const handleReset = async () => {
     const result = await showConfirm({
       title: 'Muat ulang data server?',
@@ -128,38 +126,35 @@ export default function Navbar() {
       </div>
 
       {/* 2. Main Navigation Bar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-18 flex items-center justify-between gap-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 min-h-[4.5rem] py-2 flex items-center justify-between gap-3">
         
         {/* Brand / Emblem */}
         <div 
-          className="flex items-center gap-3 cursor-pointer select-none group" 
+          className="flex min-w-0 items-center gap-2.5 cursor-pointer select-none group"
           onClick={() => handleNavClick(homeView)}
         >
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-700 to-emerald-900 text-white flex items-center justify-center font-black shadow-md group-hover:scale-105 transition-transform">
-            <Building2 size={20} className="text-emerald-200" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-black text-lg sm:text-xl text-foreground tracking-tight">SAPA-JARAK</span>
-              <span className="bg-muted text-muted-foreground text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider border border-border">
-                {isDesaStaff ? 'Panel Petugas' : 'Verifikasi 3 Tingkat'}
-              </span>
-            </div>
+          <img
+            src={sapaJarakLogo}
+            alt="Logo SAPA-JARAK"
+            className="h-10 w-10 shrink-0 rounded-xl bg-white object-contain shadow-md group-hover:scale-105 transition-transform"
+          />
+          <div className="min-w-0">
+            <span className="whitespace-nowrap font-black text-base sm:text-xl text-foreground tracking-tight">SAPA-JARAK</span>
             <p className="text-[11px] text-muted-foreground font-medium hidden sm:block">
-              {isDesaStaff ? 'Ruang kerja pengelolaan bantuan sosial' : 'Sistem Aspirasi & Bantuan Sosial RTLH & Disabilitas'}
+              Sistem Aspirasi & Bantuan Sosial RTLH & Disabilitas
             </p>
           </div>
         </div>
 
         {/* Center Navigation Links (Home screen sebelum login: Beranda Pelayanan, Pengecekan Tiket, Transparansi APBDes) */}
-        <nav className="hidden lg:flex items-center gap-1.5 bg-muted/60 p-1.5 rounded-xl border border-border/60">
+        <nav className="hidden lg:flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border/60">
           {navItems.map((item) => {
             const isActive = currentView === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => handleNavClick(item.id)}
-                className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
+                className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
                   isActive 
                     ? 'bg-background text-emerald-700 dark:text-emerald-400 shadow-xs border border-border/60' 
                     : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
@@ -172,7 +167,7 @@ export default function Navbar() {
         </nav>
 
         {/* Right Header Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           
           {/* Theme Toggle Button */}
           <Button
@@ -188,36 +183,6 @@ export default function Navbar() {
             ) : (
               <Moon size={17} className="text-emerald-700" />
             )}
-          </Button>
-
-          {/* Voice Guide Toggle */}
-          <Button
-            variant={voiceEnabled ? "secondary" : "outline"}
-            size="sm"
-            onClick={toggleVoice}
-            className={`h-9 gap-1.5 px-3 text-xs font-bold rounded-lg border-border hidden md:flex ${
-              isDesaStaff ? 'w-9 px-0 justify-center' : ''} ${
-              voiceEnabled ? 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950 dark:text-amber-200' : ''
-            }`}
-            title="Bantuan Suara (Text-to-Speech untuk lansia dan disabilitas)"
-          >
-            {voiceEnabled ? <Volume2 size={16} className="text-amber-600" /> : <VolumeX size={16} className="text-muted-foreground" />}
-            {!isDesaStaff && <span className="hidden xl:inline">{voiceEnabled ? 'Suara Aktif' : 'Panduan Suara'}</span>}
-          </Button>
-
-          {/* Low Bandwidth Mode Toggle */}
-          <Button
-            variant={lowBandwidthMode ? "secondary" : "outline"}
-            size="sm"
-            onClick={() => setLowBandwidthMode(!lowBandwidthMode)}
-            className={`h-9 gap-1.5 px-3 text-xs font-bold rounded-lg border-border hidden xl:flex ${
-              isDesaStaff ? 'w-9 px-0 justify-center' : ''} ${
-              lowBandwidthMode ? 'bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-200' : ''
-            }`}
-            title="Mode Hemat Kuota (Offline First)"
-          >
-            {lowBandwidthMode ? <WifiOff size={15} className="text-emerald-600" /> : <Wifi size={15} className="text-muted-foreground" />}
-            {!isDesaStaff && <span>Hemat Kuota</span>}
           </Button>
 
           {/* WhatsApp Notification Bell */}
@@ -306,12 +271,12 @@ export default function Navbar() {
 
                 <Button
                   size="sm"
-                  onClick={openRegisterPetugas}
-                  className="h-9 px-3.5 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-lg shadow-xs gap-1.5"
-                  title="Pendaftaran Akun Aparatur & Petugas Balai Desa Jarak"
+                  onClick={openRegisterAccount}
+                  className="h-9 px-3.5 text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg shadow-xs gap-1.5"
+                  title="Pendaftaran akun warga atau administrator desa"
                 >
                   <ShieldCheck size={15} />
-                  <span>Daftar Petugas Desa</span>
+                  <span>Daftar Akun</span>
                 </Button>
               </div>
             )}
@@ -377,13 +342,13 @@ export default function Navbar() {
 
                 <Button
                   onClick={() => {
-                    openRegisterPetugas();
+                    openRegisterAccount();
                     setMobileMenuOpen(false);
                   }}
                   className="w-full text-xs font-bold h-10 gap-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-xs"
                 >
                   <ShieldCheck size={16} />
-                  <span>Registrasi Petugas Desa Baru</span>
+                  <span>Registrasi Warga / Admin Desa</span>
                 </Button>
               </div>
             )}
