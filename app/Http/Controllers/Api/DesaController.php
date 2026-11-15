@@ -51,29 +51,6 @@ class DesaController extends Controller
             'auditLogs' => fn ($query) => $query->latest(),
         ])->latest()->get();
 
-        if ($user?->role === 'sekdes') {
-            $applications = $applications
-                ->reject(fn (Application $application) => $application->assistance_type === 'DISABILITAS')
-                ->values();
-        } elseif ($user?->role === 'admin') {
-            $applications->each(function (Application $application) {
-                $application->setAttribute('assistance_type', 'RESTRICTED');
-                $application->makeHidden([
-                    'beneficiary',
-                    'latestVerification',
-                    'latest_verification',
-                    'funding',
-                    'procurement',
-                    'handover',
-                    'documents',
-                    'auditLogs',
-                    'audit_logs',
-                    'description',
-                    'needs_description',
-                ]);
-            });
-        }
-
         return response()->json([
             'success' => true,
             'data' => $applications,
@@ -94,7 +71,7 @@ class DesaController extends Controller
     {
         $application = Application::findOrFail($id);
         $user = $request->user();
-        abort_unless($user && $user->role === 'kades', 403, 'Persetujuan bantuan hanya dapat dilakukan oleh Kepala Desa.');
+        abort_unless($user && $user->role === 'admin', 403, 'Persetujuan bantuan hanya dapat dilakukan oleh Admin Desa.');
 
         $validated = $request->validate([
             'decision' => 'required|in:APPROVED,REJECTED',
@@ -142,7 +119,7 @@ class DesaController extends Controller
     {
         $application = Application::findOrFail($id);
         $user = $request->user();
-        abort_unless($user && in_array($user->role, ['kades', 'kasi_kesra', 'sekdes'], true), 403, 'Akun ini tidak berwenang mengelola pengadaan.');
+        abort_unless($user && $user->role === 'admin', 403, 'Akun ini tidak berwenang mengelola pengadaan.');
 
         $validated = $request->validate([
             'rab_items' => 'nullable|array',
@@ -169,7 +146,7 @@ class DesaController extends Controller
     {
         $application = Application::findOrFail($id);
         $user = $request->user();
-        abort_unless($user && $user->role === 'kades', 403, 'Pengesahan BAST hanya dapat dilakukan oleh Kepala Desa.');
+        abort_unless($user && $user->role === 'admin', 403, 'Pengesahan BAST hanya dapat dilakukan oleh Admin Desa.');
 
         $validated = $request->validate([
             'bast_number' => 'required|string',

@@ -273,7 +273,7 @@ export default function Navbar() {
                   size="sm"
                   onClick={openRegisterAccount}
                   className="h-9 px-3.5 text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg shadow-xs gap-1.5"
-                  title="Pendaftaran akun warga atau administrator desa"
+                  title="Pendaftaran akun warga atau Admin Desa"
                 >
                   <ShieldCheck size={15} />
                   <span>Daftar Akun</span>

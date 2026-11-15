@@ -160,7 +160,7 @@ function mapServerUser(apiUser, token) {
     else if (hCode === 'sb' || uName.includes('kalasan barat') || uName.includes('simbar') || uName.includes('rindi')) mappedRole = 'kasun_simbar';
     else if (hCode === 'jk' || uName.includes('jarak kidul')) mappedRole = 'kasun_jarakkidul';
     else mappedRole = 'kasun';
-  } else if (['kasi_kesra', 'kades', 'sekdes', 'admin'].includes(apiUser.role)) {
+  } else if (apiUser.role === 'admin') {
     mappedRole = 'desa';
   } else {
     mappedRole = 'public';
@@ -180,20 +180,12 @@ function mapServerUser(apiUser, token) {
     role: mappedRole,
     apiRole: apiUser.role,
     position: {
-      kades: 'Kepala Desa',
-      sekdes: 'Sekretaris Desa',
-      kasi_kesra: 'Petugas Verifikasi',
-      admin: 'Administrator Sistem',
+      admin: 'Admin Desa',
       kasun: 'Kepala Dusun',
       public: 'Warga'
     }[apiUser.role] || 'Petugas Desa',
     roleLabel: mappedRole === 'desa'
-      ? ({
-        kades: 'Kepala Desa Jarak',
-        sekdes: 'Sekretaris Desa',
-        kasi_kesra: 'Petugas Verifikasi',
-        admin: 'Administrator Sistem'
-      }[apiUser.role] || 'Pemerintah Desa Jarak')
+      ? 'Admin Desa'
       : (mappedRole.startsWith('kasun') ? `Kepala Dusun (${apiUser.hamlet?.name || 'Dusun'})` : 'Warga Masyarakat'),
     dusunName: apiUser.hamlet?.name?.replace(/^dusun\s+/i, '') || null,
     dusunId: findDusunConfig(apiUser.hamlet || {})?.id || (apiUser.hamlet_id ? String(apiUser.hamlet_id) : null),
@@ -936,7 +928,7 @@ export function AppProvider({ children }) {
         demoAccounts,
         demoAccountsError,
         officialKasunAccounts: demoAccounts.filter((account) => account.role === 'kasun'),
-        officialDesaAccounts: demoAccounts.filter((account) => ['kades', 'kasi_kesra', 'sekdes', 'admin'].includes(account.role)),
+        officialDesaAccounts: demoAccounts.filter((account) => account.role === 'admin'),
         loginRole,
         setLoginRole,
         openLogin,

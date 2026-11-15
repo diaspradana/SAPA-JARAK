@@ -280,9 +280,6 @@ class AdminController extends Controller
             'inactive' => User::where('status', 'inactive')->count(),
             'by_role' => [
                 'admin' => User::where('role', 'admin')->count(),
-                'kades' => User::where('role', 'kades')->count(),
-                'sekdes' => User::where('role', 'sekdes')->count(),
-                'kasi_kesra' => User::where('role', 'kasi_kesra')->count(),
                 'kasun' => User::where('role', 'kasun')->count(),
                 'public' => User::where('role', 'public')->count(),
             ],
@@ -409,7 +406,7 @@ class AdminController extends Controller
             'email' => 'required|email|max:255|unique:users,email',
             'phone' => 'required|string|max:30|unique:users,phone',
             'password' => 'required|string|min:6',
-            'role' => 'required|in:admin,kades,sekdes,kasi_kesra,kasun,public',
+            'role' => 'required|in:admin,kasun,public',
             'hamlet_id' => [
                 'nullable',
                 'exists:hamlets,id',
@@ -479,7 +476,7 @@ class AdminController extends Controller
             'email' => ['sometimes', 'required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'phone' => ['sometimes', 'required', 'string', 'max:30', Rule::unique('users')->ignore($user->id)],
             'password' => 'nullable|string|min:6',
-            'role' => 'sometimes|required|in:admin,kades,sekdes,kasi_kesra,kasun,public',
+            'role' => 'sometimes|required|in:admin,kasun,public',
             'hamlet_id' => 'nullable|exists:hamlets,id',
             'status' => 'sometimes|required|in:active,inactive',
         ]);

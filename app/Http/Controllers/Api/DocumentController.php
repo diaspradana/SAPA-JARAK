@@ -141,7 +141,7 @@ class DocumentController extends Controller
                 ], 401);
             }
 
-            $allowedRoles = ['kades', 'kasi_kesra', 'sekdes', 'admin', 'kasun'];
+            $allowedRoles = ['admin', 'kasun'];
             if (!in_array($user->role, $allowedRoles, true)) {
                 return response()->json([
                     'success' => false,
@@ -183,7 +183,7 @@ class DocumentController extends Controller
                 ], 401);
             }
 
-            $allowedRoles = ['kades', 'kasi_kesra', 'sekdes', 'admin', 'kasun'];
+            $allowedRoles = ['admin', 'kasun'];
             if (!in_array($user->role, $allowedRoles, true)) {
                 return response()->json([
                     'success' => false,
@@ -246,7 +246,7 @@ class DocumentController extends Controller
             ], 401);
         }
 
-        $isAdminOrLeader = in_array($user->role, ['kades', 'kasi_kesra', 'admin'], true);
+        $isAdminOrLeader = $user->role === 'admin';
         $isOwner = $document->uploaded_by === $user->id;
 
         if (!$isAdminOrLeader && !$isOwner) {

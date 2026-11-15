@@ -28,7 +28,7 @@ class ApplicationSeeder extends Seeder
         $sb  = Hamlet::where('code', 'SB')->first();
 
         $kasunKls = User::where('email', 'kasun.kalasantimur@jarak-kediri.desa.id')->first();
-        $kades = User::where('role', 'kades')->first();
+        $desaAdmin = User::where('role', 'admin')->first();
 
         // 1. Completed Application (RTLH - #JRK-KLS-2026-009)
         $ben1 = Beneficiary::updateOrCreate(['nik' => '3506120101750001'], [
@@ -91,7 +91,7 @@ class ApplicationSeeder extends Seeder
             'account_code' => '02.01.05 Sub-Bidang Rehab RTLH',
             'allocated_budget' => 17500000,
             'realized_budget' => 17250000,
-            'approved_by' => $kades?->id,
+            'approved_by' => $desaAdmin?->id,
             'approved_at' => now()->subDays(12),
             'status' => 'DISBURSED',
         ]);
@@ -117,7 +117,7 @@ class ApplicationSeeder extends Seeder
             'bast_number' => '045.2/BAST-RTLH/09/2026',
             'handover_date' => now()->subDays(2)->toDateString(),
             'recipient_name' => 'Bpk. Suparno',
-            'official_id' => $kades?->id,
+            'official_id' => $desaAdmin?->id,
             'notes' => 'Pekerjaan telah rampung 100% dan diserahterimakan dengan baik disaksikan Kasun Kalasan.',
             'is_published_to_transparency' => true,
         ]);
@@ -161,7 +161,7 @@ class ApplicationSeeder extends Seeder
             'account_code' => '02.01.07 Bantuan Sosial Disabilitas',
             'allocated_budget' => 2200000,
             'realized_budget' => 2150000,
-            'approved_by' => $kades?->id,
+            'approved_by' => $desaAdmin?->id,
             'approved_at' => now()->subDays(1),
             'status' => 'ALLOCATED',
         ]);

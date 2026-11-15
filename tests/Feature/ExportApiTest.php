@@ -19,7 +19,7 @@ class ExportApiTest extends TestCase
 
     protected Hamlet $hamletKalasan;
     protected Hamlet $hamletSagi;
-    protected User $kades;
+    protected User $desaAdmin;
     protected User $kasun;
 
     protected function setUp(): void
@@ -46,11 +46,11 @@ class ExportApiTest extends TestCase
             'status' => 'active',
         ]);
 
-        $this->kades = User::create([
-            'name' => 'Bpk. Drs. H. Supriyadi',
-            'email' => 'kades@jarak.desa.id',
+        $this->desaAdmin = User::create([
+            'name' => 'Admin Desa',
+            'email' => 'admin@jarak.desa.id',
             'password' => bcrypt('password'),
-            'role' => 'kades',
+            'role' => 'admin',
             'phone' => '0812-3456-7890',
         ]);
 
@@ -100,7 +100,7 @@ class ExportApiTest extends TestCase
             'bast_number' => '045.2/BAST-RTLH/09/2026',
             'handover_date' => now(),
             'recipient_name' => 'Bpk. Suparno',
-            'official_id' => $this->kades->id,
+            'official_id' => $this->desaAdmin->id,
         ]);
 
         Verification::create([
@@ -151,11 +151,11 @@ class ExportApiTest extends TestCase
     }
 
     /**
-     * Test Desa SPJ export CSV with authenticated Kades.
+     * Test Desa SPJ export CSV with authenticated Admin Desa.
      */
-    public function test_desa_spj_export_csv_authenticated_kades(): void
+    public function test_desa_spj_export_csv_authenticated_admin(): void
     {
-        Sanctum::actingAs($this->kades);
+        Sanctum::actingAs($this->desaAdmin);
 
         $response = $this->get('/api/desa/reports/spj/export?format=csv');
 
@@ -165,11 +165,11 @@ class ExportApiTest extends TestCase
     }
 
     /**
-     * Test Desa SPJ Excel shortcut endpoint with authenticated Kades.
+     * Test Desa SPJ Excel shortcut endpoint with authenticated Admin Desa.
      */
-    public function test_desa_spj_excel_shortcut_authenticated_kades(): void
+    public function test_desa_spj_excel_shortcut_authenticated_admin(): void
     {
-        Sanctum::actingAs($this->kades);
+        Sanctum::actingAs($this->desaAdmin);
 
         $response = $this->get('/api/desa/reports/spj/excel');
 
@@ -179,11 +179,11 @@ class ExportApiTest extends TestCase
     }
 
     /**
-     * Test Desa SPJ CSV shortcut endpoint with authenticated Kades.
+     * Test Desa SPJ CSV shortcut endpoint with authenticated Admin Desa.
      */
-    public function test_desa_spj_csv_shortcut_authenticated_kades(): void
+    public function test_desa_spj_csv_shortcut_authenticated_admin(): void
     {
-        Sanctum::actingAs($this->kades);
+        Sanctum::actingAs($this->desaAdmin);
 
         $response = $this->get('/api/desa/reports/spj/csv');
 
@@ -193,11 +193,11 @@ class ExportApiTest extends TestCase
     }
 
     /**
-     * Test Desa Beneficiaries master export with authenticated Kades.
+     * Test Desa Beneficiaries master export with authenticated Admin Desa.
      */
-    public function test_desa_beneficiaries_export_authenticated_kades(): void
+    public function test_desa_beneficiaries_export_authenticated_admin(): void
     {
-        Sanctum::actingAs($this->kades);
+        Sanctum::actingAs($this->desaAdmin);
 
         $response = $this->get('/api/desa/reports/beneficiaries/export?format=csv');
 

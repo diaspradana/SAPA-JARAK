@@ -21,7 +21,7 @@ class ExportServiceTest extends TestCase
     protected ExportService $exportService;
     protected Hamlet $hamletKalasan;
     protected Hamlet $hamletSagi;
-    protected User $kades;
+    protected User $desaAdmin;
     protected User $kasunKalasan;
 
     protected function setUp(): void
@@ -50,11 +50,11 @@ class ExportServiceTest extends TestCase
             'status' => 'active',
         ]);
 
-        $this->kades = User::create([
-            'name' => 'Bpk. Drs. H. Supriyadi',
-            'email' => 'kades@jarak.desa.id',
+        $this->desaAdmin = User::create([
+            'name' => 'Admin Desa',
+            'email' => 'admin@jarak.desa.id',
             'password' => bcrypt('password'),
-            'role' => 'kades',
+            'role' => 'admin',
             'phone' => '0812-3456-7890',
         ]);
 
@@ -118,7 +118,7 @@ class ExportServiceTest extends TestCase
             'bast_number' => '045.2/BAST-RTLH/09/2026',
             'handover_date' => now(),
             'recipient_name' => 'Bpk. Suparno',
-            'official_id' => $this->kades->id,
+            'official_id' => $this->desaAdmin->id,
         ]);
 
         $response = $this->exportService->exportSpj(['year' => date('Y')], 'csv');

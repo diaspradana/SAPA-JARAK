@@ -58,7 +58,7 @@ Route::prefix('kasun')->middleware(['auth:sanctum', 'role:kasun,admin'])->group(
 });
 
 // Pemerintah Desa (Kasi Kesra, Sekdes, Kades, Admin) - Dilindungi Sanctum & Peran Desa
-Route::prefix('desa')->middleware(['auth:sanctum', 'role:kades,kasi_kesra,sekdes,admin'])->group(function () {
+Route::prefix('desa')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
     Route::get('/dashboard', [DesaController::class, 'dashboard']);
     Route::post('/applications/{id}/validate', [DesaController::class, 'validateAndFund']);
     Route::post('/applications/{id}/procurement', [DesaController::class, 'updateProcurement']);
@@ -83,7 +83,7 @@ Route::prefix('documents')->group(function () {
 });
 
 // Admin & System Management (Manajemen Aparatur, Wilayah Dusun, Pengaturan & Audit Log - PRD Seksi 21)
-Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin,kades'])->group(function () {
+Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
     // Ringkasan Sistem & Telemetri
     Route::get('/overview', [AdminController::class, 'overview']);
 

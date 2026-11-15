@@ -10,7 +10,7 @@ Pengujian otomatis backend dibangun di atas kerangka kerja **PHPUnit 11** dan ut
 
 - **Database Mesin Pengujian**: SQLite *In-Memory* (`:memory:`). Tidak mencemari basis data produksi/MySQL lokal dan tidak memerlukan migrasi persisten yang lambat.
 - **Isolasi Transaksi Database**: Menggunakan *trait* `Illuminate\Foundation\Testing\RefreshDatabase` untuk menjalankan migrasi schema sekali dan mereset tabel secara terisolasi pada setiap skenario uji.
-- **Autentikasi & Otorisasi Pengujian**: Menggunakan `Laravel\Sanctum\Sanctum::actingAs()` untuk memverifikasi token dan hak akses peran (`role:kades`, `role:kasun`, `admin`, dan tamu tanpa autentikasi).
+- **Autentikasi & Otorisasi Pengujian**: Menggunakan `Laravel\Sanctum\Sanctum::actingAs()` untuk memverifikasi token dan hak akses peran (`role:admin`, `role:kasun`, dan tamu tanpa autentikasi).
 - **Kecepatan Eksekusi**: Seluruh rangkaian 14 tes dengan 73 assertions tuntas dieksekusi dalam **$\approx 1.5$ detik**.
 
 ---
@@ -41,10 +41,10 @@ Fokus pengujian adalah memverifikasi rute antarmuka pemrograman aplikasi HTTP, o
 | 1 | `test_public_transparency_export_csv_without_auth` | `GET /api/public/transparency/export?format=csv` | `200 OK`, `Content-Type: text/csv; charset=UTF-8`, `Content-Disposition: attachment; filename=...csv` |
 | 2 | `test_public_transparency_export_excel_without_auth` | `GET /api/public/transparency/export?format=excel` | `200 OK`, `Content-Type: application/vnd.ms-excel; charset=UTF-8`, `filename=...xls` |
 | 3 | `test_desa_spj_export_unauthenticated_returns_401` | `GET /api/desa/reports/spj/export` | `401 Unauthorized`, `{"success": false, "message": "Unauthenticated..."}` |
-| 4 | `test_desa_spj_export_csv_authenticated_kades` | `GET /api/desa/reports/spj/export?format=csv` | `200 OK`, `Content-Type: text/csv; charset=UTF-8` dengan token Kades |
-| 5 | `test_desa_spj_excel_shortcut_authenticated_kades` | `GET /api/desa/reports/spj/excel` | `200 OK`, `Content-Type: application/vnd.ms-excel; charset=UTF-8` (Shortcut Excel) |
-| 6 | `test_desa_spj_csv_shortcut_authenticated_kades` | `GET /api/desa/reports/spj/csv` | `200 OK`, `Content-Type: text/csv; charset=UTF-8` (Shortcut CSV) |
-| 7 | `test_desa_beneficiaries_export_authenticated_kades` | `GET /api/desa/reports/beneficiaries/export?format=csv` | `200 OK`, `Content-Type: text/csv; charset=UTF-8`, `filename=Rekapitulasi_Penerima_Bansos_...` |
+| 4 | `test_desa_spj_export_csv_authenticated_admin` | `GET /api/desa/reports/spj/export?format=csv` | `200 OK`, `Content-Type: text/csv; charset=UTF-8` dengan token Admin Desa |
+| 5 | `test_desa_spj_excel_shortcut_authenticated_admin` | `GET /api/desa/reports/spj/excel` | `200 OK`, `Content-Type: application/vnd.ms-excel; charset=UTF-8` (Shortcut Excel) |
+| 6 | `test_desa_spj_csv_shortcut_authenticated_admin` | `GET /api/desa/reports/spj/csv` | `200 OK`, `Content-Type: text/csv; charset=UTF-8` (Shortcut CSV) |
+| 7 | `test_desa_beneficiaries_export_authenticated_admin` | `GET /api/desa/reports/beneficiaries/export?format=csv` | `200 OK`, `Content-Type: text/csv; charset=UTF-8`, `filename=Rekapitulasi_Penerima_Bansos_...` |
 | 8 | `test_kasun_reports_export_authenticated_kasun` | `GET /api/kasun/reports/export?format=csv` | `200 OK`, `Content-Type: text/csv; charset=UTF-8`, `filename=Antrean_Survei_Kasun_...` |
 
 ---
@@ -90,10 +90,10 @@ Export Api (Tests\Feature\ExportApi)
  ✔ Public transparency export csv without auth
  ✔ Public transparency export excel without auth
  ✔ Desa spj export unauthenticated returns 401
- ✔ Desa spj export csv authenticated kades
- ✔ Desa spj excel shortcut authenticated kades
- ✔ Desa spj csv shortcut authenticated kades
- ✔ Desa beneficiaries export authenticated kades
+ ✔ Desa spj export csv authenticated admin
+ ✔ Desa spj excel shortcut authenticated admin
+ ✔ Desa spj csv shortcut authenticated admin
+ ✔ Desa beneficiaries export authenticated admin
  ✔ Kasun reports export authenticated kasun
 
 OK (14 tests, 73 assertions)

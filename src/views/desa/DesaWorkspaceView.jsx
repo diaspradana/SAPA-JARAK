@@ -65,37 +65,38 @@ const STATUS_OPTIONS = [
 
 const MENU_ITEMS = [
   { id: 'overview', label: 'Dashboard Utama', icon: BarChart3 },
-  { id: 'applications', label: 'Manajemen Pengajuan', icon: FileText },
-  { id: 'verification', label: 'Verifikasi Tingkat 2', icon: ClipboardCheck },
-  { id: 'validation', label: 'Validasi Data', icon: ShieldCheck },
+  { id: 'applications', label: 'Daftar Pengajuan', icon: FileText },
+  { id: 'verification', label: 'Pemeriksaan Berkas', icon: ClipboardCheck },
+  { id: 'recommendations', label: 'Keputusan & Alokasi Bantuan', icon: CheckCircle2 },
+  { id: 'procurement', label: 'Pelaksanaan & RAB', icon: Hammer },
+  { id: 'handover', label: 'Serah Terima (BAST)', icon: FileCheck2, adminOnly: true },
+  { id: 'validation', label: 'Pemeriksaan Kualitas Data', icon: ShieldCheck },
   { id: 'residents', label: 'Akun Warga', icon: Users },
+  { id: 'rtlh', label: 'Rekap Pengajuan RTLH', icon: Home },
+  { id: 'disability', label: 'Rekap Pengajuan Disabilitas', icon: HeartPulse, restricted: true },
+  { id: 'statistics', label: 'Statistik per Dusun', icon: MapIcon },
   { id: 'kasun_accounts', label: 'Akun Kasun', icon: UserRoundCog },
-  { id: 'rtlh', label: 'Data RTLH', icon: Home },
-  { id: 'disability', label: 'Data Disabilitas', icon: HeartPulse, restricted: true },
-  { id: 'recommendations', label: 'Rekomendasi Bantuan', icon: CheckCircle2 },
-  { id: 'statistics', label: 'Peta & Statistik', icon: MapIcon },
+  { id: 'users', label: 'Akun Admin Desa', icon: UserRoundCog, adminOnly: true },
   { id: 'reports', label: 'Laporan', icon: FileText },
-  { id: 'audit', label: 'Audit Log', icon: Activity },
-  { id: 'users', label: 'Akun Administrator', icon: UserRoundCog, adminOnly: true },
+  { id: 'audit', label: 'Riwayat Aktivitas', icon: Activity },
   { id: 'settings', label: 'Pengaturan Sistem', icon: Settings, adminOnly: true },
-  { id: 'procurement', label: 'Pengadaan RAB', icon: Hammer },
-  { id: 'handover', label: 'BAST & Ledger', icon: FileCheck2, kadesOnly: true },
-  { id: 'profile', label: 'Profil', icon: UserRound }
+  { id: 'profile', label: 'Profil Petugas', icon: UserRound }
 ];
 
 const MENU_GROUPS = [
-  { id: 'workflow', label: 'Pengajuan & Verifikasi', itemIds: ['applications', 'verification', 'validation', 'recommendations'] },
-  { id: 'data', label: 'Data Warga & Wilayah', itemIds: ['residents', 'rtlh', 'disability', 'statistics'] },
-  { id: 'operations', label: 'Pelaksanaan & Laporan', itemIds: ['procurement', 'handover', 'reports'] },
-  { id: 'accounts', label: 'Manajemen Akun', itemIds: ['kasun_accounts', 'users'] },
-  { id: 'administration', label: 'Administrasi Sistem', itemIds: ['audit', 'settings', 'profile'] }
+  { id: 'inspection', label: '1. Pemeriksaan Desa', itemIds: ['applications', 'verification'] },
+  { id: 'decision', label: '2. Keputusan Bantuan', itemIds: ['recommendations'] },
+  { id: 'execution', label: '3. Pelaksanaan Bantuan', itemIds: ['procurement'] },
+  { id: 'handover', label: '4. Serah Terima', itemIds: ['handover'] },
+  { id: 'data', label: 'Data & Akun Pendukung', itemIds: ['validation', 'residents', 'rtlh', 'disability', 'statistics', 'kasun_accounts', 'users'] },
+  { id: 'administration', label: 'Laporan & Administrasi', itemIds: ['reports', 'audit', 'settings', 'profile'] }
 ];
 
 function getRoleCategory(user) {
+  if (user?.apiRole === 'admin') return 'admin';
+  if (user?.role === 'admin' || user?.role === 'desa') return 'admin';
   const identity = `${user?.position || ''} ${user?.roleLabel || ''} ${user?.subtitle || ''} ${user?.name || ''} ${user?.email || ''}`.toLowerCase();
-  if (/administrator|admin sistem/.test(identity)) return 'admin';
-  if (/kepala desa|kades/.test(identity)) return 'kades';
-  if (/sekretaris desa|sekdes|operator desa/.test(identity)) return 'operator';
+  if (/admin desa|administrator/.test(identity)) return 'admin';
   return 'verifier';
 }
 
@@ -210,7 +211,7 @@ export default function DesaWorkspaceView() {
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [filterType, setFilterType] = useState('ALL');
   const [selectedApplication, setSelectedApplication] = useState(null);
-  const [openMenuGroup, setOpenMenuGroup] = useState('workflow');
+  const [openMenuGroup, setOpenMenuGroup] = useState('inspection');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [managedAccounts, setManagedAccounts] = useState([]);
   const [accountHamlets, setAccountHamlets] = useState([]);
@@ -233,14 +234,12 @@ export default function DesaWorkspaceView() {
   });
   const [accountsError, setAccountsError] = useState('');
   const roleCategory = getRoleCategory(currentUser);
-  const isVillageHead = roleCategory === 'kades';
-  const isSystemAdmin = roleCategory === 'admin';
+  const isDesaAdmin = roleCategory === 'admin';
   const duplicateIds = useMemo(() => getPossibleDuplicates(applications), [applications]);
 
   const visibleMenu = MENU_ITEMS.filter((item) => (
-    (!item.adminOnly || isSystemAdmin)
-    && (!item.kadesOnly || isVillageHead)
-    && (!item.restricted || isVillageHead || roleCategory === 'verifier')
+    (!item.adminOnly || isDesaAdmin)
+    && (!item.restricted || isDesaAdmin || roleCategory === 'verifier')
   ));
   const visibleMenuGroups = MENU_GROUPS.map((group) => ({
     ...group,
@@ -411,7 +410,7 @@ export default function DesaWorkspaceView() {
       <ApplicationTable
         rows={rows}
         onSelect={(application) => openApplication(application, activeTab === 'verification' ? 'verification' : 'applications')}
-        onFinalReview={allowFinalReview && isVillageHead ? (application) => {
+        onFinalReview={allowFinalReview && isDesaAdmin ? (application) => {
           setActiveTicketNumber(application.ticketNumber);
           setActiveTab('final-approval');
         } : undefined}
@@ -432,6 +431,31 @@ export default function DesaWorkspaceView() {
 
     return (
       <div className="space-y-6">
+        <Card className="rounded-2xl border-emerald-700/20 bg-emerald-50/60 dark:bg-emerald-950/20">
+          <CardContent className="space-y-3 p-4 sm:p-5">
+            <div>
+              <p className="text-sm font-bold">Alur kerja bantuan</p>
+              <p className="text-xs text-muted-foreground">Ikuti tahap secara berurutan; keputusan dan perubahan status dilakukan dari proses terkait.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+              {[
+                ['1', 'Pemeriksaan desa', 'Berkas & hasil survei'],
+                ['2', 'Keputusan', 'Kelayakan & alokasi dana'],
+                ['3', 'Pelaksanaan', 'RAB & progres bantuan'],
+                ['4', 'BAST', 'Serah terima & penyelesaian']
+              ].map(([step, title, description]) => (
+                <div key={step} className="flex items-start gap-2 rounded-xl border border-border/70 bg-card p-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-xs font-bold text-white">{step}</span>
+                  <span>
+                    <span className="block text-xs font-bold">{title}</span>
+                    <span className="mt-0.5 block text-[11px] text-muted-foreground">{description}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground">Pengajuan adalah data transaksi, bukan CRUD bebas. Kelola akun di menu pendukung; proses pengajuan melalui tahap di atas.</p>
+          </CardContent>
+        </Card>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatCard label="Total pengajuan" value={applications.length} note={`${hamlets.length} dusun tercatat`} icon={FileText} />
           <StatCard label="Perlu tindak lanjut" value={attentionCount} note="Antrean verifikasi / dikembalikan" icon={AlertTriangle} tone="warning" />
@@ -540,7 +564,7 @@ export default function DesaWorkspaceView() {
             <p className="font-bold">Pemeriksaan ulang hasil Kasun</p>
             <p className="mt-1 text-xs text-muted-foreground">
               Cocokkan identitas, dokumen, hasil survei, dan rekomendasi sebelum berkas diproses lebih lanjut.
-              {isVillageHead ? ' Persetujuan akhir hanya tersedia untuk akun Kepala Desa.' : ' Halaman ini tidak menerbitkan persetujuan bantuan.'}
+              {isDesaAdmin ? ' Admin Desa dapat menetapkan keputusan akhir sesuai kewenangan yang diberikan.' : ' Halaman ini tidak menerbitkan persetujuan bantuan.'}
             </p>
           </div>
         </CardContent>
@@ -572,7 +596,7 @@ export default function DesaWorkspaceView() {
               <p><b>Pemeriksaan duplikasi NIK:</b> {duplicateIds.has(selectedApplication.id) ? 'Perlu klarifikasi' : 'Tidak terdeteksi pada data saat ini'}</p>
               <p className="sm:col-span-2"><b>Catatan survei:</b> {selectedApplication.survey?.notes || 'Belum ada catatan survei.'}</p>
             </div>
-            {isVillageHead && selectedApplication.status === 'FORWARDED_TO_DESA' && (
+            {isDesaAdmin && selectedApplication.status === 'FORWARDED_TO_DESA' && (
               <Button onClick={() => setActiveTab('final-approval')} className="bg-emerald-700 text-white hover:bg-emerald-800">Tinjau persetujuan akhir</Button>
             )}
           </CardContent>
@@ -608,7 +632,7 @@ export default function DesaWorkspaceView() {
     const categoryLabels = {
       kasun: { title: 'Manajemen Akun Kasun', description: 'Daftarkan akun Kasun, tetapkan dusun tugas, dan kelola akses masuk.' },
       warga: { title: 'Manajemen Akun Warga', description: 'Kelola akun warga yang terdaftar pada sistem.' },
-      admin: { title: 'Manajemen Akun Administrator', description: 'Lihat, perbarui, atau hapus akun administrator sistem.' }
+      admin: { title: 'Manajemen Akun Admin Desa', description: 'Kelola akun Admin Desa; nama akun membedakan petugas yang bertugas.' }
     };
     const config = categoryLabels[accountCategory];
     if (!config) return null;
@@ -809,7 +833,7 @@ export default function DesaWorkspaceView() {
           <p className="text-xs text-muted-foreground">Daftar diurutkan berdasarkan skor survei Kasun tertinggi. Ini merupakan bahan pertimbangan, bukan penetapan penerima atau jaminan memperoleh bantuan.</p>
         </CardContent>
       </Card>
-      {renderApplicationPanel(`Calon untuk ditinjau (${eligibleRecommendations.length})`, eligibleRecommendations, 'Kepala Desa meninjau rekomendasi dan memegang kewenangan persetujuan akhir.', true, true)}
+      {renderApplicationPanel(`Calon untuk ditinjau (${eligibleRecommendations.length})`, eligibleRecommendations, 'Admin Desa meninjau rekomendasi dan menetapkan keputusan bantuan.', true, true)}
     </div>
   );
 
@@ -869,7 +893,7 @@ export default function DesaWorkspaceView() {
       <CardContent className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-xl border border-border/70 p-4"><p className="text-xs font-bold">Jenis bantuan</p><p className="mt-1 text-xs text-muted-foreground">RTLH dan bantuan Disabilitas.</p></div>
         <div className="rounded-xl border border-border/70 p-4"><p className="text-xs font-bold">Tahapan</p><p className="mt-1 text-xs text-muted-foreground">Pengajuan → verifikasi Kasun → pemeriksaan desa → keputusan → pelaksanaan → BAST.</p></div>
-        <div className="rounded-xl border border-border/70 p-4 sm:col-span-2"><p className="text-xs font-bold">Kewenangan persetujuan</p><p className="mt-1 text-xs text-muted-foreground">Persetujuan akhir bantuan berada pada Kepala Desa; admin sistem mengelola teknis dan tidak otomatis memiliki kewenangan persetujuan.</p></div>
+        <div className="rounded-xl border border-border/70 p-4 sm:col-span-2"><p className="text-xs font-bold">Kewenangan persetujuan</p><p className="mt-1 text-xs text-muted-foreground">Admin Desa mengelola verifikasi lanjutan, keputusan bantuan, pelaksanaan, dan serah terima sesuai kewenangan yang diberikan.</p></div>
       </CardContent>
     </Card>
   );
@@ -897,12 +921,12 @@ export default function DesaWorkspaceView() {
     if (activeTab === 'recommendations') return renderRecommendations();
     if (activeTab === 'statistics') return renderStatistics();
     if (activeTab === 'audit') return renderAudit();
-    if (activeTab === 'settings' && isSystemAdmin) return renderSettings();
+    if (activeTab === 'settings' && isDesaAdmin) return renderSettings();
     if (activeTab === 'profile') return renderProfile();
     if (activeTab === 'reports') return <DesaReportsView onBack={() => setActiveTab('overview')} />;
     if (activeTab === 'procurement') return <DesaProcurementView onBack={() => setActiveTab('overview')} />;
-    if (activeTab === 'handover' && isVillageHead) return <DesaHandoverView onBack={() => setActiveTab('overview')} />;
-    if (activeTab === 'final-approval' && isVillageHead) return <DesaValidationView onBack={() => setActiveTab('recommendations')} />;
+    if (activeTab === 'handover' && isDesaAdmin) return <DesaHandoverView onBack={() => setActiveTab('overview')} />;
+    if (activeTab === 'final-approval' && isDesaAdmin) return <DesaValidationView onBack={() => setActiveTab('recommendations')} />;
     return renderOverview();
   };
 
@@ -1068,7 +1092,7 @@ export default function DesaWorkspaceView() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-black">{titles[activeTab] || 'Dashboard Utama'}</h2>
             <Badge variant="outline">
-              {isVillageHead ? 'Kepala Desa' : isSystemAdmin ? 'Admin Sistem' : roleCategory === 'operator' ? 'Operator Desa' : 'Petugas Verifikasi'}
+              {isDesaAdmin ? 'Admin Desa' : 'Petugas Desa'}
             </Badge>
           </div>
           {renderActiveView()}

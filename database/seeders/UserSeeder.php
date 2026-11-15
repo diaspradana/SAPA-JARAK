@@ -23,20 +23,20 @@ class UserSeeder extends Seeder
         $users = [
             // Admin Desa
             [
-                'name' => 'Administrator SAPA-JARAK',
+                'name' => 'Admin Desa SAPA-JARAK',
                 'email' => 'admin@jarak-kediri.desa.id',
                 'phone' => '081234567000',
                 'password' => Hash::make('password'),
                 'role' => 'admin',
                 'hamlet_id' => null,
             ],
-            // Pemerintah Desa Officials
+            // Admin Desa roles can use individual names but share one permission role.
             [
                 'name' => 'Bpk. Ahmad Fauzi (Kasi Kesra)',
                 'email' => 'kesra@jarak-kediri.desa.id',
                 'phone' => '081234567001',
                 'password' => Hash::make('password'),
-                'role' => 'kasi_kesra',
+                'role' => 'admin',
                 'hamlet_id' => null,
             ],
             [
@@ -44,7 +44,7 @@ class UserSeeder extends Seeder
                 'email' => 'sekdes@jarak-kediri.desa.id',
                 'phone' => '081234567002',
                 'password' => Hash::make('password'),
-                'role' => 'sekdes',
+                'role' => 'admin',
                 'hamlet_id' => null,
             ],
             [
@@ -52,7 +52,7 @@ class UserSeeder extends Seeder
                 'email' => 'kades@jarak-kediri.desa.id',
                 'phone' => '081234567003',
                 'password' => Hash::make('password'),
-                'role' => 'kades',
+                'role' => 'admin',
                 'hamlet_id' => null,
             ],
             // 4 Kepala Dusun (Kasun) Resmi

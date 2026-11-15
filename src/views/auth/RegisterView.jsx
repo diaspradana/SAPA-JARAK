@@ -63,7 +63,7 @@ export default function RegisterView() {
       const result = await register({
         ...formData,
         accountType,
-        positionLabel: isAdmin ? 'Administrator Desa' : undefined,
+        positionLabel: isAdmin ? 'Admin Desa' : undefined,
       });
       if (!result.success) setErrorText(result.message || 'Pendaftaran belum berhasil.');
     } catch (error) {
@@ -92,7 +92,7 @@ export default function RegisterView() {
             </div>
             <h1 className="text-2xl font-extrabold text-foreground">Daftar Akun SAPA-JARAK</h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Registrasi mandiri tersedia untuk warga dan administrator desa.
+              Registrasi mandiri tersedia untuk warga dan Admin Desa.
             </p>
           </header>
 

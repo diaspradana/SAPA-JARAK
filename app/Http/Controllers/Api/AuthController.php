@@ -61,7 +61,7 @@ class AuthController extends Controller
             if ($registrationCode === '' || !hash_equals(strtoupper($registrationCode), $inputCode)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Kode undangan administrator desa tidak valid atau belum dikonfigurasi.',
+                    'message' => 'Kode undangan Admin Desa tidak valid atau belum dikonfigurasi.',
                     'errors' => ['auth_code' => ['Kode otorisasi tidak sesuai.']]
                 ], 403);
             }
@@ -96,7 +96,7 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => $accountType === 'admin_desa'
-                ? "Registrasi administrator desa berhasil! Selamat datang, {$user->name}."
+                ? "Registrasi Admin Desa berhasil! Selamat datang, {$user->name}."
                 : "Pendaftaran berhasil! Selamat datang, {$user->name}.",
             'data' => [
                 'token_type' => 'Bearer',
@@ -237,20 +237,14 @@ class AuthController extends Controller
                     'phone' => $user->phone,
                     'role' => $user->role,
                     'position' => [
-                        'kades' => 'Kepala Desa',
-                        'sekdes' => 'Sekretaris Desa',
-                        'kasi_kesra' => 'Petugas Verifikasi',
-                        'admin' => 'Administrator Sistem',
+                        'admin' => 'Admin Desa',
                         'kasun' => 'Kepala Dusun',
                         'public' => 'Warga / Pelapor',
                     ][$user->role] ?? 'Petugas Desa',
                     'role_label' => $user->role === 'kasun'
                         ? "Kasun {$user->hamlet?->name}"
                         : ([
-                            'kades' => 'Kepala Desa',
-                            'sekdes' => 'Sekretaris Desa',
-                            'kasi_kesra' => 'Petugas Verifikasi',
-                            'admin' => 'Administrator Sistem',
+                            'admin' => 'Admin Desa',
                             'public' => 'Warga / Pelapor',
                         ][$user->role] ?? 'Petugas Desa'),
                     'hamlet_name' => $user->hamlet?->name,

@@ -6,6 +6,8 @@ use Tests\TestCase;
 use App\Models\User;
 use App\Models\Hamlet;
 use App\Models\Beneficiary;
+use App\Models\Application;
+use App\Models\Verification;
 use App\Models\Setting;
 use App\Models\AuditLog;
 use App\Services\ScoringService;
@@ -17,7 +19,7 @@ class AdminApiTest extends TestCase
     use RefreshDatabase;
 
     protected User $admin;
-    protected User $kades;
+    protected User $desaAdmin;
     protected User $kasun;
     protected Hamlet $hamletKalasan;
 
@@ -42,12 +44,12 @@ class AdminApiTest extends TestCase
             'status' => 'active',
         ]);
 
-        $this->kades = User::create([
-            'name' => 'Bpk. Drs. H. Supriyadi (Kepala Desa)',
-            'email' => 'kades@jarak-kediri.desa.id',
-            'phone' => '081234567003',
+        $this->desaAdmin = User::create([
+            'name' => 'Sekretaris Desa',
+            'email' => 'sekdes@jarak-kediri.desa.id',
+            'phone' => '081234567002',
             'password' => bcrypt('password'),
-            'role' => 'kades',
+            'role' => 'admin',
             'status' => 'active',
         ]);
 
@@ -77,7 +79,7 @@ class AdminApiTest extends TestCase
         $responseAudit->assertStatus(401);
     }
 
-    public function test_forbidden_for_non_admin_or_kades_users(): void
+    public function test_forbidden_for_non_admin_users(): void
     {
         Sanctum::actingAs($this->kasun, ['role:kasun', '*']);
 
@@ -108,6 +110,51 @@ class AdminApiTest extends TestCase
         ]);
     }
 
+    public function test_admin_desa_accounts_can_view_complete_forwarded_disability_application(): void
+    {
+        $beneficiary = Beneficiary::create([
+            'name' => 'Ibu Siti Aminah',
+            'nik' => '3506121405850001',
+            'kk_number' => '3506121008030002',
+            'hamlet_id' => $this->hamletKalasan->id,
+            'rt' => '03',
+            'rw' => '02',
+            'address' => 'Dusun Kalasan Timur',
+        ]);
+        $application = Application::create([
+            'ticket_number' => '#JRK-KLS-2026-001',
+            'beneficiary_id' => $beneficiary->id,
+            'hamlet_id' => $this->hamletKalasan->id,
+            'assistance_type' => 'DISABILITAS',
+            'status' => 'FORWARDED_TO_VILLAGE',
+            'description' => 'Membutuhkan kursi roda untuk mobilitas sehari-hari.',
+            'submitted_at' => now(),
+        ]);
+        Verification::create([
+            'application_id' => $application->id,
+            'verifier_id' => $this->kasun->id,
+            'verification_level' => 'KASUN',
+            'parameters_checklist' => ['input' => ['disabilityLevel' => 'sedang_ketergantungan']],
+            'calculated_score' => 72,
+            'recommendation' => 'LAYAK',
+            'notes' => 'Kebutuhan telah diverifikasi di lapangan.',
+            'verified_at' => now(),
+        ]);
+
+        foreach ([$this->admin, $this->desaAdmin] as $user) {
+            Sanctum::actingAs($user, ["role:{$user->role}", '*']);
+
+            $this->getJson('/api/desa/dashboard')
+                ->assertOk()
+                ->assertJsonPath('data.0.assistance_type', 'DISABILITAS')
+                ->assertJsonPath('data.0.status', 'FORWARDED_TO_VILLAGE')
+                ->assertJsonPath('data.0.beneficiary.name', 'Ibu Siti Aminah')
+                ->assertJsonPath('data.0.beneficiary.nik', '3506121405850001')
+                ->assertJsonPath('data.0.hamlet.name', 'Dusun Kalasan')
+                ->assertJsonPath('data.0.latest_verification.calculated_score', 72);
+        }
+    }
+
     public function test_admin_can_list_users_with_filters(): void
     {
         Sanctum::actingAs($this->admin, ['role:admin', '*']);
@@ -130,7 +177,7 @@ class AdminApiTest extends TestCase
             'email' => 'sekdes.baru@jarak-kediri.desa.id',
             'phone' => '081234567999',
             'password' => 'secret123',
-            'role' => 'sekdes',
+            'role' => 'admin',
             'status' => 'active',
         ];
 
@@ -142,13 +189,34 @@ class AdminApiTest extends TestCase
 
         $this->assertDatabaseHas('users', [
             'email' => 'sekdes.baru@jarak-kediri.desa.id',
-            'role' => 'sekdes',
+            'role' => 'admin',
         ]);
 
         $this->assertDatabaseHas('audit_logs', [
             'action' => 'USER_CREATED',
             'entity_type' => User::class,
         ]);
+    }
+
+    public function test_admin_cannot_create_or_assign_legacy_officer_roles(): void
+    {
+        Sanctum::actingAs($this->admin, ['role:admin', '*']);
+
+        foreach (['kades', 'sekdes', 'kasi_kesra'] as $index => $legacyRole) {
+            $this->postJson('/api/admin/users', [
+                'name' => "Legacy role {$legacyRole}",
+                'email' => "legacy{$index}@jarak-kediri.desa.id",
+                'phone' => "0812345679{$index}0",
+                'password' => 'secret123',
+                'role' => $legacyRole,
+            ])->assertUnprocessable()
+                ->assertJsonValidationErrors(['role']);
+        }
+
+        $this->putJson("/api/admin/users/{$this->desaAdmin->id}", [
+            'role' => 'kades',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['role']);
     }
 
     public function test_admin_cannot_create_user_with_duplicate_email_or_phone(): void
@@ -371,9 +439,9 @@ class AdminApiTest extends TestCase
         $this->assertDatabaseMissing('users', ['phone' => '081234567902']);
     }
 
-    public function test_kades_cannot_read_or_manage_administrator_accounts(): void
+    public function test_non_admin_roles_cannot_read_or_manage_admin_accounts(): void
     {
-        Sanctum::actingAs($this->kades, ['role:kades', '*']);
+        Sanctum::actingAs($this->kasun, ['role:kasun', '*']);
 
         $this->getJson('/api/admin/managed-accounts/admin')->assertForbidden();
         $this->putJson("/api/admin/managed-accounts/admin/{$this->admin->id}", [
