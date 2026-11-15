@@ -89,6 +89,11 @@ export default function WargaBerandaView({ onNav }) {
               <p className="text-emerald-100/90 text-sm mt-1">
                 {currentUser?.dusunName ? `Warga Dusun ${currentUser.dusunName}, Desa Jarak` : 'Warga Desa Jarak'}
               </p>
+              {(currentUser?.rt || currentUser?.rw || currentUser?.address) && (
+                <p className="text-emerald-100/80 text-xs mt-1">
+                  RT {currentUser.rt || '-'} / RW {currentUser.rw || '-'}{currentUser.address ? ` · ${currentUser.address}` : ''}
+                </p>
+              )}
             </div>
           </div>
           <div className="mt-5 flex flex-wrap gap-2">

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use Tests\TestCase;
 use App\Models\User;
 use App\Models\Hamlet;
+use App\Models\Beneficiary;
 use App\Models\Setting;
 use App\Models\AuditLog;
 use App\Services\ScoringService;
@@ -270,12 +271,20 @@ class AdminApiTest extends TestCase
     public function test_admin_can_create_update_and_delete_warga_accounts(): void
     {
         Sanctum::actingAs($this->admin, ['role:admin', '*']);
+        Beneficiary::create([
+            'name' => 'Warga Sumber Opsi',
+            'hamlet_id' => $this->hamletKalasan->id,
+            'rt' => '01',
+            'rw' => '02',
+            'address' => 'Dusun Kalasan',
+        ]);
 
         $create = $this->postJson('/api/admin/managed-accounts/warga', [
             'name' => 'Warga Baru',
             'email' => 'warga.baru@example.test',
             'phone' => '081234567904',
             'password' => 'secure-pass-123',
+            'hamlet_id' => $this->hamletKalasan->id,
             'nik' => '3506010101010003',
             'kk_number' => '3506010101010004',
             'rt' => '01',
@@ -286,6 +295,7 @@ class AdminApiTest extends TestCase
         $wargaId = $create->json('data.id');
         $this->assertDatabaseHas('users', [
             'id' => $wargaId,
+            'hamlet_id' => $this->hamletKalasan->id,
             'nik' => '3506010101010003',
             'kk_number' => '3506010101010004',
             'address' => 'Dusun Kalasan',
@@ -312,7 +322,7 @@ class AdminApiTest extends TestCase
         ]);
 
         $response->assertUnprocessable()
-            ->assertJsonValidationErrors(['nik', 'kk_number', 'rt', 'rw', 'address']);
+            ->assertJsonValidationErrors(['hamlet_id', 'nik', 'kk_number', 'rt', 'rw', 'address']);
         $this->assertDatabaseMissing('users', ['phone' => '081234567906']);
     }
 

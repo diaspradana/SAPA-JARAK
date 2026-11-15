@@ -10,6 +10,7 @@ use App\Models\Setting;
 use App\Models\AuditLog;
 use App\Models\Application;
 use App\Models\Document;
+use App\Services\HamletLocationService;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -95,28 +96,45 @@ class AdminController extends Controller
         ]);
     }
 
-    public function createManagedAccount(Request $request, string $category)
+    public function createManagedAccount(Request $request, string $category, HamletLocationService $locations)
     {
         $role = $this->managedAccountRole($request, $category);
         if ($category === 'admin') {
             abort(405, 'Pembuatan akun administrator tidak tersedia melalui menu ini.');
         }
 
+        $hamletId = filter_var($request->input('hamlet_id'), FILTER_VALIDATE_INT) ?: null;
+        $hamletOptions = $locations->options()->first(
+            fn (array $option) => (int) $option['id'] === $hamletId
+        );
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|max:255|unique:users,email',
             'phone' => 'required|string|max:30|unique:users,phone',
             'password' => 'required|string|min:8',
             'hamlet_id' => [
+                Rule::requiredIf(in_array($role, ['public', 'kasun'], true)),
                 'nullable',
-                'exists:hamlets,id',
-                Rule::requiredIf($role === 'kasun'),
+                'integer',
+                Rule::exists('hamlets', 'id')->where('status', 'active'),
             ],
             'status' => 'nullable|in:active,inactive',
             'nik' => [Rule::requiredIf($role === 'public'), 'nullable', 'string', 'digits:16', 'unique:users,nik'],
             'kk_number' => [Rule::requiredIf($role === 'public'), 'nullable', 'string', 'digits:16'],
-            'rt' => [Rule::requiredIf($role === 'public'), 'nullable', 'string', 'max:5'],
-            'rw' => [Rule::requiredIf($role === 'public'), 'nullable', 'string', 'max:5'],
+            'rt' => [
+                Rule::requiredIf($role === 'public'),
+                'nullable',
+                'string',
+                'max:5',
+                Rule::in($hamletOptions['rt_values'] ?? []),
+            ],
+            'rw' => [
+                Rule::requiredIf($role === 'public'),
+                'nullable',
+                'string',
+                'max:5',
+                Rule::in($hamletOptions['rw_values'] ?? []),
+            ],
             'address' => [Rule::requiredIf($role === 'public'), 'nullable', 'string', 'max:255'],
         ]);
 
@@ -137,7 +155,7 @@ class AdminController extends Controller
             'phone' => $validated['phone'],
             'password' => Hash::make($validated['password']),
             'role' => $role,
-            'hamlet_id' => $role === 'kasun' ? $validated['hamlet_id'] : null,
+            'hamlet_id' => $validated['hamlet_id'] ?? null,
             'status' => $validated['status'] ?? 'active',
             'nik' => $validated['nik'] ?? null,
             'kk_number' => $validated['kk_number'] ?? null,
@@ -156,10 +174,23 @@ class AdminController extends Controller
         ], 201);
     }
 
-    public function updateManagedAccount(Request $request, string $category, int $id)
+    public function updateManagedAccount(Request $request, string $category, int $id, HamletLocationService $locations)
     {
         $role = $this->managedAccountRole($request, $category);
         $user = User::where('role', $role)->findOrFail($id);
+        $hamletId = filter_var(
+            $request->input('hamlet_id', $user->hamlet_id),
+            FILTER_VALIDATE_INT
+        ) ?: null;
+        $hamletOptions = $locations->options()->first(
+            fn (array $option) => (int) $option['id'] === $hamletId
+        );
+        $locationChanged = $role === 'public' && (
+            $request->exists('hamlet_id')
+            || $request->exists('rt')
+            || $request->exists('rw')
+        );
+
         $validated = $request->validate([
             'name' => 'sometimes|required|string|max:255',
             'email' => ['sometimes', 'nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
@@ -167,15 +198,16 @@ class AdminController extends Controller
             'password' => 'nullable|string|min:8',
             'hamlet_id' => [
                 'sometimes',
-                Rule::requiredIf($role === 'kasun'),
+                Rule::requiredIf($role === 'kasun' || $locationChanged),
                 'nullable',
-                'exists:hamlets,id',
+                'integer',
+                Rule::exists('hamlets', 'id')->where('status', 'active'),
             ],
             'status' => 'sometimes|required|in:active,inactive',
             'nik' => ['sometimes', 'required', 'string', 'digits:16', Rule::unique('users', 'nik')->ignore($user->id)],
             'kk_number' => 'sometimes|required|string|digits:16',
-            'rt' => 'sometimes|required|string|max:5',
-            'rw' => 'sometimes|required|string|max:5',
+            'rt' => ['sometimes', Rule::requiredIf($locationChanged), 'string', 'max:5', Rule::in($hamletOptions['rt_values'] ?? [])],
+            'rw' => ['sometimes', Rule::requiredIf($locationChanged), 'string', 'max:5', Rule::in($hamletOptions['rw_values'] ?? [])],
             'address' => 'sometimes|required|string|max:255',
         ]);
 
@@ -203,10 +235,6 @@ class AdminController extends Controller
             $user->password = Hash::make($validated['password']);
         }
         unset($validated['password']);
-        if ($role === 'public') {
-            unset($validated['hamlet_id']);
-        }
-
         $user->fill($validated);
         $user->save();
         $this->syncKasunHamlet($user, $oldValues);

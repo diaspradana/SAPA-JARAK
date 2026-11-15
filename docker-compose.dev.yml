@@ -1,0 +1,43 @@
+services:
+  app:
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8000
+      OPTIMIZE_LARAVEL: "false"
+    volumes:
+      - ./app:/var/www/html/app
+      - ./bootstrap/app.php:/var/www/html/bootstrap/app.php
+      - ./bootstrap/providers.php:/var/www/html/bootstrap/providers.php
+      - ./config:/var/www/html/config
+      - ./database/migrations:/var/www/html/database/migrations
+      - ./resources/views:/var/www/html/resources/views
+      - ./routes:/var/www/html/routes
+      - ./docker/php/development.ini:/usr/local/etc/php/conf.d/zz-development.ini:ro
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend-dev.Dockerfile
+    container_name: sapa_jarak_frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_PROXY_TARGET: http://app
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./index.html:/app/index.html
+      - ./src:/app/src
+      - ./vite.config.js:/app/vite.config.js
+      - ./tailwind.config.js:/app/tailwind.config.js
+      - ./postcss.config.js:/app/postcss.config.js
+      - sapa_node_modules:/app/node_modules
+    networks:
+      - sapa_network
+    depends_on:
+      app:
+        condition: service_started
+
+volumes:
+  sapa_node_modules:
+    driver: local

@@ -3,6 +3,8 @@ import { useApp } from '../../context/AppContext';
 import sapaJarakLogo from '../../assets/sapa-jarak-logo.png';
 import StatusBadge from '../../components/common/StatusBadge';
 import SyncStatusBanner from '../../components/common/SyncStatusBanner';
+import KasunSurveyResultView from './KasunSurveyResultView';
+import KasunSurveyView from './KasunSurveyView';
 import { DUSUN_LIST, getKasunDusunId } from '../../data/desaConfig';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -14,8 +16,6 @@ import {
   CalendarDays,
   CheckCircle2,
   ChevronRight,
-  ClipboardCheck,
-  Clock3,
   FileClock,
   FileSearch,
   Home,
@@ -32,11 +32,9 @@ import {
 
 const sections = [
   { id: 'dashboard', label: 'Dashboard', icon: Home },
-  { id: 'incoming', label: 'Pengajuan Masuk', icon: FileSearch },
   { id: 'rtlh', label: 'Verifikasi RTLH', icon: Home },
   { id: 'disability', label: 'Verifikasi Disabilitas', icon: Accessibility },
   { id: 'schedule', label: 'Jadwal Survei', icon: CalendarDays },
-  { id: 'results', label: 'Hasil Verifikasi', icon: ClipboardCheck },
   { id: 'revisions', label: 'Perbaikan Data', icon: RotateCcw },
   { id: 'map', label: 'Peta Wilayah', icon: MapPin },
   { id: 'history', label: 'Riwayat Verifikasi', icon: FileClock },
@@ -63,9 +61,6 @@ function formatDate(value) {
 }
 
 function displayName(application) {
-  if (application.assistanceType === 'DISABILITAS') {
-    return application.beneficiaryMaskedName || 'Warga (data terbatas)';
-  }
   return application.beneficiaryName || 'Nama belum tersedia';
 }
 
@@ -136,6 +131,8 @@ export default function KasunDashboardView() {
     logout,
   } = useApp();
   const [activeSection, setActiveSection] = useState('dashboard');
+  const [viewingSurvey, setViewingSurvey] = useState(false);
+  const [viewingResult, setViewingResult] = useState(false);
   const [search, setSearch] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -163,37 +160,49 @@ export default function KasunDashboardView() {
   const section = sections.find(item => item.id === activeSection) || sections[0];
   const sectionApplications = useMemo(() => {
     let rows = kasunApps;
-    if (activeSection === 'rtlh') rows = rows.filter(application => application.assistanceType === 'RTLH');
-    if (activeSection === 'disability') rows = rows.filter(application => application.assistanceType === 'DISABILITAS');
+    if (activeSection === 'rtlh') rows = rows.filter(application =>
+      application.assistanceType === 'RTLH' && waitingStatuses.includes(application.status) && !application.survey
+    );
+    if (activeSection === 'disability') rows = rows.filter(application =>
+      application.assistanceType === 'DISABILITAS' && waitingStatuses.includes(application.status) && !application.survey
+    );
     if (activeSection === 'schedule') rows = rows.filter(application => waitingStatuses.includes(application.status));
-    if (activeSection === 'results') rows = surveyedApps;
     if (activeSection === 'revisions') rows = revisionApps;
     if (activeSection === 'history') {
-      rows = rows.filter(application => application.timeline?.some(item =>
-        ['KASUN_SURVEY', 'RETURNED', 'FORWARDED_TO_DESA'].includes(item.status)
-      ));
+      rows = rows.filter(application =>
+        Boolean(application.survey)
+        || application.timeline?.some(item => ['KASUN_SURVEY', 'RETURNED', 'FORWARDED_TO_DESA'].includes(item.status))
+      );
     }
 
     const query = search.trim().toLowerCase();
     if (query) {
       rows = rows.filter(application =>
-        [application.ticketNumber, application.beneficiaryMaskedName, application.beneficiaryName]
+        [application.ticketNumber, application.beneficiaryName]
           .some(value => value?.toLowerCase().includes(query))
       );
     }
 
     return rows;
-  }, [activeSection, kasunApps, revisionApps, search, surveyedApps]);
+  }, [activeSection, kasunApps, revisionApps, search]);
 
   const handleInspect = ticketNumber => {
     const application = kasunApps.find(item => item.ticketNumber === ticketNumber);
     setActiveTicketNumber(ticketNumber);
-    setCurrentView(application?.survey && application.status !== 'RETURNED' ? 'kasun_hasil' : 'kasun_verifikasi');
     setSidebarOpen(false);
+    if (application?.survey && application.status !== 'RETURNED') {
+      setViewingSurvey(false);
+      setViewingResult(true);
+    } else {
+      setViewingResult(false);
+      setViewingSurvey(true);
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSectionChange = sectionId => {
+    setViewingSurvey(false);
+    setViewingResult(false);
     setActiveSection(sectionId);
     setSearch('');
     setSidebarOpen(false);
@@ -267,7 +276,7 @@ export default function KasunDashboardView() {
         <nav aria-label="Menu Kasun" className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
           {sections.map(item => {
             const Icon = item.icon;
-            const badgeCount = item.id === 'incoming' ? waitingApps.length : item.id === 'revisions' ? revisionApps.length : null;
+            const badgeCount = item.id === 'revisions' ? revisionApps.length : null;
             return (
               <button
                 key={item.id}
@@ -324,7 +333,7 @@ export default function KasunDashboardView() {
             <nav aria-label="Lokasi halaman" className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
               <span className="hidden font-semibold sm:inline">Ruang Kerja Kasun</span>
               <ChevronRight size={13} className="hidden shrink-0 sm:block" />
-              <span className="truncate font-bold text-foreground">{section.label}</span>
+              <span className="truncate font-bold text-foreground">{viewingResult ? 'Hasil Verifikasi' : section.label}</span>
             </nav>
           </div>
 
@@ -369,6 +378,19 @@ export default function KasunDashboardView() {
         </header>
 
         <main className="mx-auto max-w-[1440px] space-y-5 px-4 py-5 sm:px-6 sm:py-7">
+      {viewingSurvey ? (
+        <KasunSurveyView
+          onBack={() => setViewingSurvey(false)}
+          onSubmitted={(isReturned) => {
+            setViewingSurvey(false);
+            setActiveSection(isReturned ? 'revisions' : 'history');
+            setSearch('');
+          }}
+        />
+      ) : viewingResult ? (
+        <KasunSurveyResultView onBack={() => setViewingResult(false)} />
+      ) : (
+        <>
       <Card className="overflow-hidden rounded-3xl border-emerald-900/10 shadow-sm">
         <CardContent className="flex flex-col justify-between gap-4 bg-gradient-to-br from-emerald-950 to-emerald-800 p-5 text-white sm:flex-row sm:items-center sm:p-6">
           <div className="flex items-start gap-4">
@@ -411,8 +433,8 @@ export default function KasunDashboardView() {
             <>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {[
-                  { label: 'Pengajuan masuk', value: kasunApps.length, icon: FileSearch, color: 'text-sky-600', detail: 'Seluruh berkas di dusun ini' },
-                  { label: 'Menunggu pemeriksaan', value: waitingApps.length, icon: Clock3, color: 'text-amber-600', detail: 'Perlu dicocokkan dengan lapangan' },
+                  { label: 'Menunggu RTLH', value: waitingApps.filter(application => application.assistanceType === 'RTLH').length, icon: Home, color: 'text-emerald-600', detail: 'Perlu verifikasi rumah' },
+                  { label: 'Menunggu Disabilitas', value: waitingApps.filter(application => application.assistanceType === 'DISABILITAS').length, icon: Accessibility, color: 'text-sky-600', detail: 'Perlu verifikasi alat bantu' },
                   { label: 'Terverifikasi / diteruskan', value: verifiedApps.length, icon: CheckCircle2, color: 'text-emerald-600', detail: 'Sudah diteruskan untuk penilaian desa' },
                   { label: 'Perlu perbaikan', value: revisionApps.length, icon: RotateCcw, color: 'text-rose-600', detail: 'Dikembalikan dengan catatan' },
                 ].map(metric => {
@@ -432,20 +454,49 @@ export default function KasunDashboardView() {
                 })}
               </div>
 
-              <Card className="rounded-3xl">
-                <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-border">
-                  <div>
-                    <CardTitle>Perlu pemeriksaan</CardTitle>
-                    <p className="mt-1 text-xs text-muted-foreground">Cocokkan informasi formulir dengan kondisi faktual di lapangan.</p>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => setActiveSection('incoming')}>Semua pengajuan</Button>
-                </CardHeader>
-                <KasunApplicationList
-                  applications={waitingApps.slice(0, 5)}
-                  onInspect={handleInspect}
-                  emptyMessage="Tidak ada pengajuan yang menunggu pemeriksaan."
-                />
-              </Card>
+              <div className="grid gap-4 lg:grid-cols-2">
+                {[
+                  {
+                    id: 'rtlh',
+                    title: 'Verifikasi RTLH',
+                    description: 'Tinjau kondisi rumah dan kebutuhan perbaikan.',
+                    count: kasunApps.filter(application => application.assistanceType === 'RTLH').length,
+                    waiting: waitingApps.filter(application => application.assistanceType === 'RTLH').length,
+                    icon: Home,
+                    color: 'text-emerald-700',
+                  },
+                  {
+                    id: 'disability',
+                    title: 'Verifikasi Disabilitas',
+                    description: 'Tinjau kebutuhan alat bantu dan dukungan penerima.',
+                    count: kasunApps.filter(application => application.assistanceType === 'DISABILITAS').length,
+                    waiting: waitingApps.filter(application => application.assistanceType === 'DISABILITAS').length,
+                    icon: Accessibility,
+                    color: 'text-sky-700',
+                  },
+                ].map(item => {
+                  const Icon = item.icon;
+                  return (
+                    <Card key={item.id} className="rounded-2xl">
+                      <CardContent className="flex items-center justify-between gap-4 p-5">
+                        <div className="flex items-start gap-3">
+                          <Icon className={item.color} size={21} />
+                          <div>
+                            <h2 className="font-bold">{item.title}</h2>
+                            <p className="mt-1 text-xs text-muted-foreground">{item.description}</p>
+                            <p className="mt-2 text-xs font-semibold text-muted-foreground">
+                              {item.count} pengajuan · {item.waiting} menunggu verifikasi
+                            </p>
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={() => handleSectionChange(item.id)}>
+                          Buka
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
 
               <Card className="rounded-3xl border-amber-300/70 bg-amber-50/60 dark:bg-amber-950/20">
                 <CardContent className="flex items-start gap-3 p-5 text-sm">
@@ -464,12 +515,10 @@ export default function KasunDashboardView() {
                 <div>
                   <CardTitle>{sectionTitle} — Dusun {currentDusun.name}</CardTitle>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {activeSection === 'disability'
-                      ? 'Tinjau kebutuhan dukungan yang relevan; identitas ditampilkan secara terbatas.'
-                      : 'Data yang ditampilkan dibatasi pada dusun tanggung jawab Anda.'}
+                    Data pengajuan dan identitas penerima ditampilkan sesuai wilayah tugas Anda.
                   </p>
                 </div>
-                {['incoming', 'rtlh', 'disability', 'results', 'revisions'].includes(activeSection) && (
+                {['rtlh', 'disability', 'revisions', 'history'].includes(activeSection) && (
                   <input
                     type="search"
                     value={search}
@@ -481,7 +530,7 @@ export default function KasunDashboardView() {
                 )}
               </CardHeader>
 
-              {['incoming', 'rtlh', 'disability', 'results', 'revisions'].includes(activeSection) && (
+              {['rtlh', 'disability', 'revisions'].includes(activeSection) && (
                 <KasunApplicationList
                   applications={sectionApplications}
                   onInspect={handleInspect}
@@ -533,7 +582,12 @@ export default function KasunDashboardView() {
                           <p className="font-mono text-xs font-bold text-emerald-800 dark:text-emerald-300">#{application.ticketNumber}</p>
                           <p className="mt-1 font-bold">{displayName(application)}</p>
                         </div>
-                        <span className="text-xs text-muted-foreground">{application.survey?.verifiedBy || 'Petugas Kasun'}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">{application.survey?.verifiedBy || 'Petugas Kasun'}</span>
+                          <Button size="sm" variant="outline" onClick={() => handleInspect(application.ticketNumber)}>
+                            {application.survey && application.status !== 'RETURNED' ? 'Lihat hasil' : 'Tinjau pengajuan'}
+                          </Button>
+                        </div>
                       </div>
                       {(application.timeline || [])
                         .filter(item => ['KASUN_SURVEY', 'RETURNED', 'FORWARDED_TO_DESA'].includes(item.status))
@@ -615,6 +669,8 @@ export default function KasunDashboardView() {
         </>
       )}
       </div>
+        </>
+      )}
         </main>
       </div>
     </div>

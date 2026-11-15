@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import HamletAddressFields from '../../components/common/HamletAddressFields';
+import useHamletOptions from '../../hooks/useHamletOptions';
 import {
   User,
   Edit3,
@@ -19,6 +21,7 @@ import {
 
 export default function WargaProfilView() {
   const { currentUser, updateProfile, updatePassword, showToast } = useApp();
+  const { hamlets, loading: hamletsLoading, error: hamletsError } = useHamletOptions();
 
   const [editMode, setEditMode] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
@@ -28,6 +31,7 @@ export default function WargaProfilView() {
     phone: currentUser?.phone || '',
     nik: currentUser?.nik || '',
     kkNumber: currentUser?.kkNumber || '',
+    hamletId: currentUser?.hamletId || '',
     address: currentUser?.address || '',
     rt: currentUser?.rt || '',
     rw: currentUser?.rw || '',
@@ -52,6 +56,7 @@ export default function WargaProfilView() {
         phone: updated.phone || '',
         nik: updated.nik || '',
         kkNumber: updated.kkNumber || '',
+        hamletId: updated.hamletId || '',
         address: updated.address || '',
         rt: updated.rt || '',
         rw: updated.rw || '',
@@ -71,6 +76,7 @@ export default function WargaProfilView() {
       phone: currentUser?.phone || '',
       nik: currentUser?.nik || '',
       kkNumber: currentUser?.kkNumber || '',
+      hamletId: currentUser?.hamletId || '',
       address: currentUser?.address || '',
       rt: currentUser?.rt || '',
       rw: currentUser?.rw || '',
@@ -112,6 +118,7 @@ export default function WargaProfilView() {
     { key: 'phone', label: 'No. Handphone', icon: Phone, value: currentUser?.phone || '-' },
     { key: 'email', label: 'Email', icon: Mail, value: currentUser?.email || '-' },
     { key: 'dusunName', label: 'Dusun', icon: MapPin, value: currentUser?.dusunName ? `Dusun ${currentUser.dusunName}` : '-' },
+    { key: 'rtRw', label: 'RT / RW', icon: MapPin, value: `RT ${currentUser?.rt || '-'} / RW ${currentUser?.rw || '-'}` },
     { key: 'address', label: 'Alamat Lengkap', icon: MapPin, value: currentUser?.address || '-' },
   ];
 
@@ -208,35 +215,25 @@ export default function WargaProfilView() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">RT</label>
-                  <input
-                    type="text"
-                    value={editData.rt}
-                    onChange={(e) => setEditData({ ...editData, rt: e.target.value })}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">RW</label>
-                  <input
-                    type="text"
-                    value={editData.rw}
-                    onChange={(e) => setEditData({ ...editData, rw: e.target.value })}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">Alamat Lengkap</label>
-                <textarea
-                  value={editData.address}
-                  onChange={(e) => setEditData({ ...editData, address: e.target.value })}
-                  rows={2}
-                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
-                />
-              </div>
+              <HamletAddressFields
+                idPrefix="profile"
+                hamlets={hamlets}
+                loading={hamletsLoading}
+                error={hamletsError}
+                hamletId={editData.hamletId}
+                rt={editData.rt}
+                rw={editData.rw}
+                address={editData.address}
+                onHamletChange={(hamletId) => setEditData((previous) => ({
+                  ...previous,
+                  hamletId,
+                  rt: '',
+                  rw: ''
+                }))}
+                onRtChange={(rt) => setEditData((previous) => ({ ...previous, rt }))}
+                onRwChange={(rw) => setEditData((previous) => ({ ...previous, rw }))}
+                onAddressChange={(address) => setEditData((previous) => ({ ...previous, address }))}
+              />
               <div className="flex gap-2 pt-1">
                 <button
                   type="button"

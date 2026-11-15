@@ -64,6 +64,7 @@ class ApplicationService
             'status' => 'SUBMITTED',
             'description' => $data['description'] ?? null,
             'needs_description' => $data['needs_description'] ?? null,
+            'assistance_details' => $data['assistance_details'] ?? null,
             'submitted_at' => now(),
         ]);
 

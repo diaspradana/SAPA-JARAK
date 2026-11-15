@@ -31,13 +31,21 @@ const API_STATUS_MAP = {
   REJECTED: 'REJECTED'
 };
 
+function normalizeHamletName(name = '') {
+  return String(name).replace(/^dusun\s+/i, '').trim().toLowerCase();
+}
+
+function findDusunConfig(hamlet = {}) {
+  return DUSUN_LIST.find((dusun) => (
+    String(dusun.code).toLowerCase() === String(hamlet.code || '').toLowerCase()
+    || normalizeHamletName(dusun.name) === normalizeHamletName(hamlet.name)
+  ));
+}
+
 function mapServerApplication(application) {
   const beneficiary = application.beneficiary || {};
   const hamlet = application.hamlet || {};
-  const hamletConfig = DUSUN_LIST.find((item) => (
-    item.code.toLowerCase() === String(hamlet.code || '').toLowerCase()
-    || item.name.toLowerCase() === String(hamlet.name || '').toLowerCase()
-  ));
+  const hamletConfig = findDusunConfig(hamlet);
   const verification = application.latest_verification || application.latestVerification || {};
   const checklist = verification.parameters_checklist || {};
   const funding = application.funding || {};
@@ -62,7 +70,7 @@ function mapServerApplication(application) {
     ticketNumber,
     assistanceType: application.assistance_type,
     dusunId: hamletConfig?.id || String(hamlet.id || ''),
-    dusunName: hamlet.name || '',
+    dusunName: String(hamlet.name || '').replace(/^dusun\s+/i, ''),
     rt: beneficiary.rt || '',
     rw: beneficiary.rw || '',
     address: beneficiary.address || '',
@@ -187,8 +195,8 @@ function mapServerUser(apiUser, token) {
         admin: 'Administrator Sistem'
       }[apiUser.role] || 'Pemerintah Desa Jarak')
       : (mappedRole.startsWith('kasun') ? `Kepala Dusun (${apiUser.hamlet?.name || 'Dusun'})` : 'Warga Masyarakat'),
-    dusunName: apiUser.hamlet?.name || null,
-    dusunId: DUSUN_LIST.find((dusun) => dusun.code.toLowerCase() === apiUser.hamlet?.code?.toLowerCase())?.id || null,
+    dusunName: apiUser.hamlet?.name?.replace(/^dusun\s+/i, '') || null,
+    dusunId: findDusunConfig(apiUser.hamlet || {})?.id || (apiUser.hamlet_id ? String(apiUser.hamlet_id) : null),
     hamletId: apiUser.hamlet_id || apiUser.hamlet?.id || null,
     token,
     avatarInitials: (apiUser.name || '').split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase()
@@ -446,10 +454,10 @@ export function AppProvider({ children }) {
   };
 
   const fetchManagedAccounts = async (category) => {
-    const accountsPayload = await serverRequest(`/admin/managed-accounts/${encodeURIComponent(category)}`);
-    const hamletsPayload = category === 'kasun'
-      ? await serverRequest('/admin/hamlets')
-      : { data: [] };
+    const [accountsPayload, hamletsPayload] = await Promise.all([
+      serverRequest(`/admin/managed-accounts/${encodeURIComponent(category)}`),
+      serverRequest('/public/hamlets')
+    ]);
     return {
       users: accountsPayload.data,
       hamlets: hamletsPayload.data
@@ -530,6 +538,7 @@ export function AppProvider({ children }) {
         phone: profile.phone,
         nik: profile.nik || null,
         kk_number: profile.kkNumber || null,
+        hamlet_id: profile.hamletId || null,
         rt: profile.rt || null,
         rw: profile.rw || null,
         address: profile.address || null
@@ -586,15 +595,13 @@ export function AppProvider({ children }) {
   });
 
   const submitApplication = async (formData, photoFiles = []) => {
-    const dusun = DUSUN_LIST.find((item) => item.id === formData.dusunId);
-    if (!dusun) throw new Error('Dusun yang dipilih tidak dikenali.');
-
     const hamletPayload = await serverRequest('/public/hamlets');
     const hamlet = (hamletPayload.data || []).find((item) => (
-      String(item.code).toLowerCase() === dusun.code.toLowerCase()
-      || String(item.name).toLowerCase() === dusun.name.toLowerCase()
+      String(item.id) === String(formData.dusunId)
     ));
-    if (!hamlet) throw new Error(`Data Dusun ${dusun.name} belum tersedia di server.`);
+    if (!hamlet) throw new Error('Dusun yang dipilih tidak tersedia di database.');
+    const dusun = findDusunConfig(hamlet);
+    const dusunName = String(hamlet.name || '').replace(/^dusun\s+/i, '');
 
     const documentIds = [];
     for (const file of photoFiles) {
@@ -616,9 +623,10 @@ export function AppProvider({ children }) {
         kk_number: formData.kkNumber || null,
         beneficiary_phone: formData.phone || formData.reporterPhone,
         hamlet_id: hamlet.id,
-        rt: formData.rt || '01',
-        rw: formData.rw || '01',
-        address: formData.address || `RT ${formData.rt || '01'} / RW ${formData.rw || '01'}, Dusun ${dusun.name}, Desa Jarak`,
+        rt: formData.rt,
+        rw: formData.rw,
+        address: formData.address?.trim()
+          || `RT ${formData.rt} / RW ${formData.rw}, Dusun ${dusunName}, Desa Jarak`,
         is_unregistered: Boolean(formData.isUnregistered),
         assistance_type: formData.assistanceType,
         reporter_name: formData.reporterName,
@@ -626,6 +634,16 @@ export function AppProvider({ children }) {
         reporter_relationship: formData.reporterRelation || 'Diri Sendiri',
         description: formData.description,
         needs_description: formData.description,
+        assistance_details: formData.assistanceType === 'RTLH'
+          ? {
+              damaged_components: formData.assistanceDetails.damagedComponents,
+              damage_location: formData.assistanceDetails.damageLocation || null,
+            }
+          : {
+              disability_type: formData.assistanceDetails.disabilityType,
+              requested_device: formData.assistanceDetails.requestedDevice,
+              functional_impact: formData.assistanceDetails.functionalImpact,
+            },
         otp: formData.otp,
         document_ids: documentIds
       }
@@ -635,10 +653,10 @@ export function AppProvider({ children }) {
       id: payload.data.id || payload.data.ticket_number,
       ticketNumber: String(payload.data.ticket_number || '').replace(/^#/, ''),
       assistanceType: formData.assistanceType,
-      dusunId: dusun.id,
-      dusunName: dusun.name,
-      rt: formData.rt || '01',
-      rw: formData.rw || '01',
+      dusunId: dusun?.id || String(hamlet.id),
+      dusunName,
+      rt: formData.rt,
+      rw: formData.rw,
       address: formData.address || '',
       beneficiaryName: formData.beneficiaryName,
       beneficiaryMaskedName: `${formData.beneficiaryName?.slice(0, 1) || 'W'}***`,
@@ -786,8 +804,8 @@ export function AppProvider({ children }) {
       showToast('Mohon lengkapi data wajib (Nama, No HP, Kata Sandi).', 'warning');
       return { success: false, message: 'Data tidak lengkap.' };
     }
-    if (!isAdmin && (!formData.nik || !formData.kkNumber || !formData.rt || !formData.rw || !formData.address)) {
-      showToast('Mohon lengkapi NIK, Nomor KK, RT, RW, dan alamat.', 'warning');
+    if (!isAdmin && (!formData.nik || !formData.kkNumber || !formData.hamletId || !formData.rt || !formData.rw || !formData.address)) {
+      showToast('Mohon lengkapi NIK, Nomor KK, dusun, RT, RW, dan alamat.', 'warning');
       return { success: false, message: 'Data identitas warga belum lengkap.' };
     }
 
@@ -809,6 +827,7 @@ export function AppProvider({ children }) {
           account_type: isAdmin ? 'admin_desa' : 'warga',
           role: isAdmin ? 'admin' : 'public',
           auth_code: formData.authCode,
+          hamlet_id: isAdmin ? null : formData.hamletId,
           nik: formData.nik,
           kk_number: formData.kkNumber,
           rt: formData.rt,

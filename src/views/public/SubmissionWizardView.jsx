@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useVoice } from '../../context/VoiceContext';
 import ImageUploader from '../../components/common/ImageUploader';
-import { DUSUN_LIST } from '../../data/desaConfig';
+import HamletAddressFields from '../../components/common/HamletAddressFields';
+import useHamletOptions from '../../hooks/useHamletOptions';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
@@ -34,6 +35,7 @@ import { cn } from '../../lib/utils';
 export default function SubmissionWizardView() {
   const { requestApplicationOtp, submitApplication, setCurrentView, setActiveTicketNumber, showToast, currentUser } = useApp();
   const { speak } = useVoice();
+  const { hamlets, loading: hamletsLoading, error: hamletsError } = useHamletOptions();
 
   const [step, setStep] = useState(1);
   const [createdTicket, setCreatedTicket] = useState(null);
@@ -41,9 +43,9 @@ export default function SubmissionWizardView() {
   // Form State
   const [formData, setFormData] = useState({
     assistanceType: 'RTLH',
-    dusunId: currentUser?.dusunId || 'kalasan',
-    rt: currentUser?.rt || '01',
-    rw: currentUser?.rw || '01',
+    dusunId: currentUser?.hamletId ? String(currentUser.hamletId) : '',
+    rt: currentUser?.rt || '',
+    rw: currentUser?.rw || '',
     address: currentUser?.address || '',
     
     beneficiaryName: currentUser?.name || '',
@@ -53,6 +55,13 @@ export default function SubmissionWizardView() {
     isUnregistered: false,
     
     description: '',
+    assistanceDetails: {
+      damagedComponents: [],
+      damageLocation: '',
+      disabilityType: '',
+      requestedDevice: '',
+      functionalImpact: '',
+    },
     photos: [],
     
     reporterName: currentUser?.name || '',
@@ -86,9 +95,9 @@ export default function SubmissionWizardView() {
         kkNumber: currentUser.kkNumber || '3506121008030002',
         reporterName: currentUser.name,
         reporterPhone: currentUser.phone || '081234567890',
-        dusunId: currentUser.dusunId || 'kalasan',
-        rt: currentUser.rt || '02',
-        rw: currentUser.rw || '01',
+        dusunId: currentUser.hamletId ? String(currentUser.hamletId) : '',
+        rt: currentUser.rt || '',
+        rw: currentUser.rw || '',
         address: currentUser.address || 'Dekat Balai Dusun',
       }));
       showToast('Data akun Anda berhasil diisikan ke formulir!', 'success');
@@ -96,13 +105,16 @@ export default function SubmissionWizardView() {
   };
 
   const handleFillDemo = () => {
+    const demoHamlet = hamlets.find((hamlet) => /jarak lor/i.test(hamlet.name));
+    const demoRt = demoHamlet?.rt_values?.[0] || '';
+    const demoRw = demoHamlet?.rw_values?.[0] || '';
     setPhotoFiles([]);
     setOtpSent(false);
     setFormData({
       assistanceType: 'RTLH',
-      dusunId: 'jaraklor',
-      rt: '03',
-      rw: '01',
+      dusunId: demoHamlet ? String(demoHamlet.id) : '',
+      rt: demoRt,
+      rw: demoRw,
       address: 'Sebelah barat Masjid Nurul Huda, Dusun Jarak Lor',
       beneficiaryName: 'Bpk. Danang Prasetyo',
       nik: '3506121405850001',
@@ -110,6 +122,13 @@ export default function SubmissionWizardView() {
       phone: '081234567890',
       isUnregistered: false,
       description: 'Atap dapur dan ruang tengah bocor parah saat musim hujan. Dinding samping anyaman bambu (gedek) sudah lapuk dan miring.',
+      assistanceDetails: {
+        damagedComponents: ['atap', 'dinding'],
+        damageLocation: 'Atap dapur dan dinding samping rumah',
+        disabilityType: '',
+        requestedDevice: '',
+        functionalImpact: '',
+      },
       photos: [
         'https://images.unsplash.com/photo-1590381105924-c72589b9ef3f?auto=format&fit=crop&q=80&w=800'
       ],
@@ -136,7 +155,17 @@ export default function SubmissionWizardView() {
       if (!formData.rw) errs.rw = "Nomor RW wajib diisi";
     } else if (currentStep === 3) {
       if (!formData.description.trim() || formData.description.length < 10) {
-        errs.description = "Ceritakan kondisi rumah atau kebutuhan alat minimal 10 karakter agar kasun paham";
+        errs.description = `Ceritakan ${formData.assistanceType === 'RTLH' ? 'kondisi rumah' : 'kebutuhan penerima'} minimal 10 karakter agar kasun paham`;
+      }
+      if (formData.assistanceType === 'RTLH' && !formData.assistanceDetails.damagedComponents.length) {
+        errs.damagedComponents = 'Pilih setidaknya satu bagian rumah yang perlu diperbaiki';
+      }
+      if (formData.assistanceType === 'DISABILITAS') {
+        if (!formData.assistanceDetails.disabilityType) errs.disabilityType = 'Pilih ragam disabilitas atau keterbatasan';
+        if (!formData.assistanceDetails.requestedDevice) errs.requestedDevice = 'Pilih alat bantu yang dibutuhkan';
+        if (!formData.assistanceDetails.functionalImpact.trim() || formData.assistanceDetails.functionalImpact.trim().length < 10) {
+          errs.functionalImpact = 'Jelaskan dampak keterbatasan terhadap aktivitas sehari-hari (minimal 10 karakter)';
+        }
       }
     } else if (currentStep === 4) {
       if (!formData.reporterName.trim()) errs.reporterName = "Nama pelapor/pemohon wajib diisi";
@@ -547,69 +576,29 @@ export default function SubmissionWizardView() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-                  <div className="sm:col-span-1 space-y-1.5">
-                    <Label htmlFor="dusunId" className="text-sm font-bold text-foreground">
-                      Wilayah Dusun <span className="text-rose-600">*</span>
-                    </Label>
-                    <select
-                      id="dusunId"
-                      value={formData.dusunId}
-                      onChange={(e) => setFormData({ ...formData, dusunId: e.target.value })}
-                      className="h-12 w-full rounded-xl border border-input bg-background px-3 text-sm font-semibold text-foreground shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
-                    >
-                      {DUSUN_LIST.map((d) => (
-                        <option key={d.id} value={d.id}>
-                          Dusun {d.name} (Kasun: {d.kasunName.split(' ')[0]})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="rt" className="text-sm font-bold text-foreground">
-                      Nomor RT <span className="text-rose-600">*</span>
-                    </Label>
-                    <Input
-                      id="rt"
-                      type="text"
-                      placeholder="Contoh: 02"
-                      value={formData.rt}
-                      onChange={(e) => setFormData({ ...formData, rt: e.target.value })}
-                      className="h-12 text-sm sm:text-base rounded-xl"
-                    />
-                    {errors.rt && <p className="text-xs text-rose-600 font-bold">{errors.rt}</p>}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="rw" className="text-sm font-bold text-foreground">
-                      Nomor RW <span className="text-rose-600">*</span>
-                    </Label>
-                    <Input
-                      id="rw"
-                      type="text"
-                      placeholder="Contoh: 01"
-                      value={formData.rw}
-                      onChange={(e) => setFormData({ ...formData, rw: e.target.value })}
-                      className="h-12 text-sm sm:text-base rounded-xl"
-                    />
-                    {errors.rw && <p className="text-xs text-rose-600 font-bold">{errors.rw}</p>}
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="address" className="text-sm font-bold text-foreground">
-                    Patokan Alamat Rumah / Petunjuk Jalan
-                  </Label>
-                  <Input
-                    id="address"
-                    type="text"
-                    placeholder="Contoh: Depan musholla Al-Ikhlas, timur pos kamling RT 02"
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="h-12 text-sm sm:text-base rounded-xl"
-                  />
-                </div>
+                <HamletAddressFields
+                  idPrefix="application"
+                  hamlets={hamlets}
+                  loading={hamletsLoading}
+                  error={hamletsError}
+                  addressRequired={false}
+                  addressLabel="Patokan Alamat Rumah / Petunjuk Jalan"
+                  addressPlaceholder="Contoh: Depan musholla, timur pos kamling RT 02"
+                  hamletId={formData.dusunId}
+                  rt={formData.rt}
+                  rw={formData.rw}
+                  address={formData.address}
+                  fieldErrors={{ hamletId: errors.dusunId, rt: errors.rt, rw: errors.rw }}
+                  onHamletChange={(dusunId) => setFormData((previous) => ({
+                    ...previous,
+                    dusunId,
+                    rt: '',
+                    rw: ''
+                  }))}
+                  onRtChange={(rt) => setFormData((previous) => ({ ...previous, rt }))}
+                  onRwChange={(rw) => setFormData((previous) => ({ ...previous, rw }))}
+                  onAddressChange={(address) => setFormData((previous) => ({ ...previous, address }))}
+                />
 
               </div>
             </div>
@@ -619,20 +608,150 @@ export default function SubmissionWizardView() {
           {step === 3 && (
             <div className="space-y-6 animate-in fade-in-0 duration-200">
               <div className="border-b border-border pb-4">
-                <h2 className="text-lg font-bold text-foreground">Tahap 3: Cerita Kondisi & Lampiran Foto</h2>
+                <h2 className="text-lg font-bold text-foreground">
+                  Tahap 3: {formData.assistanceType === 'RTLH' ? 'Kondisi Rumah RTLH' : 'Kebutuhan Disabilitas'} & Lampiran
+                </h2>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  Jelaskan kondisi fisik rumah atau kebutuhan alat mobilitas agar Kepala Dusun dapat mempersiapkan peninjauan.
+                  {formData.assistanceType === 'RTLH'
+                    ? 'Pilih bagian rumah yang rusak dan jelaskan kondisinya agar Kepala Dusun dapat menyiapkan survei perbaikan.'
+                    : 'Pilih ragam disabilitas dan alat bantu yang diperlukan, lalu jelaskan dampaknya pada aktivitas sehari-hari.'}
                 </p>
               </div>
 
+              {formData.assistanceType === 'RTLH' ? (
+                <div className="space-y-4 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-900 dark:bg-emerald-950/20">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-bold text-foreground">
+                      Bagian rumah yang perlu diperbaiki <span className="text-rose-600">*</span>
+                    </Label>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {[
+                        ['atap', 'Atap / genteng'],
+                        ['dinding', 'Dinding'],
+                        ['lantai', 'Lantai'],
+                        ['sanitasi', 'Sanitasi / MCK'],
+                      ].map(([value, label]) => {
+                        const checked = formData.assistanceDetails.damagedComponents.includes(value);
+                        return (
+                          <label key={value} className="flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => setFormData((previous) => {
+                                const components = previous.assistanceDetails.damagedComponents;
+                                return {
+                                  ...previous,
+                                  assistanceDetails: {
+                                    ...previous.assistanceDetails,
+                                    damagedComponents: checked
+                                      ? components.filter((component) => component !== value)
+                                      : [...components, value],
+                                  },
+                                };
+                              })}
+                              className="h-4 w-4 accent-emerald-700"
+                            />
+                            {label}
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {errors.damagedComponents && <p className="text-xs font-bold text-rose-600">{errors.damagedComponents}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="damageLocation" className="text-sm font-bold text-foreground">Lokasi kerusakan utama (opsional)</Label>
+                    <Input
+                      id="damageLocation"
+                      value={formData.assistanceDetails.damageLocation}
+                      onChange={(event) => setFormData((previous) => ({
+                        ...previous,
+                        assistanceDetails: { ...previous.assistanceDetails, damageLocation: event.target.value },
+                      }))}
+                      placeholder="Contoh: atap ruang dapur dan dinding kamar belakang"
+                      className="h-11 rounded-xl"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4 rounded-2xl border border-sky-200 bg-sky-50/60 p-4 dark:border-sky-900 dark:bg-sky-950/20">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="disabilityType" className="text-sm font-bold text-foreground">
+                        Ragam disabilitas / keterbatasan <span className="text-rose-600">*</span>
+                      </Label>
+                      <select
+                        id="disabilityType"
+                        value={formData.assistanceDetails.disabilityType}
+                        onChange={(event) => setFormData((previous) => ({
+                          ...previous,
+                          assistanceDetails: { ...previous.assistanceDetails, disabilityType: event.target.value },
+                        }))}
+                        className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm text-foreground"
+                      >
+                        <option value="">Pilih ragam disabilitas</option>
+                        <option value="fisik">Fisik / mobilitas</option>
+                        <option value="penglihatan">Sensorik - penglihatan</option>
+                        <option value="pendengaran">Sensorik - pendengaran</option>
+                        <option value="wicara">Sensorik - wicara / komunikasi</option>
+                        <option value="lainnya">Lainnya / lansia dengan keterbatasan</option>
+                      </select>
+                      {errors.disabilityType && <p className="text-xs font-bold text-rose-600">{errors.disabilityType}</p>}
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="requestedDevice" className="text-sm font-bold text-foreground">
+                        Alat bantu yang dibutuhkan <span className="text-rose-600">*</span>
+                      </Label>
+                      <select
+                        id="requestedDevice"
+                        value={formData.assistanceDetails.requestedDevice}
+                        onChange={(event) => setFormData((previous) => ({
+                          ...previous,
+                          assistanceDetails: { ...previous.assistanceDetails, requestedDevice: event.target.value },
+                        }))}
+                        className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm text-foreground"
+                      >
+                        <option value="">Pilih alat bantu</option>
+                        <option value="kursi_roda_standar">Kursi roda standar</option>
+                        <option value="kursi_roda_cp">Kursi roda khusus (CP)</option>
+                        <option value="kruk">Kruk</option>
+                        <option value="walker">Walker / alat bantu jalan</option>
+                        <option value="tongkat_tunanetra">Tongkat tunanetra</option>
+                        <option value="alat_bantu_dengar">Alat bantu dengar</option>
+                        <option value="alat_bantu_lainnya">Alat bantu lainnya</option>
+                      </select>
+                      {errors.requestedDevice && <p className="text-xs font-bold text-rose-600">{errors.requestedDevice}</p>}
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="functionalImpact" className="text-sm font-bold text-foreground">
+                      Bagaimana keterbatasan memengaruhi aktivitas sehari-hari? <span className="text-rose-600">*</span>
+                    </Label>
+                    <Textarea
+                      id="functionalImpact"
+                      rows={3}
+                      value={formData.assistanceDetails.functionalImpact}
+                      onChange={(event) => setFormData((previous) => ({
+                        ...previous,
+                        assistanceDetails: { ...previous.assistanceDetails, functionalImpact: event.target.value },
+                      }))}
+                      placeholder="Contoh: Penerima sulit berpindah dari tempat tidur ke kamar mandi dan saat ini tidak memiliki kursi roda."
+                      className="rounded-2xl p-4"
+                    />
+                    {errors.functionalImpact && <p className="text-xs font-bold text-rose-600">{errors.functionalImpact}</p>}
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-1.5">
                 <Label htmlFor="description" className="text-sm font-bold text-foreground">
-                  Uraian Kondisi Lapangan <span className="text-rose-600">*</span>
+                  {formData.assistanceType === 'RTLH' ? 'Uraian kerusakan rumah' : 'Uraian kebutuhan penerima'} <span className="text-rose-600">*</span>
                 </Label>
                 <Textarea
                   id="description"
                   rows={4}
-                  placeholder="Contoh: Atap rumah bagian dapur dan ruang tamu bocor parah saat hujan. Dinding bambu lapuk termakan rayap. Calon penerima seorang lansia dan membutuhkan bantuan perbaikan mendesak..."
+                  placeholder={formData.assistanceType === 'RTLH'
+                    ? 'Contoh: Atap ruang dapur bocor saat hujan, dinding bambu lapuk, dan lantai masih berupa tanah.'
+                    : 'Contoh: Penerima mengalami kesulitan berjalan dan membutuhkan alat bantu untuk berpindah serta beraktivitas dengan aman.'}
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className="text-sm sm:text-base rounded-2xl p-4 leading-relaxed"
@@ -642,10 +761,12 @@ export default function SubmissionWizardView() {
 
               <div className="space-y-2 pt-2">
                 <Label className="text-sm font-bold text-foreground block">
-                  Unggah Foto Kondisi Rumah / Penerima (Opsional tetapi Dianjurkan)
+                  {formData.assistanceType === 'RTLH' ? 'Foto Kondisi Rumah (Opsional tetapi Dianjurkan)' : 'Foto Kondisi Penerima / Alat Bantu Saat Ini (Opsional)'}
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Foto memudahkan Kepala Dusun mengenali lokasi dan tingkat kerusakan sebelum datang ke rumah.
+                  {formData.assistanceType === 'RTLH'
+                    ? 'Foto membantu Kepala Dusun melihat bagian rumah yang rusak sebelum survei.'
+                    : 'Foto membantu petugas memahami kebutuhan alat bantu; lampiran bersifat opsional.'}
                 </p>
                 <ImageUploader
                   photos={formData.photos}
@@ -756,7 +877,7 @@ export default function SubmissionWizardView() {
                 <span className="font-extrabold text-foreground block">Ringkasan Data Permohonan:</span>
                 <div className="grid grid-cols-2 gap-2 text-muted-foreground">
                   <div>Jenis Bantuan: <b className="text-foreground">{formData.assistanceType === 'RTLH' ? 'Rehabilitasi Rumah (RTLH)' : 'Alat Disabilitas'}</b></div>
-                  <div>Wilayah: <b className="text-foreground">Dusun {DUSUN_LIST.find(d => d.id === formData.dusunId)?.name || formData.dusunId}</b></div>
+                  <div>Wilayah: <b className="text-foreground">{hamlets.find((hamlet) => String(hamlet.id) === String(formData.dusunId))?.name || '-'}</b></div>
                   <div>Penerima: <b className="text-foreground">{formData.beneficiaryName || '-'}</b></div>
                   <div>Pelapor: <b className="text-foreground">{formData.reporterName || '-'} ({formData.reporterRelation})</b></div>
                 </div>

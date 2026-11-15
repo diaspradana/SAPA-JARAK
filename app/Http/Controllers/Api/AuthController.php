@@ -5,28 +5,50 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Services\HamletLocationService;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
 {
     /**
      * Public registration is limited to warga and invited village administrators.
      */
-    public function register(Request $request)
+    public function register(Request $request, HamletLocationService $locations)
     {
+        $isAdmin = $request->input('account_type') === 'admin_desa';
+        $hamletId = filter_var($request->input('hamlet_id'), FILTER_VALIDATE_INT) ?: null;
+        $hamletOptions = $locations->options()->first(
+            fn (array $option) => (int) $option['id'] === $hamletId
+        );
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'phone' => 'required|string|max:30|unique:users,phone',
             'email' => 'nullable|email|max:255|unique:users,email',
             'password' => 'required|string|min:6',
             'account_type' => 'nullable|string|in:warga,admin_desa',
-            'auth_code' => 'required_if:account_type,admin_desa|string|max:100',
-            'hamlet_id' => 'nullable|exists:hamlets,id',
+            'auth_code' => 'nullable|required_if:account_type,admin_desa|string|max:100',
+            'hamlet_id' => [
+                $isAdmin ? 'nullable' : 'required',
+                'integer',
+                Rule::exists('hamlets', 'id')->where('status', 'active'),
+            ],
             'nik' => 'required_unless:account_type,admin_desa|nullable|string|digits:16|unique:users,nik',
             'kk_number' => 'required_unless:account_type,admin_desa|nullable|string|digits:16',
-            'rt' => 'required_unless:account_type,admin_desa|nullable|string|max:5',
-            'rw' => 'required_unless:account_type,admin_desa|nullable|string|max:5',
+            'rt' => [
+                $isAdmin ? 'nullable' : 'required',
+                'string',
+                'max:5',
+                Rule::in($hamletOptions['rt_values'] ?? []),
+            ],
+            'rw' => [
+                $isAdmin ? 'nullable' : 'required',
+                'string',
+                'max:5',
+                Rule::in($hamletOptions['rw_values'] ?? []),
+            ],
             'address' => 'required_unless:account_type,admin_desa|nullable|string|max:255',
         ]);
 

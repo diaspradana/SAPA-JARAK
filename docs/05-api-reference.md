@@ -26,7 +26,7 @@ Dokumentasi ini merinci seluruh endpoint antarmuka pemrograman aplikasi (RESTful
 ## 2. Modul Publik & Warga (`/api/public/*`)
 
 ### 2.1 Mengambil Daftar Dusun Resmi
-Mendapatkan daftar 5 dusun resmi Desa Jarak yang berstatus aktif.
+Mendapatkan daftar dusun aktif beserta pilihan RT dan RW yang sudah tercatat pada data warga/penerima di dusun tersebut. Nilai RT/RW digunakan bersama oleh formulir registrasi, profil warga, dan formulir pengajuan.
 
 - **Method**: `GET`
 - **Endpoint**: `/api/public/hamlets`
@@ -42,27 +42,18 @@ Mendapatkan daftar 5 dusun resmi Desa Jarak yang berstatus aktif.
     "data": [
       {
         "id": 1,
-        "name": "Kalasan",
-        "code": "KLS",
-        "leader_name": "Bpk. Suwandi",
-        "leader_phone": "0813-8822-1101",
-        "rt_count": 6,
-        "rw_count": 2,
-        "status": "active"
-      },
-      {
-        "id": 2,
-        "name": "Sagi",
-        "code": "SGI",
-        "leader_name": "Bpk. Bambang Sutrisno",
-        "leader_phone": "0812-7744-2202",
-        "rt_count": 8,
-        "rw_count": 2,
-        "status": "active"
+        "name": "Dusun Jarak Lor",
+        "code": "JL",
+        "head_name": "Putro Dwi S.",
+        "head_phone": "081234567801",
+        "status": "active",
+        "rt_values": ["01"],
+        "rw_values": ["01"]
       }
     ]
   }
   ```
+`rt_values` dan `rw_values` adalah nilai unik yang tersedia di database untuk dusun tersebut. Jika nilainya belum ada, dusun itu belum dapat dipilih untuk registrasi atau pengajuan. Server juga memvalidasi bahwa pilihan RT/RW cocok dengan `hamlet_id`.
 
 ---
 
@@ -113,19 +104,24 @@ Mendaftarkan permohonan baru, memvalidasi kode OTP, membuat data penerima, mener
     "kk_number": "3506120101150002",
     "beneficiary_phone": "081234567890",
     "hamlet_id": 1,
-    "rt": "03",
+    "rt": "01",
     "rw": "01",
-    "address": "RT 03 / RW 01, Dusun Kalasan, Desa Jarak",
+    "address": "RT 01 / RW 01, Dusun Jarak Lor, Desa Jarak",
     "is_unregistered": false,
     "assistance_type": "RTLH",
     "reporter_name": "Suryanto",
     "reporter_phone": "081234567890",
     "reporter_relationship": "Diri Sendiri",
     "description": "Dinding anyaman bambu rapuh, lantai tanah basah, dan atap bocor parah.",
-    "needs_description": "Perbaikan dinding batako, plester semen lantai, dan genteng.",
+    "assistance_details": {
+      "damaged_components": ["atap", "dinding", "lantai"],
+      "damage_location": "Atap ruang dapur dan dinding kamar belakang"
+    },
     "otp": "481923"
   }
   ```
+Untuk jenis `RTLH`, kirim `damaged_components` (minimal satu dari `atap`, `dinding`, `lantai`, `sanitasi`). Untuk `DISABILITAS`, `assistance_details` harus berisi `disability_type`, `requested_device`, dan `functional_impact`; detail yang tidak sesuai jenis bantuan tidak disimpan.
+`hamlet_id`, `rt`, dan `rw` wajib dipilih dari nilai yang dikembalikan oleh `/api/public/hamlets`.
 - **Respon Sukses (201 Created)**:
   ```json
   {

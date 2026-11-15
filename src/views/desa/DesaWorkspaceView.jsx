@@ -9,6 +9,7 @@ import DesaHandoverView from './DesaHandoverView';
 import DesaReportsView from './DesaReportsView';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import HamletAddressFields from '../../components/common/HamletAddressFields';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import {
@@ -323,6 +324,7 @@ export default function DesaWorkspaceView() {
     if (accountForm.password) payload.password = accountForm.password;
     if (accountCategory === 'kasun') payload.hamlet_id = Number(accountForm.hamlet_id);
     if (accountCategory === 'warga') {
+      payload.hamlet_id = Number(accountForm.hamlet_id);
       payload.nik = accountForm.nik.trim();
       payload.kk_number = accountForm.kk_number.trim();
       payload.rt = accountForm.rt.trim();
@@ -656,18 +658,27 @@ export default function DesaWorkspaceView() {
                       Nomor KK *
                       <Input required inputMode="numeric" minLength={16} maxLength={16} value={accountForm.kk_number} onChange={(event) => setAccountForm({ ...accountForm, kk_number: event.target.value })} />
                     </label>
-                    <label className="space-y-1.5 text-xs font-semibold">
-                      RT *
-                      <Input required inputMode="numeric" maxLength={5} value={accountForm.rt} onChange={(event) => setAccountForm({ ...accountForm, rt: event.target.value })} />
-                    </label>
-                    <label className="space-y-1.5 text-xs font-semibold">
-                      RW *
-                      <Input required inputMode="numeric" maxLength={5} value={accountForm.rw} onChange={(event) => setAccountForm({ ...accountForm, rw: event.target.value })} />
-                    </label>
-                    <label className="space-y-1.5 text-xs font-semibold sm:col-span-2">
-                      Alamat lengkap *
-                      <Input required maxLength={255} value={accountForm.address} onChange={(event) => setAccountForm({ ...accountForm, address: event.target.value })} />
-                    </label>
+                    <div className="sm:col-span-2">
+                      <HamletAddressFields
+                        idPrefix="managed-warga"
+                        hamlets={accountHamlets}
+                        loading={accountsLoading}
+                        error={accountsError}
+                        hamletId={accountForm.hamlet_id}
+                        rt={accountForm.rt}
+                        rw={accountForm.rw}
+                        address={accountForm.address}
+                        onHamletChange={(hamlet_id) => setAccountForm((previous) => ({
+                          ...previous,
+                          hamlet_id,
+                          rt: '',
+                          rw: ''
+                        }))}
+                        onRtChange={(rt) => setAccountForm((previous) => ({ ...previous, rt }))}
+                        onRwChange={(rw) => setAccountForm((previous) => ({ ...previous, rw }))}
+                        onAddressChange={(address) => setAccountForm((previous) => ({ ...previous, address }))}
+                      />
+                    </div>
                   </>
                 )}
                 {accountCategory === 'kasun' && (
@@ -728,6 +739,7 @@ export default function DesaWorkspaceView() {
                   <TableHead>Nama</TableHead>
                   <TableHead>Kontak</TableHead>
                   {accountCategory === 'kasun' && <TableHead>Dusun</TableHead>}
+                  {accountCategory === 'warga' && <TableHead>Wilayah / Alamat</TableHead>}
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Tindakan</TableHead>
                 </TableRow>
@@ -743,6 +755,13 @@ export default function DesaWorkspaceView() {
                       </TableCell>
                       <TableCell className="whitespace-nowrap">{account.phone}</TableCell>
                       {accountCategory === 'kasun' && <TableCell>{account.hamlet?.name || 'Belum ditetapkan'}</TableCell>}
+                      {accountCategory === 'warga' && (
+                        <TableCell className="min-w-52">
+                          <p>{account.hamlet?.name || 'Dusun belum dipilih'}</p>
+                          <p className="text-xs text-muted-foreground">RT {account.rt || '-'} / RW {account.rw || '-'}</p>
+                          <p className="text-xs text-muted-foreground">{account.address || 'Alamat belum diisi'}</p>
+                        </TableCell>
+                      )}
                       <TableCell>
                         <Badge variant={account.status === 'active' ? 'success' : 'outline'}>
                           {account.status === 'active' ? 'Aktif' : 'Nonaktif'}

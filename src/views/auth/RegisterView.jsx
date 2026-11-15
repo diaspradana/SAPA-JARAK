@@ -3,6 +3,8 @@ import { useApp } from '../../context/AppContext';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
+import HamletAddressFields from '../../components/common/HamletAddressFields';
+import useHamletOptions from '../../hooks/useHamletOptions';
 import {
   ArrowLeft,
   Eye,
@@ -19,6 +21,7 @@ const initialForm = {
   email: '',
   nik: '',
   kkNumber: '',
+  hamletId: '',
   rt: '',
   rw: '',
   address: '',
@@ -29,6 +32,7 @@ const initialForm = {
 
 export default function RegisterView() {
   const { register, setCurrentView, openLogin } = useApp();
+  const { hamlets, loading: hamletsLoading, error: hamletsError } = useHamletOptions();
   const [accountType, setAccountType] = useState('warga');
   const [formData, setFormData] = useState(initialForm);
   const [showPassword, setShowPassword] = useState(false);
@@ -206,20 +210,25 @@ export default function RegisterView() {
                       <Input id="register-kk" value={formData.kkNumber} onChange={updateField('kkNumber')} inputMode="numeric" minLength={16} maxLength={16} required className="mt-1.5 h-11 rounded-xl" />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="register-rt">RT *</Label>
-                      <Input id="register-rt" value={formData.rt} onChange={updateField('rt')} inputMode="numeric" maxLength={5} required className="mt-1.5 h-11 rounded-xl" />
-                    </div>
-                    <div>
-                      <Label htmlFor="register-rw">RW *</Label>
-                      <Input id="register-rw" value={formData.rw} onChange={updateField('rw')} inputMode="numeric" maxLength={5} required className="mt-1.5 h-11 rounded-xl" />
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="register-address">Alamat lengkap *</Label>
-                    <Input id="register-address" value={formData.address} onChange={updateField('address')} maxLength={255} required className="mt-1.5 h-11 rounded-xl" />
-                  </div>
+                  <HamletAddressFields
+                    idPrefix="register"
+                    hamlets={hamlets}
+                    loading={hamletsLoading}
+                    error={hamletsError}
+                    hamletId={formData.hamletId}
+                    rt={formData.rt}
+                    rw={formData.rw}
+                    address={formData.address}
+                    onHamletChange={(hamletId) => setFormData((previous) => ({
+                      ...previous,
+                      hamletId,
+                      rt: '',
+                      rw: ''
+                    }))}
+                    onRtChange={(rt) => setFormData((previous) => ({ ...previous, rt }))}
+                    onRwChange={(rw) => setFormData((previous) => ({ ...previous, rw }))}
+                    onAddressChange={(address) => setFormData((previous) => ({ ...previous, address }))}
+                  />
                 </>
               )}
 

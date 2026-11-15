@@ -34,7 +34,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 
-export default function KasunSurveyView() {
+export default function KasunSurveyView({ onBack, onSubmitted }) {
   const { 
     applications, 
     activeTicketNumber, 
@@ -47,6 +47,7 @@ export default function KasunSurveyView() {
   } = useApp();
 
   const { speak } = useVoice();
+  const backToDashboard = onBack || (() => setCurrentView('kasun_dashboard'));
 
   const authorizedDusunId = getKasunDusunId(currentUser || { role: activeRole });
   const authorizedApplications = applications.filter(application => application.dusunId === authorizedDusunId);
@@ -129,7 +130,8 @@ export default function KasunSurveyView() {
 
     try {
       await submitKasunSurvey(app.ticketNumber, surveyData);
-      setCurrentView('kasun_dashboard');
+      if (onSubmitted) onSubmitted(false);
+      else setCurrentView('kasun_dashboard');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
       showToast(error.message || "Hasil survei gagal disimpan ke server.", "error");
@@ -175,7 +177,8 @@ export default function KasunSurveyView() {
     try {
       await submitKasunSurvey(app.ticketNumber, surveyData);
       setReturnNotesModal(false);
-      setCurrentView('kasun_dashboard');
+      if (onSubmitted) onSubmitted(true);
+      else setCurrentView('kasun_dashboard');
       showToast("Pengajuan dikembalikan ke warga dengan catatan revisi.", "info");
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
@@ -188,7 +191,7 @@ export default function KasunSurveyView() {
       <div className="p-8 text-center">
         <Card className="max-w-md mx-auto p-6">
           <p className="text-muted-foreground">Pengajuan tidak ditemukan.</p>
-          <Button onClick={() => setCurrentView('kasun_dashboard')} className="mt-3 font-bold">
+          <Button onClick={backToDashboard} className="mt-3 font-bold">
             Kembali ke Dashboard
           </Button>
         </Card>
@@ -206,7 +209,7 @@ export default function KasunSurveyView() {
             <Button
               variant="outline"
               size="icon"
-              onClick={() => setCurrentView('kasun_dashboard')}
+              onClick={backToDashboard}
               className="h-10 w-10 border-border rounded-xl"
             >
               <ArrowLeft size={18} />
@@ -275,7 +278,7 @@ export default function KasunSurveyView() {
               <div className="p-3 bg-muted/40 rounded-lg border border-border/60 space-y-0.5">
                 <span className="text-muted-foreground text-[10px]">Nama Calon Penerima:</span>
                 <div className="font-bold text-foreground text-xs">
-                  {isDisabilityApplication ? (app.beneficiaryMaskedName || 'Warga (identitas terbatas)') : app.beneficiaryName}
+                  {app.beneficiaryName || 'Nama belum tersedia'}
                 </div>
                 <div className="font-mono text-muted-foreground text-[10px]">
                   NIK: {maskIdentifier(app.nik)} | No. KK: {maskIdentifier(app.kkNumber)}
