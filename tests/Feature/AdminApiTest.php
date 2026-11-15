@@ -598,6 +598,37 @@ class AdminApiTest extends TestCase
         $this->assertEquals('SEDANG', $updatedScore['urgency']);
     }
 
+    public function test_scoring_service_calculates_kasun_form_selections(): void
+    {
+        $scoringService = new ScoringService();
+
+        $rtlhScore = $scoringService->calculateRtlhScore([
+            'wallCondition' => 'setengah_tembok_rusak',
+            'floorCondition' => 'semen_pecah',
+            'roofCondition' => 'bocor_ringan',
+            'sanitationCondition' => 'mck_tidak_layak',
+        ]);
+        $this->assertEquals(58, $rtlhScore['total_score']);
+        $this->assertEquals([
+            'dinding_bambu_gedek' => 18,
+            'lantai_tanah_rusak' => 18,
+            'atap_rapuh_bocor' => 10,
+            'sanitasi_mck' => 12,
+        ], $rtlhScore['breakdown']);
+
+        $disabilityScore = $scoringService->calculateDisabilityScore([
+            'disabilityLevel' => 'sedang_ketergantungan',
+            'economicCondition' => 'sangat_miskin_desil_2',
+            'healthRecommendation' => 'keterangan_umum',
+        ]);
+        $this->assertEquals(64, $disabilityScore['total_score']);
+        $this->assertEquals([
+            'tingkat_disabilitas' => 30,
+            'kondisi_ekonomi' => 22,
+            'rekomendasi_nakes' => 12,
+        ], $disabilityScore['breakdown']);
+    }
+
     public function test_admin_can_view_and_filter_audit_logs(): void
     {
         Sanctum::actingAs($this->admin, ['role:admin', '*']);

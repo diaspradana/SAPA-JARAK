@@ -42,6 +42,7 @@ export default function KasunSurveyView({ onBack, onSubmitted }) {
     activeRole,
     setCurrentView, 
     submitKasunSurvey, 
+    updateKasunVisitSchedule,
     showToast,
     showConfirm
   } = useApp();
@@ -88,16 +89,44 @@ export default function KasunSurveyView({ onBack, onSubmitted }) {
   const [returnNotesModal, setReturnNotesModal] = useState(false);
   const [returnNotesText, setReturnNotesText] = useState("");
   const [docModalOpen, setDocModalOpen] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState(app?.surveyScheduledAt || '');
+  const [scheduleSaving, setScheduleSaving] = useState(false);
+  const isScheduleSaved = Boolean(app?.surveyScheduledAt) && scheduleDate === app.surveyScheduledAt;
 
   const scoreResult = app?.assistanceType === 'RTLH'
     ? calculateRtlhScore(rtlhParams)
     : calculateDisabilityScore(disabilityParams);
 
   useEffect(() => {
+    setScheduleDate(app?.surveyScheduledAt || '');
+  }, [app?.ticketNumber, app?.surveyScheduledAt]);
+
+  useEffect(() => {
     speak(`Formulir verifikasi survei lapangan untuk tiket ${app?.ticketNumber}.`);
   }, [app?.ticketNumber]);
 
+  const handleSaveSchedule = async () => {
+    if (!scheduleDate) {
+      showToast('Pilih tanggal survei terlebih dahulu.', 'warning');
+      return;
+    }
+
+    setScheduleSaving(true);
+    try {
+      await updateKasunVisitSchedule(app.ticketNumber, scheduleDate);
+    } catch (error) {
+      showToast(error.message || 'Jadwal survei gagal disimpan ke server.', 'error');
+    } finally {
+      setScheduleSaving(false);
+    }
+  };
+
   const handleForwardToDesa = async () => {
+    if (!isScheduleSaved) {
+      showToast('Simpan jadwal survei sebelum mengirim rekomendasi.', 'warning');
+      return;
+    }
+
     const result = await showConfirm({
       title: 'Rekomendasikan ke Pemerintah Desa?',
       html: `
@@ -139,6 +168,11 @@ export default function KasunSurveyView({ onBack, onSubmitted }) {
   };
 
   const handleReturnWithNotes = async () => {
+    if (!isScheduleSaved) {
+      showToast('Simpan jadwal survei sebelum mengembalikan pengajuan.', 'warning');
+      return;
+    }
+
     if (!returnNotesText.trim()) {
       showToast("Tuliskan alasan pengembalian berkas untuk warga.", "warning");
       return;
@@ -244,6 +278,7 @@ export default function KasunSurveyView({ onBack, onSubmitted }) {
               variant="outline"
               size="default"
               onClick={() => setReturnNotesModal(true)}
+              disabled={!isScheduleSaved}
               className="h-10 px-3.5 gap-2 font-bold border-amber-500/40 text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 text-xs sm:text-sm rounded-xl"
             >
               <RotateCcw size={15} />
@@ -254,12 +289,43 @@ export default function KasunSurveyView({ onBack, onSubmitted }) {
               type="button"
               size="default"
               onClick={handleForwardToDesa}
+              disabled={!isScheduleSaved}
               className="h-10 px-4 gap-2 font-bold bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm rounded-xl shadow-xs"
             >
               <Send size={15} />
               <span>Rekomendasikan ke Desa</span>
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-2xl border-emerald-700/20">
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-end sm:justify-between sm:p-5">
+          <div className="space-y-1">
+            <Label htmlFor="kasunSurveyDate">Jadwalkan tanggal survei lapangan</Label>
+            <p className="text-xs text-muted-foreground">
+              {isScheduleSaved
+                ? `Jadwal tersimpan: ${new Intl.DateTimeFormat('id-ID', { dateStyle: 'long' }).format(new Date(`${scheduleDate}T00:00:00`))}.`
+                : 'Sebelum jadwal disimpan, data pengajuan hanya dapat dilihat.'}
+            </p>
+            <input
+              id="kasunSurveyDate"
+              type="date"
+              required
+              value={scheduleDate}
+              onChange={event => setScheduleDate(event.target.value)}
+              className="mt-2 h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground"
+            />
+          </div>
+          <Button
+            type="button"
+            onClick={handleSaveSchedule}
+            disabled={scheduleSaving || !scheduleDate || isScheduleSaved}
+            className="gap-2 self-start sm:self-auto"
+          >
+            <CheckCircle2 size={15} />
+            {scheduleSaving ? 'Menyimpan jadwal...' : isScheduleSaved ? 'Jadwal Tersimpan' : 'Simpan Jadwal'}
+          </Button>
         </CardContent>
       </Card>
 
@@ -330,14 +396,24 @@ export default function KasunSurveyView({ onBack, onSubmitted }) {
 
         {/* Right Column: Kasun Survey Form & Score Engine */}
         <div className="lg:col-span-7 space-y-4">
-          
-          <ScoreMeter
-            score={scoreResult.totalScore}
-            breakdown={scoreResult.breakdown}
-            recommendation={scoreResult.recommendation}
-          />
+          {!isScheduleSaved ? (
+            <Card className="rounded-2xl border-amber-200 bg-amber-50/60 dark:border-amber-900 dark:bg-amber-950/20">
+              <CardContent className="space-y-2 p-5 text-sm">
+                <p className="font-bold text-amber-900 dark:text-amber-200">Penilaian belum dibuka</p>
+                <p className="text-xs text-amber-800 dark:text-amber-300">
+                  Simpan tanggal survei di atas. Setelah itu, formulir penilaian, rekomendasi ke desa, dan pengembalian berkas akan aktif.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <ScoreMeter
+                score={scoreResult.totalScore}
+                breakdown={scoreResult.breakdown}
+                recommendation={scoreResult.recommendation}
+              />
 
-          <Card className="border-border/80 shadow-xs">
+              <Card className="border-border/80 shadow-xs">
             <CardHeader className="p-5 pb-3 border-b border-border/60">
               <span className="text-[10px] font-bold uppercase tracking-wider text-primary block">Bagian 2</span>
               <CardTitle className="text-xs font-bold text-foreground">
@@ -519,7 +595,9 @@ export default function KasunSurveyView({ onBack, onSubmitted }) {
               </div>
 
             </CardContent>
-          </Card>
+              </Card>
+            </>
+          )}
 
         </div>
 

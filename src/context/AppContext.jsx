@@ -31,6 +31,35 @@ const API_STATUS_MAP = {
   REJECTED: 'REJECTED'
 };
 
+const API_STATUS_LABELS = {
+  DRAFT: 'Pengajuan diterima',
+  SUBMITTED: 'Pengajuan diterima',
+  WAITING_KASUN: 'Menunggu verifikasi Kepala Dusun',
+  WAITING_KASUN_VERIFICATION: 'Menunggu verifikasi Kepala Dusun',
+  KASUN_SURVEY: 'Survei lapangan oleh Kepala Dusun',
+  KASUN_VERIFICATION: 'Survei lapangan oleh Kepala Dusun',
+  RETURNED: 'Pengajuan perlu diperbaiki',
+  RETURNED_WITH_NOTES: 'Pengajuan perlu diperbaiki',
+  FORWARDED_TO_DESA: 'Direkomendasikan ke Pemerintah Desa',
+  FORWARDED_TO_VILLAGE: 'Direkomendasikan ke Pemerintah Desa',
+  VILLAGE_REVIEW: 'Sedang ditinjau Pemerintah Desa',
+  FUNDING_APPROVED: 'Disetujui dan anggaran ditetapkan',
+  APPROVED: 'Disetujui dan anggaran ditetapkan',
+  FUNDING_ALLOCATED: 'Anggaran bantuan ditetapkan',
+  PROCUREMENT: 'Pelaksanaan bantuan dimulai',
+  PROCUREMENT_IN_PROGRESS: 'Pelaksanaan bantuan dimulai',
+  HANDOVER: 'Menunggu serah terima BAST',
+  READY_FOR_HANDOVER: 'Menunggu serah terima BAST',
+  COMPLETED: 'Bantuan selesai diserahterimakan',
+  REJECTED: 'Pengajuan ditolak'
+};
+
+const AUDIT_ACTION_LABELS = {
+  APPLICATION_SUBMITTED: 'Pengajuan diterima',
+  STATUS_CHANGED: 'Status pengajuan diperbarui',
+  DOCUMENT_UPLOADED: 'Dokumen diunggah'
+};
+
 function normalizeHamletName(name = '') {
   return String(name).replace(/^dusun\s+/i, '').trim().toLowerCase();
 }
@@ -55,14 +84,25 @@ function mapServerApplication(application) {
   const documents = application.documents || [];
   const timeline = auditLogs.map((entry) => {
     const newValues = entry.new_values || {};
-    const status = API_STATUS_MAP[newValues.status] || newValues.status || entry.action;
+    const rawStatus = newValues.status;
+    const status = API_STATUS_MAP[rawStatus] || rawStatus || entry.action;
     return {
       status,
-      title: entry.action === 'APPLICATION_SUBMITTED' ? 'Pengajuan Diterima' : `Aktivitas: ${entry.action || 'Pembaruan data'}`,
+      title: API_STATUS_LABELS[rawStatus] || AUDIT_ACTION_LABELS[entry.action] || 'Aktivitas pengajuan',
       time: entry.created_at || '',
       note: newValues.reason || newValues.notes || newValues.meta?.reason || ''
     };
   });
+  const getPublicPhotoUrl = (document) => {
+    if (!document.public_url) return null;
+    return document.id
+      ? `${API_BASE_URL}/documents/${encodeURIComponent(document.id)}/file`
+      : document.public_url;
+  };
+  const getPhotoUrls = (documentType) => documents
+    .filter((document) => document.document_type === documentType)
+    .map(getPublicPhotoUrl)
+    .filter(Boolean);
   const ticketNumber = String(application.ticket_number || '').replace(/^#/, '');
 
   return {
@@ -123,8 +163,10 @@ function mapServerApplication(application) {
       officerSigned: Boolean(handover.signature_official_svg)
     } : null,
     photos: {
-      initial: documents.filter((document) => document.document_type === 'FOTO_KONDISI_AWAL').map((document) => document.public_url).filter(Boolean),
-      survey: documents.filter((document) => document.document_type === 'FOTO_SURVEI_KASUN').map((document) => document.public_url).filter(Boolean)
+      initial: getPhotoUrls('FOTO_KONDISI_AWAL'),
+      survey: getPhotoUrls('FOTO_SURVEI_KASUN'),
+      progress50: getPhotoUrls('FOTO_PROGRES_50'),
+      progress100: getPhotoUrls('FOTO_SELESAI_100')
     },
     timeline
   };
@@ -718,6 +760,18 @@ export function AppProvider({ children }) {
     await refreshAfterServerWrite('Keputusan dan alokasi bantuan berhasil disimpan ke server.');
   };
 
+  const rejectDesaApplication = async (ticketNumber, reason) => {
+    const application = getServerApplication(ticketNumber);
+    await serverRequest(`/desa/applications/${application.id}/validate`, {
+      method: 'POST',
+      body: {
+        decision: 'REJECTED',
+        notes: reason
+      }
+    });
+    await refreshAfterServerWrite('Penolakan pengajuan berhasil dicatat di server.');
+  };
+
   const updateProcurementProgress = async (ticketNumber, procurementData) => {
     const application = getServerApplication(ticketNumber);
     await serverRequest(`/desa/applications/${application.id}/procurement`, {
@@ -918,6 +972,7 @@ export function AppProvider({ children }) {
         submitApplication,
         submitKasunSurvey,
         approveDesaFunding,
+        rejectDesaApplication,
         updateProcurementProgress,
         completeHandoverBAST,
         refreshServerData,

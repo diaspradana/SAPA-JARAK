@@ -65,6 +65,16 @@ class KasunApiTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_kasun_must_schedule_a_survey_before_submitting_verification(): void
+    {
+        $application = $this->createApplication($this->assignedHamlet);
+        Sanctum::actingAs($this->kasun, ['role:kasun', '*']);
+
+        $this->postJson("/api/kasun/applications/{$application->id}/survey", [])
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'Jadwalkan tanggal survei sebelum mengirim hasil verifikasi.');
+    }
+
     public function test_kasun_without_assigned_hamlet_cannot_list_all_applications(): void
     {
         $unassignedKasun = User::create([

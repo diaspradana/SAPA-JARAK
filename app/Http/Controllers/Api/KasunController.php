@@ -112,6 +112,12 @@ class KasunController extends Controller
             $application = Application::findOrFail($id);
         }
 
+        abort_unless(
+            $application->survey_scheduled_at,
+            422,
+            'Jadwalkan tanggal survei sebelum mengirim hasil verifikasi.'
+        );
+
         $validated = $request->validate([
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
