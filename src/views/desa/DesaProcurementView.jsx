@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import StatusBadge from '../../components/common/StatusBadge';
 import { ASSISTANCE_TYPES } from '../../data/desaConfig';
@@ -34,9 +34,13 @@ export default function DesaProcurementView({ onBack }) {
     showToast
   } = useApp();
 
-  const app = applications.find(a => a.ticketNumber === activeTicketNumber) || 
-    applications.find(a => a.status === 'PROCUREMENT' || a.status === 'FUNDING_APPROVED') || 
-    applications[0];
+  const eligibleApplications = applications.filter(a => (
+    ['FUNDING_APPROVED', 'PROCUREMENT'].includes(a.status)
+  ));
+  const app = eligibleApplications.find(a => a.ticketNumber === activeTicketNumber)
+    || eligibleApplications.find(a => a.status === 'PROCUREMENT')
+    || eligibleApplications[0]
+    || null;
 
   const initialMaterials = app?.procurement?.rabMaterials?.length > 0 
     ? app.procurement.rabMaterials 
@@ -48,15 +52,25 @@ export default function DesaProcurementView({ onBack }) {
       }));
 
   const [rabList, setRabList] = useState(initialMaterials);
-  const [progress, setProgress] = useState(app?.procurement?.progress || 50);
-  const [contractor, setContractor] = useState(app?.procurement?.contractor || "Swakelola Pokmas Desa Jarak");
-  const [statusText, setStatusText] = useState(app?.procurement?.statusText || "Pengerjaan fisik berjalan lancar");
-  const [photo50, setPhoto50] = useState(
-    app?.photos?.progress50?.[0] || "https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=600&q=80"
-  );
-  const [photo100, setPhoto100] = useState(
-    app?.photos?.progress100?.[0] || "https://images.unsplash.com/photo-1518780664697-55e3ad937233?auto=format&fit=crop&w=600&q=80"
-  );
+  const [progress, setProgress] = useState(app?.procurement?.progress ?? 0);
+  const [contractor, setContractor] = useState(app?.procurement?.contractor || '');
+  const [statusText, setStatusText] = useState(app?.procurement?.statusText || '');
+  const photo50 = app?.photos?.progress50?.[0] || '';
+  const photo100 = app?.photos?.progress100?.[0] || '';
+
+  useEffect(() => {
+    setRabList(app?.procurement?.rabMaterials?.length > 0
+      ? app.procurement.rabMaterials
+      : ASSISTANCE_TYPES.RTLH.materialDefaults.map(m => ({
+          item: m.item,
+          qty: m.qty,
+          unit: m.unit,
+          price: m.pricePerUnit * m.qty
+        })));
+    setProgress(app?.procurement?.progress ?? 0);
+    setContractor(app?.procurement?.contractor || '');
+    setStatusText(app?.procurement?.statusText || '');
+  }, [app?.ticketNumber, app?.procurement]);
 
   const calculateTotalRAB = () => {
     return rabList.reduce((acc, curr) => acc + (Number(curr.price) || 0), 0);
@@ -81,9 +95,7 @@ export default function DesaProcurementView({ onBack }) {
       rabMaterials: rabList,
       totalCost: calculateTotalRAB(),
       progress: Number(progress),
-      statusText,
-      photo50,
-      photo100
+      statusText
     };
 
     try {
@@ -98,7 +110,10 @@ export default function DesaProcurementView({ onBack }) {
     return (
       <Card className="p-8 text-center border-border/80">
         <CardContent>
-          <p className="text-muted-foreground">Tidak ada pengajuan dalam tahap pengadaan.</p>
+          <p className="font-semibold text-foreground">Belum ada bantuan yang dapat dilaksanakan.</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            RAB dan progres baru tersedia setelah Admin Desa menyetujui bantuan dan menetapkan anggarannya. Pengajuan yang ditolak tidak ditampilkan pada tahap ini.
+          </p>
           <Button onClick={onBack} variant="outline" size="sm" className="mt-3 font-bold">
             Kembali ke Ringkasan
           </Button>
@@ -277,6 +292,7 @@ export default function DesaProcurementView({ onBack }) {
                   type="text"
                   value={contractor}
                   onChange={(e) => setContractor(e.target.value)}
+                  placeholder="Belum ditentukan"
                 />
               </div>
 
@@ -311,26 +327,36 @@ export default function DesaProcurementView({ onBack }) {
                   type="text"
                   value={statusText}
                   onChange={(e) => setStatusText(e.target.value)}
+                  placeholder="Catatan pelaksanaan (opsional)"
                 />
               </div>
 
               <div className="space-y-2 pt-2 border-t border-border/60">
                 <Label>Dokumentasi Progres Lapangan:</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-muted-foreground block font-semibold">Foto 50%</span>
-                    <div className="rounded-lg border border-border overflow-hidden aspect-video">
-                      <img src={photo50} alt="50%" className="w-full h-full object-cover" />
-                    </div>
+                {photo50 || photo100 ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    {photo50 && (
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-muted-foreground block font-semibold">Foto 50%</span>
+                        <div className="rounded-lg border border-border overflow-hidden aspect-video">
+                          <img src={photo50} alt="Dokumentasi progres 50%" className="w-full h-full object-cover" />
+                        </div>
+                      </div>
+                    )}
+                    {photo100 && (
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-muted-foreground block font-semibold">Foto 100% (Selesai)</span>
+                        <div className="rounded-lg border border-border overflow-hidden aspect-video">
+                          <img src={photo100} alt="Dokumentasi progres 100%" className="w-full h-full object-cover" />
+                        </div>
+                      </div>
+                    )}
                   </div>
-
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-muted-foreground block font-semibold">Foto 100% (Selesai)</span>
-                    <div className="rounded-lg border border-border overflow-hidden aspect-video">
-                      <img src={photo100} alt="100%" className="w-full h-full object-cover" />
-                    </div>
-                  </div>
-                </div>
+                ) : (
+                  <p className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
+                    Dokumentasi progres belum tersedia.
+                  </p>
+                )}
               </div>
 
             </CardContent>

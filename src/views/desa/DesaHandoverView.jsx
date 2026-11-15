@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import SignaturePad from '../../components/common/SignaturePad';
 import StatusBadge from '../../components/common/StatusBadge';
@@ -17,6 +17,10 @@ import {
   ExternalLink
 } from 'lucide-react';
 
+function getDefaultBastNumber(application) {
+  return `BAST/${application?.assistanceType || 'RTLH'}/${application?.ticketNumber?.split('-')?.[1] || 'KLS'}/${new Date().getFullYear()}/009`;
+}
+
 export default function DesaHandoverView({ onBack }) {
   const { 
     applications, 
@@ -27,19 +31,26 @@ export default function DesaHandoverView({ onBack }) {
     showToast
   } = useApp();
 
-  const app = applications.find(a => a.ticketNumber === activeTicketNumber) || 
-    applications.find(a => a.status === 'HANDOVER' || a.status === 'PROCUREMENT' || a.status === 'COMPLETED') || 
-    applications[0];
+  const eligibleApplications = applications.filter(a => (
+    ['HANDOVER', 'COMPLETED'].includes(a.status)
+  ));
+  const app = eligibleApplications.find(a => a.ticketNumber === activeTicketNumber)
+    || eligibleApplications.find(a => a.status === 'HANDOVER')
+    || eligibleApplications[0]
+    || null;
 
-  const [bastNumber, setBastNumber] = useState(
-    app?.handover?.bastNumber || `BAST/${app?.assistanceType || 'RTLH'}/${app?.ticketNumber?.split('-')?.[1] || 'KLS'}/${new Date().getFullYear()}/009`
-  );
-  const [handoverDate, setHandoverDate] = useState(
-    app?.handover?.handoverDate || new Date().toISOString().split('T')[0]
-  );
+  const [bastNumber, setBastNumber] = useState(app?.handover?.bastNumber || getDefaultBastNumber(app));
+  const [handoverDate, setHandoverDate] = useState(app?.handover?.handoverDate || new Date().toISOString().split('T')[0]);
   const [recipientSignature, setRecipientSignature] = useState(null);
   const [isCompleted, setIsCompleted] = useState(app?.status === 'COMPLETED');
   const [docModalOpen, setDocModalOpen] = useState(false);
+
+  useEffect(() => {
+    setBastNumber(app?.handover?.bastNumber || getDefaultBastNumber(app));
+    setHandoverDate(app?.handover?.handoverDate || new Date().toISOString().split('T')[0]);
+    setRecipientSignature(null);
+    setIsCompleted(app?.status === 'COMPLETED');
+  }, [app?.ticketNumber, app?.handover, app?.status]);
 
   const handleFinalPublish = async () => {
     if (!app) return;
@@ -76,7 +87,10 @@ export default function DesaHandoverView({ onBack }) {
     return (
       <Card className="p-8 text-center border-border/80">
         <CardContent>
-          <p className="text-muted-foreground">Tidak ada berkas untuk serah terima BAST.</p>
+          <p className="font-semibold text-foreground">Belum ada bantuan yang siap diserahterimakan.</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            BAST baru tersedia setelah pelaksanaan bantuan mencapai 100%. Pengajuan yang ditolak tidak ditampilkan pada tahap ini.
+          </p>
           <Button onClick={onBack} variant="outline" size="sm" className="mt-3 font-bold">
             Kembali
           </Button>

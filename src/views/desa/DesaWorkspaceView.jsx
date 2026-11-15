@@ -391,6 +391,11 @@ export default function DesaWorkspaceView() {
     ['FORWARDED_TO_DESA', 'RETURNED', 'WAITING_KASUN'].includes(application.status)
   )).length;
   const activeApplications = applications.filter((application) => !['COMPLETED', 'REJECTED'].includes(application.status)).length;
+  const procurementApplications = applications.filter((application) => (
+    ['FUNDING_APPROVED', 'PROCUREMENT'].includes(application.status)
+  ));
+  const readyForHandoverCount = applications.filter((application) => application.status === 'HANDOVER').length;
+  const completedHandoverCount = applications.filter((application) => application.status === 'COMPLETED').length;
   const eligibleRecommendations = applications
     .filter((application) => application.status === 'FORWARDED_TO_DESA' || application.status === 'VILLAGE_REVIEW')
     .sort((a, b) => (b.survey?.score || 0) - (a.survey?.score || 0));
@@ -441,8 +446,8 @@ export default function DesaWorkspaceView() {
               {[
                 ['1', 'Pemeriksaan desa', 'Berkas & hasil survei'],
                 ['2', 'Keputusan', 'Kelayakan & alokasi dana'],
-                ['3', 'Pelaksanaan', 'RAB & progres bantuan'],
-                ['4', 'BAST', 'Serah terima & penyelesaian']
+                ['3', 'Pelaksanaan', 'Setelah bantuan disetujui'],
+                ['4', 'BAST', 'Setelah progres mencapai 100%']
               ].map(([step, title, description]) => (
                 <div key={step} className="flex items-start gap-2 rounded-xl border border-border/70 bg-card p-3">
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-xs font-bold text-white">{step}</span>
@@ -966,6 +971,7 @@ export default function DesaWorkspaceView() {
             type="button"
             onClick={() => {
               setSelectedApplication(null);
+              setActiveTicketNumber(null);
               setActiveTab('overview');
               setSidebarOpen(false);
             }}
@@ -1010,6 +1016,7 @@ export default function DesaWorkspaceView() {
                           type="button"
                           onClick={() => {
                             setSelectedApplication(null);
+                            setActiveTicketNumber(null);
                             setActiveTab(item.id);
                             setSidebarOpen(false);
                           }}
@@ -1025,6 +1032,20 @@ export default function DesaWorkspaceView() {
                           <span className="flex-1">{item.label}</span>
                           {item.id === 'verification' && pendingVerification.length > 0 && (
                             <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">{pendingVerification.length}</span>
+                          )}
+                          {['procurement', 'handover'].includes(item.id) && (
+                            <span
+                              className={cn(
+                                'rounded-full px-1.5 py-0.5 text-[10px] font-bold',
+                                (item.id === 'procurement' ? procurementApplications.length : readyForHandoverCount) > 0
+                                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                  : 'bg-muted text-muted-foreground'
+                              )}
+                            >
+                              {item.id === 'procurement'
+                                ? procurementApplications.length || 'Menunggu'
+                                : readyForHandoverCount || (completedHandoverCount ? 'Riwayat' : 'Menunggu')}
+                            </span>
                           )}
                         </button>
                       );

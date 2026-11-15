@@ -120,6 +120,11 @@ class DesaController extends Controller
         $application = Application::findOrFail($id);
         $user = $request->user();
         abort_unless($user && $user->role === 'admin', 403, 'Akun ini tidak berwenang mengelola pengadaan.');
+        abort_unless(
+            in_array($application->status, ['APPROVED', 'FUNDING_ALLOCATED', 'PROCUREMENT_IN_PROGRESS'], true),
+            422,
+            'RAB dan progres hanya dapat dicatat setelah bantuan disetujui.'
+        );
 
         $validated = $request->validate([
             'rab_items' => 'nullable|array',
@@ -147,6 +152,11 @@ class DesaController extends Controller
         $application = Application::findOrFail($id);
         $user = $request->user();
         abort_unless($user && $user->role === 'admin', 403, 'Pengesahan BAST hanya dapat dilakukan oleh Admin Desa.');
+        abort_unless(
+            in_array($application->status, ['READY_FOR_HANDOVER', 'COMPLETED'], true),
+            422,
+            'BAST hanya dapat dibuat setelah progres pelaksanaan mencapai 100%.'
+        );
 
         $validated = $request->validate([
             'bast_number' => 'required|string',
