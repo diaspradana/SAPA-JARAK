@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Application;
 use App\Models\Beneficiary;
 use App\Models\Hamlet;
 use App\Models\User;
@@ -196,6 +197,45 @@ class PublicRegistrationTest extends TestCase
             'assistance_type' => 'RTLH',
             'assistance_details->damaged_components' => json_encode(['atap', 'dinding']),
         ]);
+    }
+
+    public function test_application_submission_skips_ticket_numbers_used_by_soft_deleted_applications(): void
+    {
+        $hamlet = $this->createExistingLocation();
+
+        foreach (range(1, 4) as $sequence) {
+            $beneficiary = Beneficiary::create([
+                'name' => "Warga {$sequence}",
+                'hamlet_id' => $hamlet->id,
+                'address' => 'Alamat rumah',
+            ]);
+            $application = Application::create([
+                'ticket_number' => sprintf('#JRK-JL-%s-%03d', now()->format('Y'), $sequence),
+                'beneficiary_id' => $beneficiary->id,
+                'hamlet_id' => $hamlet->id,
+                'assistance_type' => 'RTLH',
+                'status' => 'SUBMITTED',
+                'submitted_at' => now(),
+            ]);
+
+            if ($sequence === 4) {
+                $application->delete();
+            }
+        }
+
+        $this->postJson('/api/public/applications', [
+            'beneficiary_name' => 'Penerima Bantuan',
+            'hamlet_id' => $hamlet->id,
+            'rt' => '01',
+            'rw' => '01',
+            'address' => 'Alamat rumah',
+            'assistance_type' => 'RTLH',
+            'reporter_phone' => '081234567898',
+            'description' => 'Atap rumah bocor dan dinding sudah lapuk.',
+            'assistance_details' => ['damaged_components' => ['atap']],
+            'otp' => '123456',
+        ])->assertCreated()
+            ->assertJsonPath('data.ticket_number', '#JRK-JL-' . now()->format('Y') . '-005');
     }
 
     public function test_public_hamlet_options_use_rt_rw_values_recorded_in_database(): void
