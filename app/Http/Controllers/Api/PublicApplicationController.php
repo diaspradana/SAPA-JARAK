@@ -5,10 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Services\ApplicationService;
+use App\Services\HamletLocationService;
 use App\Services\WhatsAppNotificationService;
 use App\Models\Application;
-use App\Models\Hamlet;
 use App\Models\Notification;
+use Illuminate\Validation\Rule;
 
 class PublicApplicationController extends Controller
 {
@@ -51,28 +52,44 @@ class PublicApplicationController extends Controller
     /**
      * Verify OTP and submit assistance application.
      */
-    public function submit(Request $request)
+    public function submit(Request $request, HamletLocationService $locations)
     {
+        $hamletId = filter_var($request->input('hamlet_id'), FILTER_VALIDATE_INT) ?: null;
+        $hamletOptions = $locations->options()->first(
+            fn (array $option) => (int) $option['id'] === $hamletId
+        );
+
         $validated = $request->validate([
             'beneficiary_name' => 'required|string|max:150',
             'nik' => 'nullable|string|max:20',
             'kk_number' => 'nullable|string|max:20',
             'beneficiary_phone' => 'nullable|string|max:30',
-            'hamlet_id' => 'required|exists:hamlets,id',
-            'rt' => 'nullable|string|max:5',
-            'rw' => 'nullable|string|max:5',
+            'hamlet_id' => ['required', 'integer', Rule::exists('hamlets', 'id')->where('status', 'active')],
+            'rt' => ['required', 'string', 'max:5', Rule::in($hamletOptions['rt_values'] ?? [])],
+            'rw' => ['required', 'string', 'max:5', Rule::in($hamletOptions['rw_values'] ?? [])],
             'address' => 'required|string',
             'is_unregistered' => 'nullable|boolean',
             'assistance_type' => 'required|in:DISABILITAS,RTLH',
             'reporter_name' => 'nullable|string',
             'reporter_phone' => 'required|string',
             'reporter_relationship' => 'nullable|string',
-            'description' => 'nullable|string',
+            'description' => 'required|string|min:10',
             'needs_description' => 'nullable|string',
+            'assistance_details' => 'required|array',
+            'assistance_details.damaged_components' => 'required_if:assistance_type,RTLH|array|min:1',
+            'assistance_details.damaged_components.*' => 'required|in:atap,dinding,lantai,sanitasi',
+            'assistance_details.damage_location' => 'nullable|string|max:500',
+            'assistance_details.disability_type' => 'required_if:assistance_type,DISABILITAS|in:fisik,penglihatan,pendengaran,wicara,lainnya',
+            'assistance_details.requested_device' => 'required_if:assistance_type,DISABILITAS|in:kursi_roda_standar,kursi_roda_cp,kruk,walker,tongkat_tunanetra,alat_bantu_dengar,alat_bantu_lainnya',
+            'assistance_details.functional_impact' => 'required_if:assistance_type,DISABILITAS|string|min:10',
             'otp' => 'required|string',
             'document_ids' => 'nullable|array',
             'document_ids.*' => 'integer|exists:documents,id',
         ]);
+
+        $validated['assistance_details'] = $validated['assistance_type'] === 'RTLH'
+            ? array_intersect_key($validated['assistance_details'], array_flip(['damaged_components', 'damage_location']))
+            : array_intersect_key($validated['assistance_details'], array_flip(['disability_type', 'requested_device', 'functional_impact']));
 
         // Verify OTP from notifications table (last 10 mins)
         $validOtp = Notification::where('recipient_phone', $validated['reporter_phone'])
@@ -150,11 +167,11 @@ class PublicApplicationController extends Controller
     /**
      * Get list of official hamlets (Dusun).
      */
-    public function hamlets()
+    public function hamlets(HamletLocationService $locations)
     {
         return response()->json([
             'success' => true,
-            'data' => Hamlet::where('status', 'active')->get(),
+            'data' => $locations->options(),
         ]);
     }
 
@@ -255,17 +272,43 @@ class PublicApplicationController extends Controller
     /**
      * Update profile for the authenticated warga.
      */
-    public function updateProfile(Request $request)
+    public function updateProfile(Request $request, HamletLocationService $locations)
     {
         $user = $request->user();
+        $locationChanged = $request->exists('hamlet_id')
+            || $request->exists('rt')
+            || $request->exists('rw');
+        $hamletId = filter_var(
+            $request->input('hamlet_id', $user->hamlet_id),
+            FILTER_VALIDATE_INT
+        ) ?: null;
+        $hamletOptions = $locations->options()->first(
+            fn (array $option) => (int) $option['id'] === $hamletId
+        );
+
         $validated = $request->validate([
             'name'      => 'sometimes|required|string|max:150',
             'email'     => "sometimes|nullable|email|max:150|unique:users,email,{$user->id}",
             'phone'     => "sometimes|required|string|max:30|unique:users,phone,{$user->id}",
             'nik'       => "sometimes|nullable|string|max:20|unique:users,nik,{$user->id}",
             'kk_number' => 'sometimes|nullable|string|max:20',
-            'rt'        => 'sometimes|nullable|string|max:5',
-            'rw'        => 'sometimes|nullable|string|max:5',
+            'hamlet_id' => [
+                $locationChanged ? 'required' : 'sometimes',
+                'integer',
+                Rule::exists('hamlets', 'id')->where('status', 'active'),
+            ],
+            'rt' => [
+                $locationChanged ? 'required' : 'sometimes',
+                'string',
+                'max:5',
+                Rule::in($hamletOptions['rt_values'] ?? []),
+            ],
+            'rw' => [
+                $locationChanged ? 'required' : 'sometimes',
+                'string',
+                'max:5',
+                Rule::in($hamletOptions['rw_values'] ?? []),
+            ],
             'address'   => 'sometimes|nullable|string|max:255',
         ]);
 

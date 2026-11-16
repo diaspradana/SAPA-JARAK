@@ -54,7 +54,7 @@ Sistem mengelola dua kluster bantuan sosial prioritas:
 - **Backend (Laravel 11 + SQLite/MySQL)**:
   - Status: **100% Struktur API & Domain Service Siap Operasional**.
   - **15 Migrations DDL**, **5 Database Seeders**, **13 Eloquent Models**, **12 Dedicated Domain Services**, dan **43 RESTful API Endpoints** aktif mencakup:
-    - *Autentikasi Produksi Sanctum* dengan proteksi rute berbasis peran (`kades`, `kasi_kesra`, `sekdes`, `kasun`, `admin`).
+    - *Autentikasi Produksi Sanctum* dengan proteksi rute berbasis peran (`admin`, `kasun`, `public`). Akun perangkat desa menggunakan role Admin Desa terpadu.
     - *Modul Panel Pengaturan Administrasi Desa & Audit Log* (`/api/admin/*`): manajemen pamong desa, 5 dusun, pengaturan profil, pembobotan scoring dinamis, dan inspeksi log kepatuhan (FR-020).
     - *Mesin Generator Dokumen PDF Sisi Server* (Barryvdh DomPDF v3.1: Bukti Tanda Terima QR, BAST Digital, dan Laporan SPJ A4).
     - *Dual-Storage Media & Kompresi Citra* (Intervention Image v4.3) terintegrasi dengan *Deep Learning Face Blurring Engine* (OpenCV YuNet 232 KB & TV Mosaic Pixelate).

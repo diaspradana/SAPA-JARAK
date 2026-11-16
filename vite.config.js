@@ -8,11 +8,16 @@ export default defineConfig({
   // Leaving the default made every build copy stale bundles from public/assets back into dist/.
   publicDir: false,
   server: {
+    host: '0.0.0.0',
     port: 3000,
+    strictPort: true,
     open: false,
+    watch: {
+      usePolling: true
+    },
     proxy: {
-      '/api': 'http://localhost:8000',
-      '/storage': 'http://localhost:8000'
+      '/api': process.env.VITE_API_PROXY_TARGET || 'http://localhost:8000',
+      '/storage': process.env.VITE_API_PROXY_TARGET || 'http://localhost:8000'
     }
   }
 })

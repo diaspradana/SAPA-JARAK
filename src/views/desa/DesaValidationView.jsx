@@ -23,6 +23,7 @@ export default function DesaValidationView({ onBack }) {
     applications, 
     activeTicketNumber, 
     approveDesaFunding,
+    rejectDesaApplication,
     showConfirm,
     showToast
   } = useApp();
@@ -33,17 +34,19 @@ export default function DesaValidationView({ onBack }) {
 
   const defaultBudget = forwardApp?.assistanceType === 'RTLH' ? 15000000 : 2500000;
 
-  const [selectedFunding, setSelectedFunding] = useState('APBDes / Dana Desa');
+  const [selectedFunding, setSelectedFunding] = useState(FUNDING_SOURCES[0].id);
   const [budgetAmount, setBudgetAmount] = useState(defaultBudget);
   const [dtksDesil, setDtksDesil] = useState('Desil 1 (Kemiskinan Ekstrem)');
   const [docModalOpen, setDocModalOpen] = useState(false);
   const [validationNotes, setValidationNotes] = useState(
     'Berdasarkan hasil survei Kasun dan pencocokan data DTKS, pemohon memenuhi syarat prioritas bantuan desa tahun anggaran 2026.'
   );
+  const [rejectionReason, setRejectionReason] = useState('');
 
   const handleApprove = async () => {
     if (!forwardApp) return;
 
+    const fundingSourceName = FUNDING_SOURCES.find((source) => source.id === selectedFunding)?.name || selectedFunding;
     const result = await showConfirm({
       title: 'Validasi & Tetapkan Alokasi Anggaran?',
       html: `
@@ -52,7 +55,7 @@ export default function DesaValidationView({ onBack }) {
           <div class="p-3 bg-muted/50 rounded-lg border border-border space-y-1">
             <div class="flex justify-between">
               <span class="text-muted-foreground">Sumber Dana:</span>
-              <span class="font-bold text-foreground">${selectedFunding}</span>
+              <span class="font-bold text-foreground">${fundingSourceName}</span>
             </div>
             <div class="flex justify-between">
               <span class="text-muted-foreground">Nominal Anggaran:</span>
@@ -79,6 +82,31 @@ export default function DesaValidationView({ onBack }) {
       if (onBack) onBack();
     } catch (error) {
       showToast(error.message || 'Persetujuan gagal disimpan ke server.', 'error');
+    }
+  };
+
+  const handleReject = async () => {
+    if (!forwardApp) return;
+    const reason = rejectionReason.trim();
+    if (!reason) {
+      showToast('Alasan penolakan wajib diisi.', 'warning');
+      return;
+    }
+
+    const result = await showConfirm({
+      title: 'Tolak pengajuan ini?',
+      text: `Pengajuan #${forwardApp.ticketNumber} atas nama ${forwardApp.beneficiaryName} akan ditolak. Alasan: ${reason}`,
+      confirmButtonText: 'Ya, Tolak Pengajuan',
+      confirmColorClass: 'bg-rose-600 hover:bg-rose-700',
+      icon: 'warning'
+    });
+    if (!result.isConfirmed) return;
+
+    try {
+      await rejectDesaApplication(forwardApp.ticketNumber, reason);
+      if (onBack) onBack();
+    } catch (error) {
+      showToast(error.message || 'Penolakan pengajuan gagal disimpan ke server.', 'error');
     }
   };
 
@@ -203,8 +231,8 @@ export default function DesaValidationView({ onBack }) {
                   onChange={(e) => setSelectedFunding(e.target.value)}
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
-                  {FUNDING_SOURCES.map((s, idx) => (
-                    <option key={idx} value={s}>{s}</option>
+                  {FUNDING_SOURCES.map((source) => (
+                    <option key={source.id} value={source.id}>{source.name}</option>
                   ))}
                 </select>
               </div>
@@ -250,7 +278,28 @@ export default function DesaValidationView({ onBack }) {
                 />
               </div>
 
+              <div className="space-y-1.5 rounded-xl border border-rose-200 bg-rose-50/50 p-3 dark:border-rose-900 dark:bg-rose-950/20">
+                <Label htmlFor="rejectionReason">Alasan penolakan (wajib jika pengajuan ditolak):</Label>
+                <Textarea
+                  id="rejectionReason"
+                  rows={2}
+                  maxLength={1000}
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="Jelaskan alasan penolakan secara singkat dan jelas."
+                />
+              </div>
+
               <div className="pt-3 border-t border-border/60 flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleReject}
+                  className="font-bold gap-1.5"
+                >
+                  Tolak Pengajuan
+                </Button>
                 <Button
                   type="button"
                   variant="outline"

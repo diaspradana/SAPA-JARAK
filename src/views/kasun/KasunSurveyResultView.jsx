@@ -20,9 +20,10 @@ function formatDate(value) {
     : new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
 
-export default function KasunSurveyResultView() {
+export default function KasunSurveyResultView({ onBack }) {
   const { applications, currentUser, activeRole, activeTicketNumber, setCurrentView } = useApp();
   const [docModalOpen, setDocModalOpen] = useState(false);
+  const backToDashboard = onBack || (() => setCurrentView('kasun_dashboard'));
 
   const authorizedDusunId = getKasunDusunId(currentUser || { role: activeRole });
   const app = applications.find(application =>
@@ -41,7 +42,7 @@ export default function KasunSurveyResultView() {
             <p className="text-sm text-muted-foreground">
               Data mungkin belum diverifikasi atau tidak termasuk wilayah tugas Anda.
             </p>
-            <Button onClick={() => setCurrentView('kasun_dashboard')} className="gap-2">
+            <Button onClick={backToDashboard} className="gap-2">
               <ArrowLeft size={16} /> Kembali ke ruang kerja
             </Button>
           </CardContent>
@@ -51,9 +52,7 @@ export default function KasunSurveyResultView() {
   }
 
   const isDisability = app.assistanceType === 'DISABILITAS';
-  const beneficiaryName = isDisability
-    ? app.beneficiaryMaskedName || 'Warga (identitas terbatas)'
-    : app.beneficiaryName || 'Nama belum tersedia';
+  const beneficiaryName = app.beneficiaryName || 'Nama belum tersedia';
   const scoringParams = app.survey.scoringParams || {};
   const requiredParams = isDisability
     ? ['disabilityLevel', 'economicCondition', 'healthRecommendation']
@@ -85,7 +84,7 @@ export default function KasunSurveyResultView() {
               type="button"
               variant="outline"
               size="icon"
-              onClick={() => setCurrentView('kasun_dashboard')}
+              onClick={backToDashboard}
               aria-label="Kembali ke ruang kerja Kasun"
               className="shrink-0 rounded-lg"
             >

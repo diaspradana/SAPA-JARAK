@@ -187,7 +187,7 @@ Seluruh 26 rute di `routes/api.php` telah terhubung ke Controller dan Service La
 
 ### 6.4 Modul Autentikasi Sanctum Produksi
 - Endpoint verifikasi kredensial aparatur (`POST /api/auth/login`) yang menerbitkan Bearer Token Sanctum dengan masa berlaku aman.
-- Middleware otorisasi peran dinamis ([`CheckUserRole.php`](file:///home/ascension/Projects/SAPA-JARAK/app/Http/Middleware/CheckUserRole.php)) yang melindungi endpoint privat berdasarkan peran (`kades`, `kasi_kesra`, `sekdes`, `kasun`, `admin`).
+- Middleware otorisasi peran dinamis ([`CheckUserRole.php`](../app/Http/Middleware/CheckUserRole.php)) yang melindungi endpoint privat berdasarkan peran (`admin`, `kasun`, `public`). Akun Kades, Kasi Kesra, dan Sekdes menggunakan role `admin` dengan nama akun masing-masing tetap.
 - Endpoint inspeksi profil aktif (`GET /api/auth/me`), pengalih peran instan demo (`POST /api/auth/switch-role`), dan pencabutan token (`POST /api/auth/logout`).
 
 ### 6.5 Modul Manajemen Dokumen & Dual-Storage Media

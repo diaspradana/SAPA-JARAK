@@ -33,7 +33,6 @@ export default function TrackingDetailView() {
     applications, 
     activeTicketNumber, 
     setActiveTicketNumber, 
-    setCurrentView,
     trackApplication,
     notifications, 
     showToast 
@@ -178,14 +177,6 @@ export default function TrackingDetailView() {
               </p>
             </div>
 
-            <Button
-              variant="outline"
-              size="default"
-              onClick={() => { setCurrentView('ajukan'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-              className="h-11 px-4 text-xs sm:text-sm font-bold gap-1.5 border-border rounded-xl self-start sm:self-auto"
-            >
-              <span>+ Ajukan Permohonan Baru</span>
-            </Button>
           </div>
 
           <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row gap-2.5">

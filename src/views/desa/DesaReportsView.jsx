@@ -146,8 +146,8 @@ export default function DesaReportsView({ onBack }) {
               className="flex h-8 rounded-md border border-input bg-background px-2.5 py-1 text-xs text-foreground shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <option value="ALL">Semua Sumber Dana</option>
-              {FUNDING_SOURCES.map((s, idx) => (
-                <option key={idx} value={s}>{s}</option>
+              {FUNDING_SOURCES.map((source) => (
+                <option key={source.id} value={source.id}>{source.name}</option>
               ))}
             </select>
           </div>

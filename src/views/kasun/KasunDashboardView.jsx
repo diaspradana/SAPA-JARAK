@@ -1,7 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import sapaJarakLogo from '../../assets/sapa-jarak-logo.png';
 import StatusBadge from '../../components/common/StatusBadge';
 import SyncStatusBanner from '../../components/common/SyncStatusBanner';
+import KasunSurveyResultView from './KasunSurveyResultView';
+import KasunSurveyView from './KasunSurveyView';
 import { DUSUN_LIST, getKasunDusunId } from '../../data/desaConfig';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -9,29 +12,29 @@ import { cn } from '../../lib/utils';
 import {
   Accessibility,
   ArrowUpRight,
+  Bell,
   CalendarDays,
   CheckCircle2,
-  ClipboardCheck,
-  Clock3,
+  ChevronRight,
   FileClock,
   FileSearch,
   Home,
   LogOut,
   Menu,
   MapPin,
+  Moon,
   RotateCcw,
   ShieldCheck,
+  Sun,
   UserCheck,
   X,
 } from 'lucide-react';
 
 const sections = [
   { id: 'dashboard', label: 'Dashboard', icon: Home },
-  { id: 'incoming', label: 'Pengajuan Masuk', icon: FileSearch },
   { id: 'rtlh', label: 'Verifikasi RTLH', icon: Home },
   { id: 'disability', label: 'Verifikasi Disabilitas', icon: Accessibility },
   { id: 'schedule', label: 'Jadwal Survei', icon: CalendarDays },
-  { id: 'results', label: 'Hasil Verifikasi', icon: ClipboardCheck },
   { id: 'revisions', label: 'Perbaikan Data', icon: RotateCcw },
   { id: 'map', label: 'Peta Wilayah', icon: MapPin },
   { id: 'history', label: 'Riwayat Verifikasi', icon: FileClock },
@@ -58,9 +61,6 @@ function formatDate(value) {
 }
 
 function displayName(application) {
-  if (application.assistanceType === 'DISABILITAS') {
-    return application.beneficiaryMaskedName || 'Warga (data terbatas)';
-  }
   return application.beneficiaryName || 'Nama belum tersedia';
 }
 
@@ -120,6 +120,10 @@ export default function KasunDashboardView() {
   const {
     applications,
     currentUser,
+    theme,
+    toggleTheme,
+    notifications,
+    setIsNotifDrawerOpen,
     updateKasunVisitSchedule,
     showToast,
     setCurrentView,
@@ -127,6 +131,8 @@ export default function KasunDashboardView() {
     logout,
   } = useApp();
   const [activeSection, setActiveSection] = useState('dashboard');
+  const [viewingSurvey, setViewingSurvey] = useState(false);
+  const [viewingResult, setViewingResult] = useState(false);
   const [search, setSearch] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -154,37 +160,49 @@ export default function KasunDashboardView() {
   const section = sections.find(item => item.id === activeSection) || sections[0];
   const sectionApplications = useMemo(() => {
     let rows = kasunApps;
-    if (activeSection === 'rtlh') rows = rows.filter(application => application.assistanceType === 'RTLH');
-    if (activeSection === 'disability') rows = rows.filter(application => application.assistanceType === 'DISABILITAS');
+    if (activeSection === 'rtlh') rows = rows.filter(application =>
+      application.assistanceType === 'RTLH' && waitingStatuses.includes(application.status) && !application.survey
+    );
+    if (activeSection === 'disability') rows = rows.filter(application =>
+      application.assistanceType === 'DISABILITAS' && waitingStatuses.includes(application.status) && !application.survey
+    );
     if (activeSection === 'schedule') rows = rows.filter(application => waitingStatuses.includes(application.status));
-    if (activeSection === 'results') rows = surveyedApps;
     if (activeSection === 'revisions') rows = revisionApps;
     if (activeSection === 'history') {
-      rows = rows.filter(application => application.timeline?.some(item =>
-        ['KASUN_SURVEY', 'RETURNED', 'FORWARDED_TO_DESA'].includes(item.status)
-      ));
+      rows = rows.filter(application =>
+        Boolean(application.survey)
+        || application.timeline?.some(item => ['KASUN_SURVEY', 'RETURNED', 'FORWARDED_TO_DESA'].includes(item.status))
+      );
     }
 
     const query = search.trim().toLowerCase();
     if (query) {
       rows = rows.filter(application =>
-        [application.ticketNumber, application.beneficiaryMaskedName, application.beneficiaryName]
+        [application.ticketNumber, application.beneficiaryName]
           .some(value => value?.toLowerCase().includes(query))
       );
     }
 
     return rows;
-  }, [activeSection, kasunApps, revisionApps, search, surveyedApps]);
+  }, [activeSection, kasunApps, revisionApps, search]);
 
   const handleInspect = ticketNumber => {
     const application = kasunApps.find(item => item.ticketNumber === ticketNumber);
     setActiveTicketNumber(ticketNumber);
-    setCurrentView(application?.survey && application.status !== 'RETURNED' ? 'kasun_hasil' : 'kasun_verifikasi');
     setSidebarOpen(false);
+    if (application?.survey && application.status !== 'RETURNED') {
+      setViewingSurvey(false);
+      setViewingResult(true);
+    } else {
+      setViewingResult(false);
+      setViewingSurvey(true);
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSectionChange = sectionId => {
+    setViewingSurvey(false);
+    setViewingResult(false);
     setActiveSection(sectionId);
     setSearch('');
     setSidebarOpen(false);
@@ -211,7 +229,168 @@ export default function KasunDashboardView() {
     : section.label;
 
   return (
-    <div className="mx-auto max-w-[1440px] space-y-5 px-4 py-5 sm:px-6 sm:py-7">
+    <div className="min-h-screen bg-neutral-50 font-sans dark:bg-neutral-950">
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <aside
+        id="kasun-sidebar-menu"
+        className={cn(
+          'fixed inset-y-0 left-0 z-40 flex h-screen w-64 flex-col border-r border-border bg-card shadow-2xl transition-transform duration-300 lg:translate-x-0 lg:shadow-none',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+      >
+        <div className="flex items-center justify-between border-b border-border bg-emerald-900 p-4">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <img
+              src={sapaJarakLogo}
+              alt="Logo SAPA-JARAK"
+              className="h-9 w-9 shrink-0 rounded-lg bg-white object-contain"
+            />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-white">SAPA-JARAK</p>
+              <p className="text-[10px] font-medium text-emerald-200">Menu Kasun</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Tutup menu"
+            className="rounded-lg p-1 text-white/75 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="border-b border-border bg-emerald-50 p-4 dark:bg-emerald-950/30">
+          <p className="truncate text-sm font-bold text-foreground">Dusun {currentDusun.name}</p>
+          <p className="mt-1 truncate text-xs text-muted-foreground">
+            {currentUser?.name || currentDusun.kasunName}
+          </p>
+        </div>
+
+        <nav aria-label="Menu Kasun" className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
+          {sections.map(item => {
+            const Icon = item.icon;
+            const badgeCount = item.id === 'revisions' ? revisionApps.length : null;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => handleSectionChange(item.id)}
+                aria-current={activeSection === item.id ? 'page' : undefined}
+                className={cn(
+                  'flex min-h-10 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors',
+                  activeSection === item.id
+                    ? 'bg-emerald-800 text-white'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                )}
+              >
+                <Icon size={17} className="shrink-0" />
+                <span className="flex-1">{item.label}</span>
+                {badgeCount > 0 && (
+                  <span className={cn(
+                    'min-w-6 rounded-full px-1.5 py-0.5 text-center text-[11px] font-bold',
+                    activeSection === item.id ? 'bg-white/20 text-white' : 'bg-muted text-foreground'
+                  )}>
+                    {badgeCount}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="border-t border-border p-2">
+          <Button
+            onClick={logout}
+            variant="ghost"
+            className="w-full justify-start gap-3 rounded-lg px-3 text-sm font-medium text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:text-rose-300 dark:hover:bg-rose-950/40"
+          >
+            <LogOut size={17} />
+            Keluar
+          </Button>
+        </div>
+      </aside>
+
+      <div className="min-h-screen lg:ml-64">
+        <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b border-border bg-card/95 px-4 shadow-xs backdrop-blur sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Buka menu Kasun"
+              aria-expanded={sidebarOpen}
+              aria-controls="kasun-sidebar-menu"
+              className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden"
+            >
+              <Menu size={20} />
+            </button>
+            <nav aria-label="Lokasi halaman" className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="hidden font-semibold sm:inline">Ruang Kerja Kasun</span>
+              <ChevronRight size={13} className="hidden shrink-0 sm:block" />
+              <span className="truncate font-bold text-foreground">{viewingResult ? 'Hasil Verifikasi' : section.label}</span>
+            </nav>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Ganti ke mode terang' : 'Ganti ke mode gelap'}
+              title={theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
+              className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              {theme === 'dark' ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} className="text-emerald-700" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsNotifDrawerOpen(true)}
+              aria-label="Buka notifikasi"
+              title="Notifikasi"
+              className="relative rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <Bell size={18} />
+              {notifications.length > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[9px] font-bold text-white">
+                  {notifications.length}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSectionChange('profile')}
+              aria-label="Buka profil"
+              className="flex items-center gap-2 rounded-xl px-1.5 py-1 transition-colors hover:bg-muted sm:px-2"
+            >
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-700 text-xs font-bold text-white">
+                {currentUser?.avatarInitials || currentUser?.name?.charAt(0)?.toUpperCase() || 'K'}
+              </span>
+              <span className="hidden max-w-[150px] truncate text-xs font-bold text-foreground sm:block">
+                {currentUser?.name || currentDusun.kasunName}
+              </span>
+            </button>
+          </div>
+        </header>
+
+        <main className="mx-auto max-w-[1440px] space-y-5 px-4 py-5 sm:px-6 sm:py-7">
+      {viewingSurvey ? (
+        <KasunSurveyView
+          onBack={() => setViewingSurvey(false)}
+          onSubmitted={(isReturned) => {
+            setViewingSurvey(false);
+            setActiveSection(isReturned ? 'revisions' : 'history');
+            setSearch('');
+          }}
+        />
+      ) : viewingResult ? (
+        <KasunSurveyResultView onBack={() => setViewingResult(false)} />
+      ) : (
+        <>
       <Card className="overflow-hidden rounded-3xl border-emerald-900/10 shadow-sm">
         <CardContent className="flex flex-col justify-between gap-4 bg-gradient-to-br from-emerald-950 to-emerald-800 p-5 text-white sm:flex-row sm:items-center sm:p-6">
           <div className="flex items-start gap-4">
@@ -234,77 +413,7 @@ export default function KasunDashboardView() {
       </Card>
 
       <SyncStatusBanner />
-
-      <button
-        type="button"
-        onClick={() => setSidebarOpen(open => !open)}
-        aria-expanded={sidebarOpen}
-        aria-controls="kasun-sidebar-menu"
-        className="flex h-11 w-full items-center justify-between rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground lg:hidden"
-      >
-        <span className="flex items-center gap-2">
-          <Menu size={17} />
-          {section.label}
-        </span>
-        {sidebarOpen ? <X size={17} /> : <span className="text-xs text-muted-foreground">Buka menu</span>}
-      </button>
-
-      <div className="grid gap-5 lg:grid-cols-[250px_minmax(0,1fr)] lg:items-start">
-        <aside
-          id="kasun-sidebar-menu"
-          className={cn(
-            'h-fit overflow-hidden rounded-2xl border border-border bg-card shadow-sm lg:sticky lg:top-24',
-            sidebarOpen ? 'block' : 'hidden lg:block'
-          )}
-        >
-          <div className="border-b border-border p-4">
-            <p className="text-xs font-semibold text-muted-foreground">Menu Kasun</p>
-            <p className="mt-1 truncate text-sm font-bold text-foreground">Dusun {currentDusun.name}</p>
-          </div>
-          <nav aria-label="Menu Kasun" className="space-y-1 p-2">
-            {sections.map(item => {
-              const Icon = item.icon;
-              const badgeCount = item.id === 'incoming' ? waitingApps.length : item.id === 'revisions' ? revisionApps.length : null;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => handleSectionChange(item.id)}
-                  aria-current={activeSection === item.id ? 'page' : undefined}
-                  className={cn(
-                    'flex min-h-10 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors',
-                    activeSection === item.id
-                      ? 'bg-emerald-800 text-white'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  )}
-                >
-                  <Icon size={17} className="shrink-0" />
-                  <span className="flex-1">{item.label}</span>
-                  {badgeCount > 0 && (
-                    <span className={cn(
-                      'min-w-6 rounded-full px-1.5 py-0.5 text-center text-[11px] font-bold',
-                      activeSection === item.id ? 'bg-white/20 text-white' : 'bg-muted text-foreground'
-                    )}>
-                      {badgeCount}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
-          <div className="border-t border-border p-2">
-            <Button
-              onClick={logout}
-              variant="ghost"
-              className="w-full justify-start gap-3 rounded-lg px-3 text-sm font-medium text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:text-rose-300 dark:hover:bg-rose-950/40"
-            >
-              <LogOut size={17} />
-              Keluar
-            </Button>
-          </div>
-        </aside>
-
-        <main className="min-w-0 space-y-5">
+      <div className="space-y-5">
 
       {activeSection === 'profile' ? (
         <Card className="rounded-3xl">
@@ -324,8 +433,8 @@ export default function KasunDashboardView() {
             <>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {[
-                  { label: 'Pengajuan masuk', value: kasunApps.length, icon: FileSearch, color: 'text-sky-600', detail: 'Seluruh berkas di dusun ini' },
-                  { label: 'Menunggu pemeriksaan', value: waitingApps.length, icon: Clock3, color: 'text-amber-600', detail: 'Perlu dicocokkan dengan lapangan' },
+                  { label: 'Menunggu RTLH', value: waitingApps.filter(application => application.assistanceType === 'RTLH').length, icon: Home, color: 'text-emerald-600', detail: 'Perlu verifikasi rumah' },
+                  { label: 'Menunggu Disabilitas', value: waitingApps.filter(application => application.assistanceType === 'DISABILITAS').length, icon: Accessibility, color: 'text-sky-600', detail: 'Perlu verifikasi alat bantu' },
                   { label: 'Terverifikasi / diteruskan', value: verifiedApps.length, icon: CheckCircle2, color: 'text-emerald-600', detail: 'Sudah diteruskan untuk penilaian desa' },
                   { label: 'Perlu perbaikan', value: revisionApps.length, icon: RotateCcw, color: 'text-rose-600', detail: 'Dikembalikan dengan catatan' },
                 ].map(metric => {
@@ -345,20 +454,49 @@ export default function KasunDashboardView() {
                 })}
               </div>
 
-              <Card className="rounded-3xl">
-                <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-border">
-                  <div>
-                    <CardTitle>Perlu pemeriksaan</CardTitle>
-                    <p className="mt-1 text-xs text-muted-foreground">Cocokkan informasi formulir dengan kondisi faktual di lapangan.</p>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => setActiveSection('incoming')}>Semua pengajuan</Button>
-                </CardHeader>
-                <KasunApplicationList
-                  applications={waitingApps.slice(0, 5)}
-                  onInspect={handleInspect}
-                  emptyMessage="Tidak ada pengajuan yang menunggu pemeriksaan."
-                />
-              </Card>
+              <div className="grid gap-4 lg:grid-cols-2">
+                {[
+                  {
+                    id: 'rtlh',
+                    title: 'Verifikasi RTLH',
+                    description: 'Tinjau kondisi rumah dan kebutuhan perbaikan.',
+                    count: kasunApps.filter(application => application.assistanceType === 'RTLH').length,
+                    waiting: waitingApps.filter(application => application.assistanceType === 'RTLH').length,
+                    icon: Home,
+                    color: 'text-emerald-700',
+                  },
+                  {
+                    id: 'disability',
+                    title: 'Verifikasi Disabilitas',
+                    description: 'Tinjau kebutuhan alat bantu dan dukungan penerima.',
+                    count: kasunApps.filter(application => application.assistanceType === 'DISABILITAS').length,
+                    waiting: waitingApps.filter(application => application.assistanceType === 'DISABILITAS').length,
+                    icon: Accessibility,
+                    color: 'text-sky-700',
+                  },
+                ].map(item => {
+                  const Icon = item.icon;
+                  return (
+                    <Card key={item.id} className="rounded-2xl">
+                      <CardContent className="flex items-center justify-between gap-4 p-5">
+                        <div className="flex items-start gap-3">
+                          <Icon className={item.color} size={21} />
+                          <div>
+                            <h2 className="font-bold">{item.title}</h2>
+                            <p className="mt-1 text-xs text-muted-foreground">{item.description}</p>
+                            <p className="mt-2 text-xs font-semibold text-muted-foreground">
+                              {item.count} pengajuan · {item.waiting} menunggu verifikasi
+                            </p>
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={() => handleSectionChange(item.id)}>
+                          Buka
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
 
               <Card className="rounded-3xl border-amber-300/70 bg-amber-50/60 dark:bg-amber-950/20">
                 <CardContent className="flex items-start gap-3 p-5 text-sm">
@@ -377,12 +515,10 @@ export default function KasunDashboardView() {
                 <div>
                   <CardTitle>{sectionTitle} — Dusun {currentDusun.name}</CardTitle>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {activeSection === 'disability'
-                      ? 'Tinjau kebutuhan dukungan yang relevan; identitas ditampilkan secara terbatas.'
-                      : 'Data yang ditampilkan dibatasi pada dusun tanggung jawab Anda.'}
+                    Data pengajuan dan identitas penerima ditampilkan sesuai wilayah tugas Anda.
                   </p>
                 </div>
-                {['incoming', 'rtlh', 'disability', 'results', 'revisions'].includes(activeSection) && (
+                {['rtlh', 'disability', 'revisions', 'history'].includes(activeSection) && (
                   <input
                     type="search"
                     value={search}
@@ -394,7 +530,7 @@ export default function KasunDashboardView() {
                 )}
               </CardHeader>
 
-              {['incoming', 'rtlh', 'disability', 'results', 'revisions'].includes(activeSection) && (
+              {['rtlh', 'disability', 'revisions'].includes(activeSection) && (
                 <KasunApplicationList
                   applications={sectionApplications}
                   onInspect={handleInspect}
@@ -446,7 +582,12 @@ export default function KasunDashboardView() {
                           <p className="font-mono text-xs font-bold text-emerald-800 dark:text-emerald-300">#{application.ticketNumber}</p>
                           <p className="mt-1 font-bold">{displayName(application)}</p>
                         </div>
-                        <span className="text-xs text-muted-foreground">{application.survey?.verifiedBy || 'Petugas Kasun'}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">{application.survey?.verifiedBy || 'Petugas Kasun'}</span>
+                          <Button size="sm" variant="outline" onClick={() => handleInspect(application.ticketNumber)}>
+                            {application.survey && application.status !== 'RETURNED' ? 'Lihat hasil' : 'Tinjau pengajuan'}
+                          </Button>
+                        </div>
                       </div>
                       {(application.timeline || [])
                         .filter(item => ['KASUN_SURVEY', 'RETURNED', 'FORWARDED_TO_DESA'].includes(item.status))
@@ -525,6 +666,9 @@ export default function KasunDashboardView() {
               )}
             </Card>
           )}
+        </>
+      )}
+      </div>
         </>
       )}
         </main>

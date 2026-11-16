@@ -46,7 +46,7 @@ Dokumen ini memaparkan rencana aksi rekayasa perangkat lunak (*software engineer
 
 ### Fase 2: Autentikasi Produksi Sanctum & Proteksi Rute (Backend Selesai ✅)
 **Tujuan**: Menggantikan tombol demo `RoleSwitcher` dengan sistem login formal yang aman untuk aparatur desa.
-- **Status Backend**: Telah aktif dan diverifikasi via `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/switch-role`, `POST /api/auth/logout`, dan middleware `role:kades,kasi_kesra,sekdes,kasun,admin`.
+- **Status Backend**: Telah aktif dan diverifikasi via `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/switch-role`, `POST /api/auth/logout`, dan middleware `role:admin,kasun`.
 - **Kebutuhan Frontend**: Menyediakan formulir login kedinasan yang menyimpan Bearer Token ke browser storage dan memasukkannya ke header `Authorization: Bearer <token>`.
 
 ---

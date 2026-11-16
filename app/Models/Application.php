@@ -21,6 +21,7 @@ class Application extends Model
         'status',
         'description',
         'needs_description',
+        'assistance_details',
         'priority_score',
         'urgency_level',
         'submitted_at',
@@ -37,6 +38,7 @@ class Application extends Model
         'completed_at' => 'datetime',
         'survey_scheduled_at' => 'datetime',
         'priority_score' => 'integer',
+        'assistance_details' => 'array',
     ];
 
     public function beneficiary()

@@ -26,7 +26,7 @@ Dokumentasi ini merinci seluruh endpoint antarmuka pemrograman aplikasi (RESTful
 ## 2. Modul Publik & Warga (`/api/public/*`)
 
 ### 2.1 Mengambil Daftar Dusun Resmi
-Mendapatkan daftar 5 dusun resmi Desa Jarak yang berstatus aktif.
+Mendapatkan daftar dusun aktif beserta pilihan RT dan RW yang sudah tercatat pada data warga/penerima di dusun tersebut. Nilai RT/RW digunakan bersama oleh formulir registrasi, profil warga, dan formulir pengajuan.
 
 - **Method**: `GET`
 - **Endpoint**: `/api/public/hamlets`
@@ -42,27 +42,18 @@ Mendapatkan daftar 5 dusun resmi Desa Jarak yang berstatus aktif.
     "data": [
       {
         "id": 1,
-        "name": "Kalasan",
-        "code": "KLS",
-        "leader_name": "Bpk. Suwandi",
-        "leader_phone": "0813-8822-1101",
-        "rt_count": 6,
-        "rw_count": 2,
-        "status": "active"
-      },
-      {
-        "id": 2,
-        "name": "Sagi",
-        "code": "SGI",
-        "leader_name": "Bpk. Bambang Sutrisno",
-        "leader_phone": "0812-7744-2202",
-        "rt_count": 8,
-        "rw_count": 2,
-        "status": "active"
+        "name": "Dusun Jarak Lor",
+        "code": "JL",
+        "head_name": "Putro Dwi S.",
+        "head_phone": "081234567801",
+        "status": "active",
+        "rt_values": ["01"],
+        "rw_values": ["01"]
       }
     ]
   }
   ```
+`rt_values` dan `rw_values` adalah nilai unik yang tersedia di database untuk dusun tersebut. Jika nilainya belum ada, dusun itu belum dapat dipilih untuk registrasi atau pengajuan. Server juga memvalidasi bahwa pilihan RT/RW cocok dengan `hamlet_id`.
 
 ---
 
@@ -113,19 +104,24 @@ Mendaftarkan permohonan baru, memvalidasi kode OTP, membuat data penerima, mener
     "kk_number": "3506120101150002",
     "beneficiary_phone": "081234567890",
     "hamlet_id": 1,
-    "rt": "03",
+    "rt": "01",
     "rw": "01",
-    "address": "RT 03 / RW 01, Dusun Kalasan, Desa Jarak",
+    "address": "RT 01 / RW 01, Dusun Jarak Lor, Desa Jarak",
     "is_unregistered": false,
     "assistance_type": "RTLH",
     "reporter_name": "Suryanto",
     "reporter_phone": "081234567890",
     "reporter_relationship": "Diri Sendiri",
     "description": "Dinding anyaman bambu rapuh, lantai tanah basah, dan atap bocor parah.",
-    "needs_description": "Perbaikan dinding batako, plester semen lantai, dan genteng.",
+    "assistance_details": {
+      "damaged_components": ["atap", "dinding", "lantai"],
+      "damage_location": "Atap ruang dapur dan dinding kamar belakang"
+    },
     "otp": "481923"
   }
   ```
+Untuk jenis `RTLH`, kirim `damaged_components` (minimal satu dari `atap`, `dinding`, `lantai`, `sanitasi`). Untuk `DISABILITAS`, `assistance_details` harus berisi `disability_type`, `requested_device`, dan `functional_impact`; detail yang tidak sesuai jenis bantuan tidak disimpan.
+`hamlet_id`, `rt`, dan `rw` wajib dipilih dari nilai yang dikembalikan oleh `/api/public/hamlets`.
 - **Respon Sukses (201 Created)**:
   ```json
   {
@@ -478,6 +474,7 @@ Mengunduh berkas antrean dan hasil verifikasi survei lapangan warga binaan Kepal
 
 ### 4.1 Mengambil Ringkasan Dashboard Tata Kelola Desa
 Menampilkan rekapitulasi jumlah pengajuan di setiap tahapan pengerjaan.
+Admin Desa menjalankan fungsi administrasi, verifikasi lanjutan, persetujuan bantuan, pengadaan, dan serah terima. Peran lama Kades, Kasi Kesra, dan Sekdes digabung menjadi satu role `admin`; akun yang sudah ada tetap tersimpan dengan nama masing-masing. Akses endpoint memerlukan autentikasi Admin Desa.
 
 - **Method**: `GET`
 - **Endpoint**: `/api/desa/dashboard`
@@ -629,7 +626,7 @@ Menghasilkan dan mengunduh berkas fisik PDF resmi (ukuran A4 potret) Berita Acar
 - **Endpoint**: `/api/desa/applications/{id}/bast/pdf`
 - **Parameter URL**: `id` (ID permohonan / application)
 - **Header Wajib**: `Authorization: Bearer <access_token>`
-- **Hak Akses Peran**: `kades`, `kasi_kesra`, `sekdes`, `admin`
+- **Hak Akses Peran**: `admin`
 - **Header Respon Sukses (200 OK)**:
   ```http
   Content-Type: application/pdf
@@ -660,7 +657,7 @@ Menghasilkan dokumen laporan resmi Laporan Pertanggungjawaban Realisasi Anggaran
   - `hamlet_id`: Filter ID dusun
   - `year`: Filter tahun realisasi anggaran (default tahun berjalan)
 - **Header Wajib**: `Authorization: Bearer <access_token>`
-- **Hak Akses Peran**: `kades`, `kasi_kesra`, `sekdes`, `admin`
+- **Hak Akses Peran**: `admin`
 - **Header Respon Sukses (200 OK)**:
   ```http
   Content-Type: application/pdf
@@ -684,7 +681,7 @@ Menghasilkan berkas rekapitulasi realisasi belanja bantuan sosial APBDes berstat
   - `/api/desa/reports/spj/excel` (Shortcut unduh langsung format Excel `.xls`)
   - `/api/desa/reports/spj/csv` (Shortcut unduh langsung format CSV `.csv`)
 - **Header Wajib**: `Authorization: Bearer <access_token>`
-- **Hak Akses Peran**: `kades`, `kasi_kesra`, `sekdes`, `admin`
+- **Hak Akses Peran**: `admin`
 - **Query Parameter (Opsional)**:
   - `format`: `csv` (default) atau `excel` / `xls`
   - `year`: Filter tahun realisasi (default tahun berjalan, contoh: `2026`)
@@ -721,7 +718,7 @@ Menghasilkan master data seluruh usulan dan penerima bantuan sosial untuk kebutu
 - **Method**: `GET`
 - **Endpoint**: `/api/desa/reports/beneficiaries/export`
 - **Header Wajib**: `Authorization: Bearer <access_token>`
-- **Hak Akses Peran**: `kades`, `kasi_kesra`, `sekdes`, `admin`
+- **Hak Akses Peran**: `admin`
 - **Query Parameter (Opsional)**:
   - `format`: `csv` (default) atau `excel` / `xls`
   - `delimiter`: `,` (default) atau `;`
@@ -771,7 +768,7 @@ Melakukan verifikasi kredensial email dan kata sandi aparatur desa, serta menerb
         "id": 4,
         "name": "Bpk. Drs. H. Supriyadi (Kepala Desa Jarak)",
         "email": "kades@jarak-kediri.desa.id",
-        "role": "kades",
+        "role": "admin",
         "hamlet_id": null
       }
     }
@@ -802,7 +799,7 @@ Mengambil data identitas, peran, dan wilayah tugas aparatur yang sedang login.
       "id": 4,
       "name": "Bpk. Drs. H. Supriyadi (Kepala Desa Jarak)",
       "email": "kades@jarak-kediri.desa.id",
-      "role": "kades",
+      "role": "admin",
       "hamlet_id": null,
       "status": "active"
     }
@@ -1045,7 +1042,7 @@ Mengambil berkas biner langsung dari penyimpanan server.
   - `version`: `auto` (default), `public` (salinan tersanitasi), atau `original` (berkas asli internal)
 - **Aturan Otorisasi**:
   - Salinan publik (`version=public` atau dokumen `PUBLIC_MASKED`) dapat diakses langsung oleh masyarakat.
-  - Berkas asli (`version=original`) atau dokumen `INTERNAL_ONLY` (`KTP_KK`) **wajib menyertakan Bearer Token aparatur desa** (`kades`, `kasi_kesra`, `sekdes`, `admin`, `kasun`).
+  - Berkas asli (`version=original`) atau dokumen `INTERNAL_ONLY` (`KTP_KK`) **wajib menyertakan Bearer Token aparatur desa** (`admin`, `kasun`).
 - **Respon Sukses (200 OK)**:
   Stream biner berkas dengan `Content-Type` yang sesuai (`image/jpeg`, `application/pdf`, dll).
 
@@ -1057,7 +1054,7 @@ Menghapus rekaman database dan secara permanen membersihkan berkas fisik dari st
 - **Method**: `DELETE`
 - **Endpoint**: `/api/documents/{id}`
 - **Header Wajib**: `Authorization: Bearer <access_token>`
-- **Hak Akses**: Pemilik unggahan dokumen atau aparatur pengelola desa (`kades`, `kasi_kesra`, `admin`).
+- **Hak Akses**: Pemilik unggahan dokumen atau aparatur pengelola desa (`admin`).
 - **Respon Sukses (200 OK)**:
   ```json
   {
@@ -1070,7 +1067,7 @@ Menghapus rekaman database dan secara permanen membersihkan berkas fisik dari st
 
 ## 8. Modul Pengaturan Sistem & Administrasi Desa (`/api/admin/*`)
 
-Modul ini mengimplementasikan fungsi administrasi desa sesuai [PRD Seksi 21](PRD_SAPA-JARAK_Laravel.md) dan pengawasan log audit kepatuhan ([FR-020](04-unimplemented-and-gap-analysis.md)). Seluruh endpoint pada modul ini dilindungi secara ketat oleh middleware `auth:sanctum` dan `role:admin,kades`.
+Modul ini mengimplementasikan fungsi administrasi desa sesuai [PRD Seksi 21](PRD_SAPA-JARAK_Laravel.md) dan pengawasan log audit kepatuhan ([FR-020](04-unimplemented-and-gap-analysis.md)). Seluruh endpoint pada modul ini dilindungi secara ketat oleh middleware `auth:sanctum` dan role `admin`.
 
 ---
 
@@ -1080,7 +1077,7 @@ Mendapatkan statistik ringkasan pengguna aparatur, dusun, berkas pengajuan, log 
 - **Method**: `GET`
 - **Endpoint**: `/api/admin/overview`
 - **Header Wajib**: `Authorization: Bearer <access_token>`
-- **Hak Akses**: `admin`, `kades`
+- **Hak Akses**: `admin`
 - **Respon Sukses (200 OK)**:
   ```json
   {
@@ -1092,9 +1089,6 @@ Mendapatkan statistik ringkasan pengguna aparatur, dusun, berkas pengajuan, log 
         "inactive": 0,
         "by_role": {
           "admin": 1,
-          "kades": 1,
-          "sekdes": 1,
-          "kasi_kesra": 1,
           "kasun": 5,
           "public": 0
         }
@@ -1147,7 +1141,7 @@ Mendapatkan statistik ringkasan pengguna aparatur, dusun, berkas pengajuan, log 
 - **Endpoint**: `/api/admin/users`
 - **Header Wajib**: `Authorization: Bearer <access_token>`
 - **Query Parameter (Opsional)**:
-  - `role`: Filter peran (`admin`, `kades`, `sekdes`, `kasi_kesra`, `kasun`, `public`).
+  - `role`: Filter peran (`admin`, `kasun`, `public`).
   - `hamlet_id`: Filter ID dusun penugasan.
   - `status`: `active` atau `inactive`.
   - `search`: Pencarian nama, email, atau nomor telepon.
@@ -1194,7 +1188,7 @@ Mendapatkan statistik ringkasan pengguna aparatur, dusun, berkas pengajuan, log 
     "email": "staf.kesra@jarak-kediri.desa.id",
     "phone": "081234567099",
     "password": "PasswordAman123!",
-    "role": "kasi_kesra",
+    "role": "admin",
     "hamlet_id": null,
     "status": "active"
   }
@@ -1203,13 +1197,13 @@ Mendapatkan statistik ringkasan pengguna aparatur, dusun, berkas pengajuan, log 
   ```json
   {
     "success": true,
-    "message": "Akun aparatur desa 'Bpk. Subagyo (Staf Kesra)' (kasi_kesra) berhasil ditambahkan.",
+    "message": "Akun aparatur desa 'Bpk. Subagyo (Staf Kesra)' (admin) berhasil ditambahkan.",
     "data": {
       "id": 10,
       "name": "Bpk. Subagyo (Staf Kesra)",
       "email": "staf.kesra@jarak-kediri.desa.id",
       "phone": "081234567099",
-      "role": "kasi_kesra",
+      "role": "admin",
       "status": "active"
     }
   }

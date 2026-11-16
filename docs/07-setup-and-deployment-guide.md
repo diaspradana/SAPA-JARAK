@@ -222,6 +222,7 @@ DB_USERNAME=sapa_desa_user
 DB_PASSWORD=GantiDenganKataSandiBasisDataYangKuatDanAcak!
 DB_ROOT_PASSWORD=GantiDenganKataSandiRootMySQLYangSangatKuat!
 FORWARD_DB_PORT=3306
+ADMIN_REGISTRATION_CODE=AturKodeUndanganAdminDesaYangRahasia
 
 # 3. Otomasi Inisialisasi Kontainer
 AUTORUN_MIGRATIONS=true
@@ -240,6 +241,8 @@ WHATSAPP_SIMULATION_MODE=false
 ML_SERVICE_URL=http://ai_assistant:8001
 ML_PORT=8001
 ```
+
+`ADMIN_REGISTRATION_CODE` adalah kode undangan untuk pendaftaran akun Admin Desa. Simpan hanya di konfigurasi server dan bagikan secara terbatas. Jika variabel belum diatur, pendaftaran Admin Desa ditolak; pendaftaran warga tetap tersedia.
 
 ---
 

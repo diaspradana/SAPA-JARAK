@@ -5,6 +5,9 @@ namespace Tests\Feature;
 use Tests\TestCase;
 use App\Models\User;
 use App\Models\Hamlet;
+use App\Models\Beneficiary;
+use App\Models\Application;
+use App\Models\Verification;
 use App\Models\Setting;
 use App\Models\AuditLog;
 use App\Services\ScoringService;
@@ -16,7 +19,7 @@ class AdminApiTest extends TestCase
     use RefreshDatabase;
 
     protected User $admin;
-    protected User $kades;
+    protected User $desaAdmin;
     protected User $kasun;
     protected Hamlet $hamletKalasan;
 
@@ -41,12 +44,12 @@ class AdminApiTest extends TestCase
             'status' => 'active',
         ]);
 
-        $this->kades = User::create([
-            'name' => 'Bpk. Drs. H. Supriyadi (Kepala Desa)',
-            'email' => 'kades@jarak-kediri.desa.id',
-            'phone' => '081234567003',
+        $this->desaAdmin = User::create([
+            'name' => 'Sekretaris Desa',
+            'email' => 'sekdes@jarak-kediri.desa.id',
+            'phone' => '081234567002',
             'password' => bcrypt('password'),
-            'role' => 'kades',
+            'role' => 'admin',
             'status' => 'active',
         ]);
 
@@ -76,7 +79,7 @@ class AdminApiTest extends TestCase
         $responseAudit->assertStatus(401);
     }
 
-    public function test_forbidden_for_non_admin_or_kades_users(): void
+    public function test_forbidden_for_non_admin_users(): void
     {
         Sanctum::actingAs($this->kasun, ['role:kasun', '*']);
 
@@ -107,6 +110,51 @@ class AdminApiTest extends TestCase
         ]);
     }
 
+    public function test_admin_desa_accounts_can_view_complete_forwarded_disability_application(): void
+    {
+        $beneficiary = Beneficiary::create([
+            'name' => 'Ibu Siti Aminah',
+            'nik' => '3506121405850001',
+            'kk_number' => '3506121008030002',
+            'hamlet_id' => $this->hamletKalasan->id,
+            'rt' => '03',
+            'rw' => '02',
+            'address' => 'Dusun Kalasan Timur',
+        ]);
+        $application = Application::create([
+            'ticket_number' => '#JRK-KLS-2026-001',
+            'beneficiary_id' => $beneficiary->id,
+            'hamlet_id' => $this->hamletKalasan->id,
+            'assistance_type' => 'DISABILITAS',
+            'status' => 'FORWARDED_TO_VILLAGE',
+            'description' => 'Membutuhkan kursi roda untuk mobilitas sehari-hari.',
+            'submitted_at' => now(),
+        ]);
+        Verification::create([
+            'application_id' => $application->id,
+            'verifier_id' => $this->kasun->id,
+            'verification_level' => 'KASUN',
+            'parameters_checklist' => ['input' => ['disabilityLevel' => 'sedang_ketergantungan']],
+            'calculated_score' => 72,
+            'recommendation' => 'LAYAK',
+            'notes' => 'Kebutuhan telah diverifikasi di lapangan.',
+            'verified_at' => now(),
+        ]);
+
+        foreach ([$this->admin, $this->desaAdmin] as $user) {
+            Sanctum::actingAs($user, ["role:{$user->role}", '*']);
+
+            $this->getJson('/api/desa/dashboard')
+                ->assertOk()
+                ->assertJsonPath('data.0.assistance_type', 'DISABILITAS')
+                ->assertJsonPath('data.0.status', 'FORWARDED_TO_VILLAGE')
+                ->assertJsonPath('data.0.beneficiary.name', 'Ibu Siti Aminah')
+                ->assertJsonPath('data.0.beneficiary.nik', '3506121405850001')
+                ->assertJsonPath('data.0.hamlet.name', 'Dusun Kalasan')
+                ->assertJsonPath('data.0.latest_verification.calculated_score', 72);
+        }
+    }
+
     public function test_admin_can_list_users_with_filters(): void
     {
         Sanctum::actingAs($this->admin, ['role:admin', '*']);
@@ -129,7 +177,7 @@ class AdminApiTest extends TestCase
             'email' => 'sekdes.baru@jarak-kediri.desa.id',
             'phone' => '081234567999',
             'password' => 'secret123',
-            'role' => 'sekdes',
+            'role' => 'admin',
             'status' => 'active',
         ];
 
@@ -141,13 +189,34 @@ class AdminApiTest extends TestCase
 
         $this->assertDatabaseHas('users', [
             'email' => 'sekdes.baru@jarak-kediri.desa.id',
-            'role' => 'sekdes',
+            'role' => 'admin',
         ]);
 
         $this->assertDatabaseHas('audit_logs', [
             'action' => 'USER_CREATED',
             'entity_type' => User::class,
         ]);
+    }
+
+    public function test_admin_cannot_create_or_assign_legacy_officer_roles(): void
+    {
+        Sanctum::actingAs($this->admin, ['role:admin', '*']);
+
+        foreach (['kades', 'sekdes', 'kasi_kesra'] as $index => $legacyRole) {
+            $this->postJson('/api/admin/users', [
+                'name' => "Legacy role {$legacyRole}",
+                'email' => "legacy{$index}@jarak-kediri.desa.id",
+                'phone' => "0812345679{$index}0",
+                'password' => 'secret123',
+                'role' => $legacyRole,
+            ])->assertUnprocessable()
+                ->assertJsonValidationErrors(['role']);
+        }
+
+        $this->putJson("/api/admin/users/{$this->desaAdmin->id}", [
+            'role' => 'kades',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['role']);
     }
 
     public function test_admin_cannot_create_user_with_duplicate_email_or_phone(): void
@@ -226,6 +295,195 @@ class AdminApiTest extends TestCase
         $this->assertDatabaseHas('audit_logs', [
             'action' => 'USER_DELETED',
             'entity_id' => $userToDelete->id,
+        ]);
+    }
+
+    public function test_admin_can_create_and_list_scoped_kasun_accounts(): void
+    {
+        Sanctum::actingAs($this->admin, ['role:admin', '*']);
+        $hamlet = Hamlet::create([
+            'name' => 'Dusun Jarak Lor',
+            'code' => 'JRL',
+            'status' => 'active',
+        ]);
+
+        $response = $this->postJson('/api/admin/managed-accounts/kasun', [
+            'name' => 'Kasun Baru',
+            'email' => 'kasun.baru@jarak-kediri.desa.id',
+            'phone' => '081234567901',
+            'password' => 'secure-pass-123',
+            'hamlet_id' => $hamlet->id,
+            'status' => 'active',
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.role', 'kasun')
+            ->assertJsonPath('data.hamlet.id', $hamlet->id);
+        $this->assertDatabaseHas('users', [
+            'email' => 'kasun.baru@jarak-kediri.desa.id',
+            'role' => 'kasun',
+            'hamlet_id' => $hamlet->id,
+        ]);
+        $this->assertDatabaseHas('hamlets', [
+            'id' => $hamlet->id,
+            'head_name' => 'Kasun Baru',
+            'head_phone' => '081234567901',
+        ]);
+
+        $list = $this->getJson('/api/admin/managed-accounts/kasun');
+        $list->assertOk()
+            ->assertJsonPath('data.0.role', 'kasun')
+            ->assertJsonMissing(['password' => 'secure-pass-123']);
+    }
+
+    public function test_admin_can_create_update_and_delete_warga_accounts(): void
+    {
+        Sanctum::actingAs($this->admin, ['role:admin', '*']);
+        Beneficiary::create([
+            'name' => 'Warga Sumber Opsi',
+            'hamlet_id' => $this->hamletKalasan->id,
+            'rt' => '01',
+            'rw' => '02',
+            'address' => 'Dusun Kalasan',
+        ]);
+
+        $create = $this->postJson('/api/admin/managed-accounts/warga', [
+            'name' => 'Warga Baru',
+            'email' => 'warga.baru@example.test',
+            'phone' => '081234567904',
+            'password' => 'secure-pass-123',
+            'hamlet_id' => $this->hamletKalasan->id,
+            'nik' => '3506010101010003',
+            'kk_number' => '3506010101010004',
+            'rt' => '01',
+            'rw' => '02',
+            'address' => 'Dusun Kalasan',
+        ]);
+        $create->assertCreated()->assertJsonPath('data.role', 'public');
+        $wargaId = $create->json('data.id');
+        $this->assertDatabaseHas('users', [
+            'id' => $wargaId,
+            'hamlet_id' => $this->hamletKalasan->id,
+            'nik' => '3506010101010003',
+            'kk_number' => '3506010101010004',
+            'address' => 'Dusun Kalasan',
+        ]);
+
+        $this->putJson("/api/admin/managed-accounts/warga/{$wargaId}", [
+            'name' => 'Warga Diperbarui',
+            'status' => 'inactive',
+        ])->assertOk()->assertJsonPath('data.status', 'inactive');
+
+        $this->deleteJson("/api/admin/managed-accounts/warga/{$wargaId}")
+            ->assertOk();
+        $this->assertDatabaseMissing('users', ['id' => $wargaId]);
+    }
+
+    public function test_admin_cannot_create_warga_account_without_required_identity_fields(): void
+    {
+        Sanctum::actingAs($this->admin, ['role:admin', '*']);
+
+        $response = $this->postJson('/api/admin/managed-accounts/warga', [
+            'name' => 'Warga Belum Lengkap',
+            'phone' => '081234567906',
+            'password' => 'secure-pass-123',
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['hamlet_id', 'nik', 'kk_number', 'rt', 'rw', 'address']);
+        $this->assertDatabaseMissing('users', ['phone' => '081234567906']);
+    }
+
+    public function test_admin_can_read_update_and_delete_other_admin_accounts(): void
+    {
+        Sanctum::actingAs($this->admin, ['role:admin', '*']);
+        $otherAdmin = User::create([
+            'name' => 'Administrator Kedua',
+            'email' => 'admin.kedua@jarak-kediri.desa.id',
+            'phone' => '081234567905',
+            'password' => bcrypt('password'),
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+
+        $this->getJson('/api/admin/managed-accounts/admin')
+            ->assertOk()
+            ->assertJsonFragment(['id' => $otherAdmin->id, 'role' => 'admin']);
+
+        $this->putJson("/api/admin/managed-accounts/admin/{$otherAdmin->id}", [
+            'name' => 'Administrator Diperbarui',
+        ])->assertOk();
+        $this->assertDatabaseHas('users', [
+            'id' => $otherAdmin->id,
+            'name' => 'Administrator Diperbarui',
+        ]);
+
+        $this->deleteJson("/api/admin/managed-accounts/admin/{$otherAdmin->id}")
+            ->assertOk();
+        $this->assertDatabaseMissing('users', ['id' => $otherAdmin->id]);
+    }
+
+    public function test_active_kasun_account_cannot_be_duplicated_for_same_hamlet(): void
+    {
+        Sanctum::actingAs($this->admin, ['role:admin', '*']);
+
+        $response = $this->postJson('/api/admin/managed-accounts/kasun', [
+            'name' => 'Kasun Duplikat',
+            'phone' => '081234567902',
+            'password' => 'secure-pass-123',
+            'hamlet_id' => $this->hamletKalasan->id,
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['hamlet_id']);
+        $this->assertDatabaseMissing('users', ['phone' => '081234567902']);
+    }
+
+    public function test_non_admin_roles_cannot_read_or_manage_admin_accounts(): void
+    {
+        Sanctum::actingAs($this->kasun, ['role:kasun', '*']);
+
+        $this->getJson('/api/admin/managed-accounts/admin')->assertForbidden();
+        $this->putJson("/api/admin/managed-accounts/admin/{$this->admin->id}", [
+            'name' => 'Unauthorized Change',
+        ])->assertForbidden();
+    }
+
+    public function test_scoped_account_routes_cannot_change_another_account_type(): void
+    {
+        Sanctum::actingAs($this->admin, ['role:admin', '*']);
+
+        $this->putJson("/api/admin/managed-accounts/warga/{$this->kasun->id}", [
+            'name' => 'Wrong Scope',
+        ])->assertNotFound();
+        $this->assertDatabaseHas('users', [
+            'id' => $this->kasun->id,
+            'name' => 'Bpk. Agus Santoso (Kasun Kalasan)',
+        ]);
+    }
+
+    public function test_admin_accounts_cannot_be_created_through_managed_account_routes(): void
+    {
+        Sanctum::actingAs($this->admin, ['role:admin', '*']);
+
+        $this->postJson('/api/admin/managed-accounts/admin', [
+            'name' => 'New Administrator',
+            'phone' => '081234567903',
+            'password' => 'secure-pass-123',
+        ])->assertStatus(405);
+    }
+
+    public function test_admin_cannot_deactivate_self_through_managed_account_routes(): void
+    {
+        Sanctum::actingAs($this->admin, ['role:admin', '*']);
+
+        $this->putJson("/api/admin/managed-accounts/admin/{$this->admin->id}", [
+            'status' => 'inactive',
+        ])->assertStatus(422);
+
+        $this->assertDatabaseHas('users', [
+            'id' => $this->admin->id,
+            'status' => 'active',
         ]);
     }
 
@@ -338,6 +596,37 @@ class AdminApiTest extends TestCase
         ]);
         $this->assertEquals(60, $updatedScore['total_score']);
         $this->assertEquals('SEDANG', $updatedScore['urgency']);
+    }
+
+    public function test_scoring_service_calculates_kasun_form_selections(): void
+    {
+        $scoringService = new ScoringService();
+
+        $rtlhScore = $scoringService->calculateRtlhScore([
+            'wallCondition' => 'setengah_tembok_rusak',
+            'floorCondition' => 'semen_pecah',
+            'roofCondition' => 'bocor_ringan',
+            'sanitationCondition' => 'mck_tidak_layak',
+        ]);
+        $this->assertEquals(58, $rtlhScore['total_score']);
+        $this->assertEquals([
+            'dinding_bambu_gedek' => 18,
+            'lantai_tanah_rusak' => 18,
+            'atap_rapuh_bocor' => 10,
+            'sanitasi_mck' => 12,
+        ], $rtlhScore['breakdown']);
+
+        $disabilityScore = $scoringService->calculateDisabilityScore([
+            'disabilityLevel' => 'sedang_ketergantungan',
+            'economicCondition' => 'sangat_miskin_desil_2',
+            'healthRecommendation' => 'keterangan_umum',
+        ]);
+        $this->assertEquals(64, $disabilityScore['total_score']);
+        $this->assertEquals([
+            'tingkat_disabilitas' => 30,
+            'kondisi_ekonomi' => 22,
+            'rekomendasi_nakes' => 12,
+        ], $disabilityScore['breakdown']);
     }
 
     public function test_admin_can_view_and_filter_audit_logs(): void

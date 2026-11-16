@@ -5,68 +5,73 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Services\HamletLocationService;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
 {
     /**
-     * Pendaftaran akun warga masyarakat baru atau registrasi petugas desa resmi.
+     * Public registration is limited to warga and invited village administrators.
      */
-    public function register(Request $request)
+    public function register(Request $request, HamletLocationService $locations)
     {
+        $isAdmin = $request->input('account_type') === 'admin_desa';
+        $hamletId = filter_var($request->input('hamlet_id'), FILTER_VALIDATE_INT) ?: null;
+        $hamletOptions = $locations->options()->first(
+            fn (array $option) => (int) $option['id'] === $hamletId
+        );
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'phone' => 'required|string|max:30|unique:users,phone',
             'email' => 'nullable|email|max:255|unique:users,email',
             'password' => 'required|string|min:6',
-            'account_type' => 'nullable|string|in:warga,petugas_desa',
-            'role' => 'nullable|string',
-            'position' => 'nullable|string|max:100',
-            'nip' => 'nullable|string|max:50',
-            'auth_code' => 'nullable|string|max:50',
-            'hamlet_id' => 'nullable|exists:hamlets,id',
-            'nik' => 'nullable|string|max:20|unique:users,nik',
-            'kk_number' => 'nullable|string|max:20',
-            'rt' => 'nullable|string|max:5',
-            'rw' => 'nullable|string|max:5',
-            'address' => 'nullable|string|max:255',
+            'account_type' => 'nullable|string|in:warga,admin_desa',
+            'auth_code' => 'nullable|required_if:account_type,admin_desa|string|max:100',
+            'hamlet_id' => [
+                $isAdmin ? 'nullable' : 'required',
+                'integer',
+                Rule::exists('hamlets', 'id')->where('status', 'active'),
+            ],
+            'nik' => 'required_unless:account_type,admin_desa|nullable|string|digits:16|unique:users,nik',
+            'kk_number' => 'required_unless:account_type,admin_desa|nullable|string|digits:16',
+            'rt' => [
+                $isAdmin ? 'nullable' : 'required',
+                'string',
+                'max:5',
+                Rule::in($hamletOptions['rt_values'] ?? []),
+            ],
+            'rw' => [
+                $isAdmin ? 'nullable' : 'required',
+                'string',
+                'max:5',
+                Rule::in($hamletOptions['rw_values'] ?? []),
+            ],
+            'address' => 'required_unless:account_type,admin_desa|nullable|string|max:255',
         ]);
 
         $accountType = $validated['account_type'] ?? 'warga';
         $role = 'public';
 
-        if ($accountType === 'petugas_desa') {
+        if ($accountType === 'admin_desa') {
             $inputCode = strtoupper(trim($validated['auth_code'] ?? ''));
-            $validCode = in_array($inputCode, ['DESAJARAK2026', 'JARAK2026']);
-            if (!$validCode) {
+            $registrationCode = (string) config('services.admin_registration_code');
+            if ($registrationCode === '' || !hash_equals(strtoupper($registrationCode), $inputCode)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Kode Otorisasi Aparatur Desa tidak valid. Gunakan kode resmi Balai Desa: DESAJARAK2026.',
+                    'message' => 'Kode undangan Admin Desa tidak valid atau belum dikonfigurasi.',
                     'errors' => ['auth_code' => ['Kode otorisasi tidak sesuai.']]
-                ], 422);
+                ], 403);
             }
-
-            // Determine role based on requested role or position
-            $reqRole = strtolower($validated['role'] ?? '');
-            $position = strtolower($validated['position'] ?? '');
-            if (in_array($reqRole, ['admin', 'kades', 'sekdes', 'kasi_kesra'])) {
-                $role = $reqRole;
-            } elseif (str_contains($position, 'kades') || str_contains($position, 'kepala desa')) {
-                $role = 'kades';
-            } elseif (str_contains($position, 'sekdes') || str_contains($position, 'sekretaris')) {
-                $role = 'sekdes';
-            } elseif (str_contains($position, 'admin')) {
-                $role = 'admin';
-            } else {
-                $role = 'kasi_kesra';
-            }
+            $role = 'admin';
         }
 
         $email = $validated['email'] ?? null;
         if (!$email) {
             $sanitizedPhone = preg_replace('/[^0-9]/', '', $validated['phone']);
-            $prefix = $accountType === 'petugas_desa' ? 'petugas' : 'warga';
+            $prefix = $accountType === 'admin_desa' ? 'admin' : 'warga';
             $email = "{$prefix}.{$sanitizedPhone}@jarak-kediri.desa.id";
         }
 
@@ -85,13 +90,13 @@ class AuthController extends Controller
             'address' => $validated['address'] ?? null,
         ]);
 
-        $deviceName = $request->input('device_name', $accountType === 'petugas_desa' ? 'sapa-jarak-officer' : 'sapa-jarak-citizen');
+        $deviceName = $request->input('device_name', $accountType === 'admin_desa' ? 'sapa-jarak-admin' : 'sapa-jarak-citizen');
         $token = $user->createToken($deviceName, ["role:{$role}", "*"])->plainTextToken;
 
         return response()->json([
             'success' => true,
-            'message' => $accountType === 'petugas_desa' 
-                ? "Registrasi Petugas Desa berhasil! Selamat datang, {$user->name}." 
+            'message' => $accountType === 'admin_desa'
+                ? "Registrasi Admin Desa berhasil! Selamat datang, {$user->name}."
                 : "Pendaftaran berhasil! Selamat datang, {$user->name}.",
             'data' => [
                 'token_type' => 'Bearer',
@@ -232,20 +237,14 @@ class AuthController extends Controller
                     'phone' => $user->phone,
                     'role' => $user->role,
                     'position' => [
-                        'kades' => 'Kepala Desa',
-                        'sekdes' => 'Sekretaris Desa',
-                        'kasi_kesra' => 'Petugas Verifikasi',
-                        'admin' => 'Administrator Sistem',
+                        'admin' => 'Admin Desa',
                         'kasun' => 'Kepala Dusun',
                         'public' => 'Warga / Pelapor',
                     ][$user->role] ?? 'Petugas Desa',
                     'role_label' => $user->role === 'kasun'
                         ? "Kasun {$user->hamlet?->name}"
                         : ([
-                            'kades' => 'Kepala Desa',
-                            'sekdes' => 'Sekretaris Desa',
-                            'kasi_kesra' => 'Petugas Verifikasi',
-                            'admin' => 'Administrator Sistem',
+                            'admin' => 'Admin Desa',
                             'public' => 'Warga / Pelapor',
                         ][$user->role] ?? 'Petugas Desa'),
                     'hamlet_name' => $user->hamlet?->name,

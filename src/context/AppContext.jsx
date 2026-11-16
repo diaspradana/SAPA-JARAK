@@ -31,13 +31,50 @@ const API_STATUS_MAP = {
   REJECTED: 'REJECTED'
 };
 
+const API_STATUS_LABELS = {
+  DRAFT: 'Pengajuan diterima',
+  SUBMITTED: 'Pengajuan diterima',
+  WAITING_KASUN: 'Menunggu verifikasi Kepala Dusun',
+  WAITING_KASUN_VERIFICATION: 'Menunggu verifikasi Kepala Dusun',
+  KASUN_SURVEY: 'Survei lapangan oleh Kepala Dusun',
+  KASUN_VERIFICATION: 'Survei lapangan oleh Kepala Dusun',
+  RETURNED: 'Pengajuan perlu diperbaiki',
+  RETURNED_WITH_NOTES: 'Pengajuan perlu diperbaiki',
+  FORWARDED_TO_DESA: 'Direkomendasikan ke Pemerintah Desa',
+  FORWARDED_TO_VILLAGE: 'Direkomendasikan ke Pemerintah Desa',
+  VILLAGE_REVIEW: 'Sedang ditinjau Pemerintah Desa',
+  FUNDING_APPROVED: 'Disetujui dan anggaran ditetapkan',
+  APPROVED: 'Disetujui dan anggaran ditetapkan',
+  FUNDING_ALLOCATED: 'Anggaran bantuan ditetapkan',
+  PROCUREMENT: 'Pelaksanaan bantuan dimulai',
+  PROCUREMENT_IN_PROGRESS: 'Pelaksanaan bantuan dimulai',
+  HANDOVER: 'Menunggu serah terima BAST',
+  READY_FOR_HANDOVER: 'Menunggu serah terima BAST',
+  COMPLETED: 'Bantuan selesai diserahterimakan',
+  REJECTED: 'Pengajuan ditolak'
+};
+
+const AUDIT_ACTION_LABELS = {
+  APPLICATION_SUBMITTED: 'Pengajuan diterima',
+  STATUS_CHANGED: 'Status pengajuan diperbarui',
+  DOCUMENT_UPLOADED: 'Dokumen diunggah'
+};
+
+function normalizeHamletName(name = '') {
+  return String(name).replace(/^dusun\s+/i, '').trim().toLowerCase();
+}
+
+function findDusunConfig(hamlet = {}) {
+  return DUSUN_LIST.find((dusun) => (
+    String(dusun.code).toLowerCase() === String(hamlet.code || '').toLowerCase()
+    || normalizeHamletName(dusun.name) === normalizeHamletName(hamlet.name)
+  ));
+}
+
 function mapServerApplication(application) {
   const beneficiary = application.beneficiary || {};
   const hamlet = application.hamlet || {};
-  const hamletConfig = DUSUN_LIST.find((item) => (
-    item.code.toLowerCase() === String(hamlet.code || '').toLowerCase()
-    || item.name.toLowerCase() === String(hamlet.name || '').toLowerCase()
-  ));
+  const hamletConfig = findDusunConfig(hamlet);
   const verification = application.latest_verification || application.latestVerification || {};
   const checklist = verification.parameters_checklist || {};
   const funding = application.funding || {};
@@ -47,14 +84,25 @@ function mapServerApplication(application) {
   const documents = application.documents || [];
   const timeline = auditLogs.map((entry) => {
     const newValues = entry.new_values || {};
-    const status = API_STATUS_MAP[newValues.status] || newValues.status || entry.action;
+    const rawStatus = newValues.status;
+    const status = API_STATUS_MAP[rawStatus] || rawStatus || entry.action;
     return {
       status,
-      title: entry.action === 'APPLICATION_SUBMITTED' ? 'Pengajuan Diterima' : `Aktivitas: ${entry.action || 'Pembaruan data'}`,
+      title: API_STATUS_LABELS[rawStatus] || AUDIT_ACTION_LABELS[entry.action] || 'Aktivitas pengajuan',
       time: entry.created_at || '',
       note: newValues.reason || newValues.notes || newValues.meta?.reason || ''
     };
   });
+  const getPublicPhotoUrl = (document) => {
+    if (!document.public_url) return null;
+    return document.id
+      ? `${API_BASE_URL}/documents/${encodeURIComponent(document.id)}/file`
+      : document.public_url;
+  };
+  const getPhotoUrls = (documentType) => documents
+    .filter((document) => document.document_type === documentType)
+    .map(getPublicPhotoUrl)
+    .filter(Boolean);
   const ticketNumber = String(application.ticket_number || '').replace(/^#/, '');
 
   return {
@@ -62,7 +110,7 @@ function mapServerApplication(application) {
     ticketNumber,
     assistanceType: application.assistance_type,
     dusunId: hamletConfig?.id || String(hamlet.id || ''),
-    dusunName: hamlet.name || '',
+    dusunName: String(hamlet.name || '').replace(/^dusun\s+/i, ''),
     rt: beneficiary.rt || '',
     rw: beneficiary.rw || '',
     address: beneficiary.address || '',
@@ -115,8 +163,10 @@ function mapServerApplication(application) {
       officerSigned: Boolean(handover.signature_official_svg)
     } : null,
     photos: {
-      initial: documents.filter((document) => document.document_type === 'FOTO_KONDISI_AWAL').map((document) => document.public_url).filter(Boolean),
-      survey: documents.filter((document) => document.document_type === 'FOTO_SURVEI_KASUN').map((document) => document.public_url).filter(Boolean)
+      initial: getPhotoUrls('FOTO_KONDISI_AWAL'),
+      survey: getPhotoUrls('FOTO_SURVEI_KASUN'),
+      progress50: getPhotoUrls('FOTO_PROGRES_50'),
+      progress100: getPhotoUrls('FOTO_SELESAI_100')
     },
     timeline
   };
@@ -152,7 +202,7 @@ function mapServerUser(apiUser, token) {
     else if (hCode === 'sb' || uName.includes('kalasan barat') || uName.includes('simbar') || uName.includes('rindi')) mappedRole = 'kasun_simbar';
     else if (hCode === 'jk' || uName.includes('jarak kidul')) mappedRole = 'kasun_jarakkidul';
     else mappedRole = 'kasun';
-  } else if (['kasi_kesra', 'kades', 'sekdes', 'admin'].includes(apiUser.role)) {
+  } else if (apiUser.role === 'admin') {
     mappedRole = 'desa';
   } else {
     mappedRole = 'public';
@@ -172,23 +222,15 @@ function mapServerUser(apiUser, token) {
     role: mappedRole,
     apiRole: apiUser.role,
     position: {
-      kades: 'Kepala Desa',
-      sekdes: 'Sekretaris Desa',
-      kasi_kesra: 'Petugas Verifikasi',
-      admin: 'Administrator Sistem',
+      admin: 'Admin Desa',
       kasun: 'Kepala Dusun',
       public: 'Warga'
     }[apiUser.role] || 'Petugas Desa',
     roleLabel: mappedRole === 'desa'
-      ? ({
-        kades: 'Kepala Desa Jarak',
-        sekdes: 'Sekretaris Desa',
-        kasi_kesra: 'Petugas Verifikasi',
-        admin: 'Administrator Sistem'
-      }[apiUser.role] || 'Pemerintah Desa Jarak')
+      ? 'Admin Desa'
       : (mappedRole.startsWith('kasun') ? `Kepala Dusun (${apiUser.hamlet?.name || 'Dusun'})` : 'Warga Masyarakat'),
-    dusunName: apiUser.hamlet?.name || null,
-    dusunId: DUSUN_LIST.find((dusun) => dusun.code.toLowerCase() === apiUser.hamlet?.code?.toLowerCase())?.id || null,
+    dusunName: apiUser.hamlet?.name?.replace(/^dusun\s+/i, '') || null,
+    dusunId: findDusunConfig(apiUser.hamlet || {})?.id || (apiUser.hamlet_id ? String(apiUser.hamlet_id) : null),
     hamletId: apiUser.hamlet_id || apiUser.hamlet?.id || null,
     token,
     avatarInitials: (apiUser.name || '').split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase()
@@ -323,7 +365,7 @@ export function AppProvider({ children }) {
     }
   };
 
-  const openRegisterPetugas = () => {
+  const openRegisterAccount = () => {
     setCurrentView('register');
     try {
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -445,6 +487,37 @@ export function AppProvider({ children }) {
     return parseApiResponse(response);
   };
 
+  const fetchManagedAccounts = async (category) => {
+    const [accountsPayload, hamletsPayload] = await Promise.all([
+      serverRequest(`/admin/managed-accounts/${encodeURIComponent(category)}`),
+      serverRequest('/public/hamlets')
+    ]);
+    return {
+      users: accountsPayload.data,
+      hamlets: hamletsPayload.data
+    };
+  };
+
+  const createManagedAccount = async (category, account) => (
+    serverRequest(`/admin/managed-accounts/${encodeURIComponent(category)}`, {
+      method: 'POST',
+      body: account
+    })
+  );
+
+  const updateManagedAccount = async (category, id, account) => (
+    serverRequest(`/admin/managed-accounts/${encodeURIComponent(category)}/${id}`, {
+      method: 'PUT',
+      body: account
+    })
+  );
+
+  const deleteManagedAccount = async (category, id) => (
+    serverRequest(`/admin/managed-accounts/${encodeURIComponent(category)}/${id}`, {
+      method: 'DELETE'
+    })
+  );
+
   const refreshApplications = async () => {
     if (!currentUser?.token) {
       throw new Error('Sesi akun belum terhubung ke server. Silakan masuk menggunakan akun server.');
@@ -499,6 +572,7 @@ export function AppProvider({ children }) {
         phone: profile.phone,
         nik: profile.nik || null,
         kk_number: profile.kkNumber || null,
+        hamlet_id: profile.hamletId || null,
         rt: profile.rt || null,
         rw: profile.rw || null,
         address: profile.address || null
@@ -555,15 +629,13 @@ export function AppProvider({ children }) {
   });
 
   const submitApplication = async (formData, photoFiles = []) => {
-    const dusun = DUSUN_LIST.find((item) => item.id === formData.dusunId);
-    if (!dusun) throw new Error('Dusun yang dipilih tidak dikenali.');
-
     const hamletPayload = await serverRequest('/public/hamlets');
     const hamlet = (hamletPayload.data || []).find((item) => (
-      String(item.code).toLowerCase() === dusun.code.toLowerCase()
-      || String(item.name).toLowerCase() === dusun.name.toLowerCase()
+      String(item.id) === String(formData.dusunId)
     ));
-    if (!hamlet) throw new Error(`Data Dusun ${dusun.name} belum tersedia di server.`);
+    if (!hamlet) throw new Error('Dusun yang dipilih tidak tersedia di database.');
+    const dusun = findDusunConfig(hamlet);
+    const dusunName = String(hamlet.name || '').replace(/^dusun\s+/i, '');
 
     const documentIds = [];
     for (const file of photoFiles) {
@@ -585,9 +657,10 @@ export function AppProvider({ children }) {
         kk_number: formData.kkNumber || null,
         beneficiary_phone: formData.phone || formData.reporterPhone,
         hamlet_id: hamlet.id,
-        rt: formData.rt || '01',
-        rw: formData.rw || '01',
-        address: formData.address || `RT ${formData.rt || '01'} / RW ${formData.rw || '01'}, Dusun ${dusun.name}, Desa Jarak`,
+        rt: formData.rt,
+        rw: formData.rw,
+        address: formData.address?.trim()
+          || `RT ${formData.rt} / RW ${formData.rw}, Dusun ${dusunName}, Desa Jarak`,
         is_unregistered: Boolean(formData.isUnregistered),
         assistance_type: formData.assistanceType,
         reporter_name: formData.reporterName,
@@ -595,6 +668,16 @@ export function AppProvider({ children }) {
         reporter_relationship: formData.reporterRelation || 'Diri Sendiri',
         description: formData.description,
         needs_description: formData.description,
+        assistance_details: formData.assistanceType === 'RTLH'
+          ? {
+              damaged_components: formData.assistanceDetails.damagedComponents,
+              damage_location: formData.assistanceDetails.damageLocation || null,
+            }
+          : {
+              disability_type: formData.assistanceDetails.disabilityType,
+              requested_device: formData.assistanceDetails.requestedDevice,
+              functional_impact: formData.assistanceDetails.functionalImpact,
+            },
         otp: formData.otp,
         document_ids: documentIds
       }
@@ -604,10 +687,10 @@ export function AppProvider({ children }) {
       id: payload.data.id || payload.data.ticket_number,
       ticketNumber: String(payload.data.ticket_number || '').replace(/^#/, ''),
       assistanceType: formData.assistanceType,
-      dusunId: dusun.id,
-      dusunName: dusun.name,
-      rt: formData.rt || '01',
-      rw: formData.rw || '01',
+      dusunId: dusun?.id || String(hamlet.id),
+      dusunName,
+      rt: formData.rt,
+      rw: formData.rw,
       address: formData.address || '',
       beneficiaryName: formData.beneficiaryName,
       beneficiaryMaskedName: `${formData.beneficiaryName?.slice(0, 1) || 'W'}***`,
@@ -675,6 +758,18 @@ export function AppProvider({ children }) {
       }
     });
     await refreshAfterServerWrite('Keputusan dan alokasi bantuan berhasil disimpan ke server.');
+  };
+
+  const rejectDesaApplication = async (ticketNumber, reason) => {
+    const application = getServerApplication(ticketNumber);
+    await serverRequest(`/desa/applications/${application.id}/validate`, {
+      method: 'POST',
+      body: {
+        decision: 'REJECTED',
+        notes: reason
+      }
+    });
+    await refreshAfterServerWrite('Penolakan pengajuan berhasil dicatat di server.');
   };
 
   const updateProcurementProgress = async (ticketNumber, procurementData) => {
@@ -748,21 +843,24 @@ export function AppProvider({ children }) {
     }
   };
 
-  // Authentication: Register (Warga Masyarakat atau Petugas Desa)
+  // Authentication: register warga or invited village administrator.
   const register = async (formData) => {
+    const isAdmin = formData.accountType === 'admin_desa';
     if (!formData.name || !formData.phone || !formData.password) {
       showToast('Mohon lengkapi data wajib (Nama, No HP, Kata Sandi).', 'warning');
       return { success: false, message: 'Data tidak lengkap.' };
     }
+    if (!isAdmin && (!formData.nik || !formData.kkNumber || !formData.hamletId || !formData.rt || !formData.rw || !formData.address)) {
+      showToast('Mohon lengkapi NIK, Nomor KK, dusun, RT, RW, dan alamat.', 'warning');
+      return { success: false, message: 'Data identitas warga belum lengkap.' };
+    }
 
-    const isOfficer = formData.accountType === 'petugas_desa';
     const cleanPhone = formData.phone.trim();
     const cleanEmail = formData.email ? formData.email.trim() : (
-      isOfficer 
-        ? `petugas.${cleanPhone.replace(/\D/g, '')}@jarak-kediri.desa.id`
+      isAdmin
+        ? `admin.${cleanPhone.replace(/\D/g, '')}@jarak-kediri.desa.id`
         : `warga.${cleanPhone.replace(/\D/g, '')}@jarak-kediri.desa.id`
     );
-    const positionLabel = formData.positionLabel || formData.position || 'Aparatur Balai Desa';
     try {
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
@@ -772,11 +870,10 @@ export function AppProvider({ children }) {
           phone: cleanPhone,
           email: cleanEmail,
           password: formData.password,
-          account_type: isOfficer ? 'petugas_desa' : 'warga',
-          role: isOfficer ? 'desa' : 'public',
-          position: isOfficer ? positionLabel : null,
-          nip: formData.nip,
+          account_type: isAdmin ? 'admin_desa' : 'warga',
+          role: isAdmin ? 'admin' : 'public',
           auth_code: formData.authCode,
+          hamlet_id: isAdmin ? null : formData.hamletId,
           nik: formData.nik,
           kk_number: formData.kkNumber,
           rt: formData.rt,
@@ -843,6 +940,10 @@ export function AppProvider({ children }) {
         syncError,
         lastSyncedAt,
         refreshApplications,
+        fetchManagedAccounts,
+        createManagedAccount,
+        updateManagedAccount,
+        deleteManagedAccount,
         trackApplication,
         updateKasunVisitSchedule,
         updateProfile,
@@ -871,6 +972,7 @@ export function AppProvider({ children }) {
         submitApplication,
         submitKasunSurvey,
         approveDesaFunding,
+        rejectDesaApplication,
         updateProcurementProgress,
         completeHandoverBAST,
         refreshServerData,
@@ -881,11 +983,11 @@ export function AppProvider({ children }) {
         demoAccounts,
         demoAccountsError,
         officialKasunAccounts: demoAccounts.filter((account) => account.role === 'kasun'),
-        officialDesaAccounts: demoAccounts.filter((account) => ['kades', 'kasi_kesra', 'sekdes', 'admin'].includes(account.role)),
+        officialDesaAccounts: demoAccounts.filter((account) => account.role === 'admin'),
         loginRole,
         setLoginRole,
         openLogin,
-        openRegisterPetugas,
+        openRegisterAccount,
         login,
         register,
         logout

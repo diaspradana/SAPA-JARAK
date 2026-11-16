@@ -61,13 +61,18 @@ Menyimpan akun login aparatur desa (Kades, Sekdes, Kasi Kesra) dan Kepala Dusun.
 | Nama Kolom | Tipe Data | Nullable | Default | Keterangan & Batasan |
 |:---|:---|:---:|:---:|:---|
 | `id` | `BIGINT UNSIGNED` | NO | Auto Increment | Kunci Utama (*Primary Key*). |
-| `name` | `VARCHAR(150)` | NO | - | Nama lengkap aparatur. |
-| `email` | `VARCHAR(150)` | NO | - | Alamat email dinas unik. |
-| `phone` | `VARCHAR(30)` | YES | NULL | Nomor telepon/WhatsApp. |
+| `name` | `VARCHAR(255)` | NO | - | Nama lengkap pengguna. |
+| `email` | `VARCHAR(255)` | YES | NULL | Alamat email unik, opsional untuk warga. |
+| `phone` | `VARCHAR(30)` | NO | - | Nomor telepon/WhatsApp unik. |
 | `password` | `VARCHAR(255)` | NO | - | Hash sandi bcrypt. |
-| `role` | `VARCHAR(30)` | NO | `'warga'` | Peran: `admin`, `kades`, `sekdes`, `kasi_kesra`, `kasun`, `warga`. |
-| `hamlet_id` | `BIGINT UNSIGNED` | YES | NULL | Foreign Key ke `hamlets.id` (khusus role `kasun`). |
-| `status` | `VARCHAR(20)` | NO | `'active'` | Status akun (`active`/`suspended`). |
+| `role` | `ENUM` | NO | `'public'` | Peran: `admin` (Admin Desa), `kasun`, `public`. Akun Kades, Sekdes, dan Kasi Kesra lama dimigrasikan ke `admin`; nama masing-masing akun tetap. |
+| `hamlet_id` | `BIGINT UNSIGNED` | YES | NULL | Foreign Key ke `hamlets.id`; diisi untuk warga dan Kasun. |
+| `nik` | `VARCHAR(20)` | YES | NULL | NIK warga, unik jika diisi. |
+| `kk_number` | `VARCHAR(20)` | YES | NULL | Nomor Kartu Keluarga warga. |
+| `rt` | `VARCHAR(5)` | YES | NULL | RT domisili warga; nilainya mengikuti data di dusun terpilih. |
+| `rw` | `VARCHAR(5)` | YES | NULL | RW domisili warga; nilainya mengikuti data di dusun terpilih. |
+| `address` | `VARCHAR(255)` | YES | NULL | Alamat/patokan rumah warga. |
+| `status` | `VARCHAR(20)` | NO | `'active'` | Status akun (`active`/`inactive`). |
 | `remember_token`| `VARCHAR(100)` | YES | NULL | Token sesi Laravel. |
 | `created_at` | `TIMESTAMP` | YES | NULL | Waktu pembuatan akun. |
 | `updated_at` | `TIMESTAMP` | YES | NULL | Waktu pembaruan akun. |
@@ -238,7 +243,7 @@ Menyimpan token akses *Personal Access Token* (Bearer Token) untuk aparatur desa
 | `tokenable_id` | `BIGINT UNSIGNED` | NO | - | ID entitas pemilik token. |
 | `name` | `TEXT` | NO | - | Nama perangkat atau sesi login (cth: `desktop-kades`). |
 | `token` | `VARCHAR(64)` | NO | - | Hash SHA-256 dari personal access token (Unik). |
-| `abilities` | `TEXT` | YES | NULL | Hak akses kemampuan token (cth: `["role:kades","*"]`). |
+| `abilities` | `TEXT` | YES | NULL | Hak akses kemampuan token (cth: `["role:admin","*"]`). |
 | `last_used_at` | `TIMESTAMP` | YES | NULL | Waktu terakhir token digunakan untuk permintaan API. |
 | `expires_at` | `TIMESTAMP` | YES | NULL | Waktu kedaluwarsa token. |
 | `created_at` | `TIMESTAMP` | YES | NULL | Waktu penerbitan token. |

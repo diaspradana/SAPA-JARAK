@@ -2,6 +2,8 @@
 
 return [
 
+    'admin_registration_code' => env('ADMIN_REGISTRATION_CODE'),
+
     'postmark' => [
         'token' => env('POSTMARK_USAGE_TRACKING_TOKEN'),
     ],

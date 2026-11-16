@@ -96,8 +96,8 @@ export const STATUS_STAGES = {
 };
 
 export const FUNDING_SOURCES = [
-  { id: "APBDes", name: "APBDes / Dana Desa Jarak", quotaYear: 2026, totalAllocated: 180000000, remaining: 75000000 },
-  { id: "BKK", name: "BKK Kabupaten Kediri", quotaYear: 2026, totalAllocated: 100000000, remaining: 40000000 },
-  { id: "Dinsos", name: "Dinas Sosial Kab. Kediri", quotaYear: 2026, totalAllocated: 60000000, remaining: 25000000 },
-  { id: "BAZNAS", name: "BAZNAS Kabupaten Kediri", quotaYear: 2026, totalAllocated: 50000000, remaining: 35000000 },
+  { id: "APBDES_DANA_DESA", name: "APBDes / Dana Desa Jarak", quotaYear: 2026, totalAllocated: 180000000, remaining: 75000000 },
+  { id: "BKK_KABUPATEN", name: "BKK Kabupaten Kediri", quotaYear: 2026, totalAllocated: 100000000, remaining: 40000000 },
+  { id: "DINSOS_KEDIRI", name: "Dinas Sosial Kab. Kediri", quotaYear: 2026, totalAllocated: 60000000, remaining: 25000000 },
+  { id: "BAZNAS_KEDIRI", name: "BAZNAS Kabupaten Kediri", quotaYear: 2026, totalAllocated: 50000000, remaining: 35000000 },
 ];

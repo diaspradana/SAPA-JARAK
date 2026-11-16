@@ -58,7 +58,7 @@ Route::prefix('kasun')->middleware(['auth:sanctum', 'role:kasun,admin'])->group(
 });
 
 // Pemerintah Desa (Kasi Kesra, Sekdes, Kades, Admin) - Dilindungi Sanctum & Peran Desa
-Route::prefix('desa')->middleware(['auth:sanctum', 'role:kades,kasi_kesra,sekdes,admin'])->group(function () {
+Route::prefix('desa')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
     Route::get('/dashboard', [DesaController::class, 'dashboard']);
     Route::post('/applications/{id}/validate', [DesaController::class, 'validateAndFund']);
     Route::post('/applications/{id}/procurement', [DesaController::class, 'updateProcurement']);
@@ -83,9 +83,15 @@ Route::prefix('documents')->group(function () {
 });
 
 // Admin & System Management (Manajemen Aparatur, Wilayah Dusun, Pengaturan & Audit Log - PRD Seksi 21)
-Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin,kades'])->group(function () {
+Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
     // Ringkasan Sistem & Telemetri
     Route::get('/overview', [AdminController::class, 'overview']);
+
+    // Scoped account management for Kasun, citizen, and administrator accounts
+    Route::get('/managed-accounts/{category}', [AdminController::class, 'managedAccounts']);
+    Route::post('/managed-accounts/{category}', [AdminController::class, 'createManagedAccount']);
+    Route::put('/managed-accounts/{category}/{id}', [AdminController::class, 'updateManagedAccount']);
+    Route::delete('/managed-accounts/{category}/{id}', [AdminController::class, 'deleteManagedAccount']);
 
     // Manajemen Aparatur Desa (Users)
     Route::get('/users', [AdminController::class, 'users']);

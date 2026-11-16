@@ -291,6 +291,24 @@ npm run build
 ### 5. Menjalankan Menggunakan Docker Compose (Hosting / Produksi)
 Proyek ini telah dilengkapi dengan kontainerisasi Docker & Docker Compose siap produksi (PHP 8.4-FPM + Nginx + MySQL 8.0 + Vite Frontend Build + **FastAPI AI Assistant Decision Support** + phpMyAdmin):
 
+#### Mode Pengembangan Docker (perubahan kode langsung terbaca)
+
+Gunakan konfigurasi development berikut saat mengedit kode. Source frontend dan backend dipasang langsung dari folder proyek; Vite mendeteksi perubahan frontend, dan perubahan backend terbaca saat request berikutnya tanpa rebuild image.
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+```
+
+Buka **http://localhost:3000**. Endpoint backend tetap tersedia di **http://localhost:8000**. Untuk menghentikan stack:
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.dev.yml down
+```
+
+Jika mengubah `package.json`, `package-lock.json`, atau `composer.json`/`composer.lock`, rebuild image terkait. Perubahan migration tetap perlu dijalankan dengan `docker compose -f docker-compose.yml -f docker-compose.dev.yml exec app php artisan migrate`.
+
+#### Mode Produksi
+
 ```bash
 # 1. (Opsional) Salin konfigurasi environment khusus Docker jika ingin mengubah port/kredensial
 cp .env.docker.example .env

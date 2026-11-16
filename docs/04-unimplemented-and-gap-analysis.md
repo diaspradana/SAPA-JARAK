@@ -88,7 +88,7 @@ Analisis ini menguraikan fitur yang **belum diimplementasikan**, fitur yang **ma
   - Layanan [`App\Services\MediaStorageService`](../app/Services/MediaStorageService.php) dibuat untuk mengelola siklus hidup berkas:
     - **Validasi Ketat**: Membatasi ukuran berkas maksimal 10MB dan memvalidasi MIME type (`image/jpeg`, `image/png`, `image/webp`, `application/pdf`).
     - **Arsitektur Penyimpanan Ganda (*Dual-Storage Architecture*)**:
-      - *Penyimpanan Internal* (`storage/app/internal/documents/YYYY/`): Menyimpan berkas asli beresolusi penuh. Hanya dapat diakses oleh aparatur terautentikasi (`kades`, `kasi_kesra`, `sekdes`, `admin`, `kasun`).
+      - *Penyimpanan Internal* (`storage/app/internal/documents/YYYY/`): Menyimpan berkas asli beresolusi penuh. Hanya dapat diakses oleh aparatur terautentikasi (`admin`, `kasun`).
       - *Penyimpanan Publik* (`storage/app/public/documents/YYYY/`): Khusus untuk foto dokumentasi warga (`FOTO_KONDISI_AWAL`, `FOTO_SURVEI_KASUN`, `FOTO_PROGRES_50`, `FOTO_SELESAI_100`). Terintegrasi dengan [`ImagePrivacyService`](../app/Services/ImagePrivacyService.php) dan microservice FastAPI untuk deteksi & pengaburan wajah otomatis (*automatic face blurring*) sebelum dipublikasikan ke portal transparansi desa.
     - **Proteksi Identitas Sensitif**: Berkas bertipe `KTP_KK` dan `SURAT_KETERANGAN_DOKTER` secara mutlak dipaksa berstatus `INTERNAL_ONLY` dan tidak pernah diterbitkan salinan publiknya.
   - Endpoint RESTful API pada [`App\Http\Controllers\Api\DocumentController`](../app/Http/Controllers/Api/DocumentController.php):
@@ -121,8 +121,8 @@ Analisis ini menguraikan fitur yang **belum diimplementasikan**, fitur yang **ma
     - `generateSpjPdf`: Laporan Pertanggungjawaban Realisasi Anggaran APBDes (A4 landscape) yang menyajikan tabel rekapitulasi realisasi belanja per dusun, sisa pagu, persentase serapan, dan tanda tangan legalitas Pemdes.
   - Tiga endpoint HTTP unduh PDF biner aktif:
     - `GET /api/public/applications/{ticket}/pdf` (Publik / Tanpa autentikasi agar warga dapat langsung mengunduh bukti tiket).
-    - `GET /api/desa/applications/{id}/bast/pdf` (Terproteksi `auth:sanctum`, hak akses: `kades`, `kasi_kesra`, `sekdes`, `admin`).
-    - `GET /api/desa/reports/spj/pdf` (Terproteksi `auth:sanctum`, hak akses: `kades`, `kasi_kesra`, `sekdes`, `admin`).
+    - `GET /api/desa/applications/{id}/bast/pdf` (Terproteksi `auth:sanctum`, hak akses: `admin`).
+    - `GET /api/desa/reports/spj/pdf` (Terproteksi `auth:sanctum`, hak akses: `admin`).
   - Dokumentasi API lengkap diperbarui pada [docs/05-api-reference.md Seksi 2.5, 4.6, dan 4.7](05-api-reference.md).
 
 ---
@@ -154,10 +154,10 @@ Analisis ini menguraikan fitur yang **belum diimplementasikan**, fitur yang **ma
 
 ### 2.9 Panel Pengaturan Administrasi Desa (*Admin Settings Panel*)
 - **Status Implementasi (Backend Selesai ✅)**:
-  - Telah diimplementasikan pengendali administrasi terpadu [`App\Http\Controllers\Api\AdminController`](../app/Http/Controllers/Api/AdminController.php) yang dilindungi oleh middleware `auth:sanctum` dan `role:admin,kades`.
+  - Telah diimplementasikan pengendali administrasi terpadu [`App\Http\Controllers\Api\AdminController`](../app/Http/Controllers/Api/AdminController.php) yang dilindungi oleh middleware `auth:sanctum` dan `role:admin`.
   - **Fitur Utama yang Diselesaikan**:
     1. **Manajemen Aparatur Desa (`/api/admin/users`)**:
-       - Operasi CRUD penuh untuk akun pamong desa (`admin`, `kades`, `sekdes`, `kasi_kesra`, `kasun`, `public`).
+       - Operasi CRUD penuh untuk akun pamong desa (`admin`, `kasun`, `public`).
        - Validasi keunikan email & nomor telepon, enkripsi password bcrypt (`Hash::make`), penugasan wilayah dusun (*hamlet binding*), proteksi larangan menghapus akun sendiri (*self-deletion prevention*), serta pencatatan otomatis ke `audit_logs` (`USER_CREATED`, `USER_UPDATED`, `USER_DELETED`).
     2. **Manajemen Wilayah Dusun (`/api/admin/hamlets`)**:
        - Pengelolaan 5 dusun resmi (Kalasan, Sagi, Jarak Lor, Jarak Kidul, Simbar) beserta nama dan nomor kontak Kepala Dusun.

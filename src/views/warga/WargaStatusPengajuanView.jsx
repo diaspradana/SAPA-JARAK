@@ -14,14 +14,15 @@ import {
 
 const WargaStatusBadge = ({ status }) => {
   const map = {
+    SUBMITTED: { label: 'Pengajuan Diterima', color: 'bg-blue-100 text-blue-800 border-blue-200' },
     WAITING_KASUN: { label: 'Menunggu Verifikasi', color: 'bg-orange-100 text-orange-800 border-orange-200' },
     KASUN_SURVEY: { label: 'Sedang Diperiksa', color: 'bg-blue-100 text-blue-800 border-blue-200' },
     FORWARDED_TO_DESA: { label: 'Sedang Diperiksa', color: 'bg-blue-100 text-blue-800 border-blue-200' },
     VILLAGE_REVIEW: { label: 'Sedang Diperiksa', color: 'bg-blue-100 text-blue-800 border-blue-200' },
     RETURNED: { label: 'Perlu Perbaikan', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-    FUNDING_APPROVED: { label: 'Disetujui', color: 'bg-green-100 text-green-800 border-green-200' },
-    PROCUREMENT: { label: 'Dalam Pengerjaan', color: 'bg-green-100 text-green-800 border-green-200' },
-    HANDOVER: { label: 'Disetujui', color: 'bg-green-100 text-green-800 border-green-200' },
+    FUNDING_APPROVED: { label: 'Disetujui · Menunggu Pelaksanaan', color: 'bg-green-100 text-green-800 border-green-200' },
+    PROCUREMENT: { label: 'Dalam Pelaksanaan', color: 'bg-green-100 text-green-800 border-green-200' },
+    HANDOVER: { label: 'Menunggu Serah Terima (BAST)', color: 'bg-green-100 text-green-800 border-green-200' },
     COMPLETED: { label: 'Selesai', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
     REJECTED: { label: 'Ditolak', color: 'bg-red-100 text-red-800 border-red-200' },
   };
@@ -35,6 +36,7 @@ const WargaStatusBadge = ({ status }) => {
 
 const getProgressPercent = (status) => {
   const map = {
+    SUBMITTED: 5,
     WAITING_KASUN: 15,
     KASUN_SURVEY: 30,
     FORWARDED_TO_DESA: 45,
@@ -51,6 +53,7 @@ const getProgressPercent = (status) => {
 
 const getStatusExplanation = (status) => {
   const map = {
+    SUBMITTED: 'Pengajuan Anda sudah tercatat dan akan diteruskan ke Kepala Dusun untuk diverifikasi.',
     WAITING_KASUN: 'Pengajuan Anda sudah diterima dan sedang menunggu verifikasi dari Kepala Dusun setempat.',
     KASUN_SURVEY: 'Kepala Dusun sedang melakukan survei lapangan untuk memverifikasi kondisi di lokasi Anda.',
     FORWARDED_TO_DESA: 'Kepala Dusun telah merekomendasikan pengajuan Anda ke Pemerintah Desa untuk divalidasi lebih lanjut.',
@@ -71,6 +74,43 @@ const formatDate = (isoString) => {
     return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(isoString));
   } catch { return isoString; }
 };
+
+const formatTimelineDate = (isoString) => {
+  if (!isoString) return '-';
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) return isoString;
+  return new Intl.DateTimeFormat('id-ID', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date);
+};
+
+function PhotoLink({ url, label }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <div role="status" className="flex aspect-video items-center justify-center rounded-xl border border-gray-200 bg-gray-50 px-3 text-center text-xs text-gray-500 dark:border-neutral-700 dark:bg-neutral-800">
+        Foto {label.toLowerCase()} tidak dapat dimuat.
+      </div>
+    );
+  }
+
+  return (
+    <a href={url} target="_blank" rel="noreferrer" className="relative block aspect-video overflow-hidden rounded-xl border border-gray-100 dark:border-neutral-800">
+      <img
+        src={url}
+        alt={label}
+        loading="lazy"
+        className="h-full w-full object-cover"
+        onError={() => setFailed(true)}
+      />
+      <span className="absolute bottom-1.5 left-1.5 rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-bold text-white">{label}</span>
+    </a>
+  );
+}
 
 function ApplicationCard({ app }) {
   const [expanded, setExpanded] = useState(false);
@@ -172,7 +212,7 @@ function ApplicationCard({ app }) {
                 {[...app.timeline].reverse().map((item, idx) => (
                   <li key={idx} className="ml-4">
                     <div className="absolute -left-1.5 mt-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-neutral-900" />
-                    <div className="text-xs text-gray-400 dark:text-gray-500">{item.time}</div>
+                    <div className="text-xs text-gray-400 dark:text-gray-500">{formatTimelineDate(item.time)}</div>
                     <div className="text-sm font-bold text-gray-800 dark:text-gray-200">{item.title}</div>
                     {item.note && <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{item.note}</div>}
                   </li>
@@ -182,7 +222,12 @@ function ApplicationCard({ app }) {
           )}
 
           {/* Photos (face-blurred public copies; photos still being blurred are not listed yet) */}
-          {(app.photos?.initial?.length > 0 || app.photos?.survey?.length > 0) && (
+          {(
+            app.photos?.initial?.length > 0
+            || app.photos?.survey?.length > 0
+            || app.photos?.progress50?.length > 0
+            || app.photos?.progress100?.length > 0
+          ) && (
             <div>
               <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
                 Foto Dokumentasi
@@ -191,11 +236,10 @@ function ApplicationCard({ app }) {
                 {[
                   ...(app.photos.initial || []).map((url) => ({ url, label: 'Foto Pengajuan' })),
                   ...(app.photos.survey || []).map((url) => ({ url, label: 'Survei Kasun' })),
+                  ...(app.photos.progress50 || []).map((url) => ({ url, label: 'Progres 50%' })),
+                  ...(app.photos.progress100 || []).map((url) => ({ url, label: 'Progres Selesai' })),
                 ].map(({ url, label }) => (
-                  <a key={url} href={url} target="_blank" rel="noreferrer" className="relative block rounded-xl overflow-hidden border border-gray-100 dark:border-neutral-800 aspect-video">
-                    <img src={url} alt={label} loading="lazy" className="w-full h-full object-cover" />
-                    <span className="absolute bottom-1.5 left-1.5 bg-black/75 text-white text-[10px] px-1.5 py-0.5 rounded font-bold">{label}</span>
-                  </a>
+                  <PhotoLink key={url} url={url} label={label} />
                 ))}
               </div>
             </div>
@@ -228,7 +272,7 @@ export default function WargaStatusPengajuanView({ onNav }) {
       app.phone === currentUser?.phone
   );
 
-  const activeStatuses = ['WAITING_KASUN', 'KASUN_SURVEY', 'FORWARDED_TO_DESA', 'VILLAGE_REVIEW', 'FUNDING_APPROVED', 'PROCUREMENT', 'HANDOVER'];
+  const activeStatuses = ['SUBMITTED', 'WAITING_KASUN', 'KASUN_SURVEY', 'FORWARDED_TO_DESA', 'VILLAGE_REVIEW', 'FUNDING_APPROVED', 'PROCUREMENT', 'HANDOVER'];
 
   const tabs = [
     { id: 'semua', label: 'Semua', count: myApplications.length },
